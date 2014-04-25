@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence" version="1.0">
+
+    <persistence-unit name="oracle" transaction-type="RESOURCE_LOCAL">
+
+        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <mapping-file>META-INF/oracleDataTypes.hbm.xml</mapping-file>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.Oracle10gDialect"/>
+            <property name="hibernate.connection.driver_class" value="java.sql.Driver"/>
+        </properties>
+
+    </persistence-unit>
+
+    <persistence-unit name="oracleXE" transaction-type="RESOURCE_LOCAL">
+
+        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <mapping-file>META-INF/oracleDataTypes.hbm.xml</mapping-file>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <property name="hibernate.dialect" value="com.github.gekoh.yagen.hibernate.OracleXE11gDialect"/>
+            <property name="hibernate.connection.driver_class" value="java.sql.Driver"/>
+        </properties>
+
+    </persistence-unit>
+
+    <persistence-unit name="hsql" transaction-type="RESOURCE_LOCAL">
+
+        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.HSQLDialect"/>
+            <property name="hibernate.connection.driver_class" value="java.sql.Driver"/>
+        </properties>
+
+    </persistence-unit>
+
+    <persistence-unit name="pgsql" transaction-type="RESOURCE_LOCAL">
+
+        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect"/>
+            <property name="hibernate.connection.driver_class" value="java.sql.Driver"/>
+        </properties>
+
+    </persistence-unit>
+
+</persistence>
+
+

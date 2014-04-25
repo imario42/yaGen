@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings xmlns="http://java.sun.com/xml/ns/persistence/orm"
+                 version="${orm-version}">
+
+    <mapped-superclass class="com.github.gekohl.yagen.hst.BaseEntity"/>
+#foreach( $mappedSuperClassName in $mappedSuperClassNames )
+    <mapped-superclass class="${mappedSuperClassName}"/>
+#end
+
+#foreach( $entityClassName in $entityClassNames )
+    <entity class="${entityClassName}"/>
+#end
+
+</entity-mappings>
+
+

@@ -1,0 +1,127 @@
+/*
+ * History Entity Template
+ *
+ */
+package ${entityClassPackageName};
+
+import org.joda.time.DateTime;
+
+import javax.persistence.Table;
+
+import com.csg.cs.aura.core.domain.hst.Operation;
+import com.csg.cs.aura.core.infra.hibernate.Generated;
+
+/**
+ * @author Georg Kohlweiss
+ */
+@Generated
+#if( $tableName )
+@Table(
+        name = ${entityClassSimpleName}.TABLE_NAME
+)
+#end
+#if( $classAnnotation )
+${classAnnotation}
+#end
+public class ${entityClassSimpleName} extends
+#if( $entitySuperClassName ) $entitySuperClassName #else com.csg.cs.aura.core.domain.hst.BaseEntity #end {
+#if( $tableName )
+    public static final String TABLE_NAME = "${tableName}";
+#end
+#if( $tableShortName )
+    public static final String TABLE_NAME_SHORT = "${tableShortName}";
+#end
+
+#if( ! $entitySuperClassName && ${baseEntityUuidColumnName} )
+    /**
+     * Technical unique key of the live entity.
+     */
+    @javax.persistence.Column(name = "${baseEntityUuidColumnName}", length = ${baseEntityUuidColumnLength}, nullable=false)
+    private String liveUuid;
+#end
+
+    /*
+     * Start of section for fields out of live entities.
+     * Instead of references to other entities we will only have their @Id field mapped
+     */
+#foreach( $fieldInfo in $fieldInfoList )
+
+## skip Id column as we map it as liveUuid
+#if( !${fieldInfo.getColumnName()} || $baseEntityUuidColumnName != ${fieldInfo.getColumnName()} )
+#if( ${fieldInfo.isEnum()} )
+    @javax.persistence.Enumerated(value = javax.persistence.EnumType.STRING)
+#end
+#if( ${fieldInfo.isEmbedded()} )
+    @javax.persistence.Embedded
+#end
+#if( ${fieldInfo.getColumnAnnotation()} )
+    ${fieldInfo.getColumnAnnotation()}
+#end
+    private ${fieldInfo.getType().getName()} ${fieldInfo.getName()};
+#end
+#end
+    /*
+     * End of section for fields out of live entities.
+     */
+
+    protected ${entityClassSimpleName} () {
+    }
+
+#if( $entitySuperClassName || $baseEntityUuidColumnName )
+    public ${entityClassSimpleName} (String liveUuid, DateTime transactionTimestamp, DateTime invalidatedAt) {
+        this(liveUuid, Operation.I, transactionTimestamp, invalidatedAt);
+    }
+
+    public ${entityClassSimpleName} (String liveUuid, Operation operation, DateTime transactionTimestamp, DateTime invalidatedAt) {
+        super(liveUuid, operation, transactionTimestamp, invalidatedAt);
+    }
+#else
+    public ${entityClassSimpleName} (DateTime transactionTimestamp, DateTime invalidatedAt) {
+        this(Operation.I, transactionTimestamp, invalidatedAt);
+    }
+
+    public ${entityClassSimpleName} (Operation operation, DateTime transactionTimestamp, DateTime invalidatedAt) {
+        super(null, operation, transactionTimestamp, invalidatedAt);
+    }
+#end
+
+#if( ! $entitySuperClassName && ${baseEntityUuidColumnName} )
+    protected void setLiveUuid(String liveUuid) {
+        this.liveUuid = liveUuid;
+    }
+
+    public String getLiveUuid() {
+        return liveUuid;
+    }
+#end
+## in case of ManyToMany relations we have no live uuid but need to implement abstract method
+#if( ! $entitySuperClassName && ! ${baseEntityUuidColumnName} )
+    protected void setLiveUuid(String liveUuid) {
+        if (liveUuid != null) {
+            throw new IllegalArgumentException("live uuid does not exist on relations with JoinTable");
+        }
+    }
+#end
+
+    /*
+     * Start of section for getters and setters of fields out of live entities.
+     */
+#foreach( $fieldInfo in $fieldInfoList )
+## skip Id column as we map it as liveUuid
+#if( !${fieldInfo.getColumnName()} || $baseEntityUuidColumnName != ${fieldInfo.getColumnName()} )
+## building the camel case method name for setter and getter
+#set( $nameCC = "${fieldInfo.getName().substring(0, 1).toUpperCase()}${fieldInfo.getName().substring(1)}")
+
+    public void set${nameCC}(${fieldInfo.getType().getName()} ${fieldInfo.getName()}) {
+        this.${fieldInfo.getName()} = ${fieldInfo.getName()};
+    }
+
+    public ${fieldInfo.getType().getName()} get${nameCC}() {
+        return ${fieldInfo.getName()};
+    }
+#end
+#end
+    /*
+     * End of section for getters and setters of fields out of live entities.
+     */
+}

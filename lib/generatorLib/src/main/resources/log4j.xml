@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ log4j.xml
+  -->
+
+<!DOCTYPE log4j:configuration SYSTEM "http://svn.apache.org/repos/asf/logging/log4j/tags/v1_2_15/src/main/resources/org/apache/log4j/xml/log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/" debug="false">
+
+    <appender name="A1" class="org.apache.log4j.ConsoleAppender">
+        <layout class="org.apache.log4j.PatternLayout">
+            <param name="ConversionPattern" value="%d{ISO8601} %-5p [%t] %c: %m%n" />
+        </layout>
+    </appender>
+
+    <category name="org.hibernate">
+        <level value="WARN"/>
+    </category>
+
+    <category name="org.hibernate.tool.hbm2ddl">
+        <level value="INFO"/>
+    </category>
+
+
+    <category name="com.csg.cs.aura">
+        <level value="INFO"/>
+    </category>
+
+    <root>
+        <priority value="INFO" />
+        <appender-ref ref="A1" />
+    </root>
+
+</log4j:configuration>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-mapping PUBLIC
+        "-//Hibernate/Hibernate Mapping DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-mapping-3.0.dtd">
+<hibernate-mapping>
+    <database-object>
+        <create><![CDATA[
+            CREATE FUNCTION sys_guid() RETURNS char(32)
+            LANGUAGE JAVA DETERMINISTIC NO SQL
+            EXTERNAL NAME 'CLASSPATH:com.csg.cs.aura.core.domain.base.UUIDGenerator.next'
+            ;
+        ]]></create>
+        <drop></drop>
+    </database-object>
+    <database-object>
+        <create><![CDATA[
+            create global temporary table HST_CURRENT_TRANSACTION (
+              transaction_id bigint,
+              transaction_timestamp timestamp,
+              constraint hsttr_transaction_id_PK primary key (transaction_id)
+            );
+        ]]></create>
+        <drop></drop>
+    </database-object>
+    <database-object>
+        <create><![CDATA[
+            create global temporary table HST_MODIFIED_ROW (
+              table_name varchar(30),
+              row_id varchar(64),
+              operation char(1),
+              hst_uuid varchar(32),
+              constraint hstmod_rowid_tablename_PK primary key (row_id, table_name)
+            );
+        ]]></create>
+        <drop></drop>
+    </database-object>
+#foreach( $object in $objects )
+    <database-object>
+        <create><![CDATA[${object}]]></create>
+        <drop></drop>
+    </database-object>
+#end
+
+</hibernate-mapping>
