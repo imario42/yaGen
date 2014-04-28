@@ -43,9 +43,9 @@ import java.util.regex.Pattern;
 public class DDLGenerator {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DDLGenerator.class);
 
-    public void writeDDL (Profile profile, String versionCore, String versionShared) {
+    public void writeDDL (Profile profile) {
 
-        SchemaExport export = new SchemaExportFactory().createSchemaExport(profile, versionCore, versionShared);
+        SchemaExport export = new SchemaExportFactory().createSchemaExport(profile);
         export.setDelimiter(";");
         export.setFormat(true);
         export.setOutputFile(profile.getOutputFile());
@@ -55,7 +55,7 @@ public class DDLGenerator {
     }
 
     public static class SchemaExportFactory {
-        public SchemaExport createSchemaExport (Profile profile, String versionCore, String versionShared) {
+        public SchemaExport createSchemaExport (Profile profile) {
             Configuration cfg;
             if (StringUtils.isNotEmpty(profile.getPersistenceUnitName())) {
 //            need to patch the class NumericBooleanType only for oracle until all AURA applications have
@@ -88,13 +88,6 @@ public class DDLGenerator {
                 }
             } catch (DocumentException e) {
                 LOG.error("cannot set persistence xml file", e);
-            }
-
-            if (versionCore != null) {
-                cfg.setProperty("AURA.CORE.VERSION", versionCore);
-            }
-            if (versionShared != null) {
-                cfg.setProperty("AURA.SHARED.VERSION", versionShared);
             }
 
             return new SchemaExport(cfg);

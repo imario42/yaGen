@@ -130,9 +130,6 @@ public class CreateDDL {
     private Set<String> tblColNameHasSingleColIndex = new HashSet<String>();
     private Map<String, List<String>> tblNameToDropObjectsSql = new HashMap<String, List<String>>();
 
-    private String versionCore;
-    private String versionShared;
-
     private DDLGenerator.Profile currentProfile;
 
     private List<String> dbObjects = new ArrayList<String>();
@@ -1783,14 +1780,6 @@ public class CreateDDL {
                         ddl.append(deferredDdl);
                     }
 
-                    if (getVersionCore() != null && getVersionShared() != null) {
-                        ddl.append(STATEMENT_SEPARATOR);
-                        ddl.append("-- inserting auto detected aura-core and shared versions\n");
-                        ddl.append("insert into system_info (uuid, key, value, description)\n");
-                        ddl.append("select sys_guid(), 'AURA.CORE.VERSION', '" + getVersionCore() + "', 'Core-Version' from dual union all \n");
-                        ddl.append("select sys_guid(), 'AURA.SHARED.VERSION', '" + getVersionShared() + "', 'Shared-Version' from dual");
-                    }
-
                     reader = new StringReader(ddl.toString());
                 }
                 return reader.read(cbuf, off, len);
@@ -1800,22 +1789,6 @@ public class CreateDDL {
             public void close() throws IOException {
             }
         });
-    }
-
-    public void setVersionCore(String versionCore){
-        this.versionCore = versionCore;
-    }
-
-    public void setVersionShared(String versionShared){
-        this.versionShared = versionShared;
-    }
-
-    public String getVersionCore() {
-        return versionCore;
-    }
-
-    public String getVersionShared() {
-        return versionShared;
     }
 
     public DDLGenerator.Profile getProfile() {

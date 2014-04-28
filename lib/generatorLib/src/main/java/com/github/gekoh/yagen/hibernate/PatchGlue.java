@@ -11,10 +11,8 @@ import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
 import org.hibernate.type.Type;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,69 +24,6 @@ import java.util.Properties;
  */
 public class PatchGlue {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PatchGlue.class);
-
-    private static Map<String, DDLGenerator.Profile> PROFILES = new HashMap<String, DDLGenerator.Profile>();
-
-    private static final List<String> ADDITIONAL_DDL_REGISTRY = Arrays.asList(
-            "/com/github/gekohl/yagen/ddl/rightApplication.ddl.sql",
-            "/com/github/gekohl/yagen/ddl/additionalObjects.ddl.sql",
-            "/com/github/gekohl/yagen/ddl/hstIndexes.ddl.sql",
-            "/com/github/gekohl/yagen/ddl/timelineViews.ddl.sql",
-            "/ddl/rom-additionalObjects.ddl.sql",
-            "/ddl/flipflop-views.ddl.sql",
-            "/ddl/rim-additionalObjects.ddl",
-            "/ddl/rim-additionalProd.sql",
-            "/ddl/rct-views.ddl.sql"
-    );
-
-    public static final DDLGenerator.Profile INIT_DATA = new DDLGenerator.Profile("init_data");
-    static {
-        DDLGenerator.Profile profile = INIT_DATA;
-        PROFILES.put(profile.getName(), profile);
-
-        profile.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(PatchGlue.class.getResource("/com/github/gekohl/yagen/ddl/header.ddl.sql")));
-
-        profile.addDdl(new DDLGenerator.AddTemplateDDLEntry(PatchGlue.class.getResource("/com/github/gekohl/yagen/ddl/initialData.ddl.sql")));
-
-        URL resource = PatchGlue.class.getResource("/ddl/ocm-settings.sql");
-        if (resource != null) {
-            profile.addDdl(new DDLGenerator.AddTemplateDDLEntry(resource));
-        }
-
-        addAvailableDDLs(profile, ADDITIONAL_DDL_REGISTRY);
-    }
-
-    public static final DDLGenerator.Profile START_EMPTY = new DDLGenerator.Profile("start_empty");
-    static {
-        DDLGenerator.Profile profile = START_EMPTY;
-        PROFILES.put(profile.getName(), profile);
-
-        profile.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(PatchGlue.class.getResource("/com/github/gekohl/yagen/ddl/header.ddl.sql")));
-
-        profile.addDdl(new DDLGenerator.AddTemplateDDLEntry(PatchGlue.class.getResource("/com/github/gekohl/yagen/ddl/CascadeNullableInitiallyEnabled.sql")));
-
-        addAvailableDDLs(profile, ADDITIONAL_DDL_REGISTRY);
-    }
-
-    private static void addAvailableDDLs(DDLGenerator.Profile profile, List<String> ddlResources) {
-        for (String ddlResource : ddlResources) {
-            URL resource = PatchGlue.class.getResource(ddlResource);
-            if (resource != null) {
-                profile.addDdl(new DDLGenerator.AddTemplateDDLEntry(resource));
-            }
-        }
-    }
-
-    public static DDLGenerator.Profile cloneProfile(String name) {
-        if (PROFILES.containsKey(name)) {
-            try {
-                return PROFILES.get(name).clone();
-            } catch (CloneNotSupportedException e) {
-                LOG.error("error cloning profile");
-            }
-        }
-        return null;
-    }
 
     private static DDLGenerator.Profile profile;
 
@@ -139,12 +74,6 @@ public class PatchGlue {
             }
             if (ddlEnhancer.getDDLEnhancer() == null) {
                 ddlEnhancer.initDDLEnhancer(profile, dialect);
-            }
-            if (cfgProperties.containsKey("AURA.CORE.VERSION")) {
-                ddlEnhancer.getDDLEnhancer().setVersionCore(cfgProperties.getProperty("AURA.CORE.VERSION"));
-            }
-            if (cfgProperties.containsKey("AURA.SHARED.VERSION")) {
-                ddlEnhancer.getDDLEnhancer().setVersionShared(cfgProperties.getProperty("AURA.SHARED.VERSION"));
             }
         }
         else {
