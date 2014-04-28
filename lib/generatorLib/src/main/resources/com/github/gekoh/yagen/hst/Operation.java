@@ -1,4 +1,4 @@
-package com.github.gekohl.yagen.hst;
+package com.github.gekoh.yagen.hst;
 
 /**
  * @author Georg Kohlweiss

@@ -16,4 +16,5 @@ public class Constants {
 
     public static final int USER_NAME_LEN = 35;
     public static final int UUID_LEN = 32;
+    public static final int ENUM_DEFAULT_LEN = 30;
 }

@@ -8,8 +8,8 @@ import org.joda.time.DateTime;
 
 import javax.persistence.Table;
 
-import com.csg.cs.aura.core.domain.hst.Operation;
-import com.csg.cs.aura.core.infra.hibernate.Generated;
+import com.github.gekoh.yagen.hst.Operation;
+import com.github.gekoh.yagen.api.Generated;
 
 /**
  * @author Georg Kohlweiss
@@ -24,7 +24,7 @@ import com.csg.cs.aura.core.infra.hibernate.Generated;
 ${classAnnotation}
 #end
 public class ${entityClassSimpleName} extends
-#if( $entitySuperClassName ) $entitySuperClassName #else com.csg.cs.aura.core.domain.hst.BaseEntity #end {
+#if( $entitySuperClassName ) $entitySuperClassName #else com.github.gekoh.yagen.hst.BaseEntity #end {
 #if( $tableName )
     public static final String TABLE_NAME = "${tableName}";
 #end

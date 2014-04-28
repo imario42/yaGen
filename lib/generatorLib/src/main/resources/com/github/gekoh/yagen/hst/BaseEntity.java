@@ -1,8 +1,6 @@
-package com.github.gekohl.yagen.hst;
+package com.github.gekoh.yagen.hst;
 
-import com.csg.cs.aura.core.domain.base.FieldConstants;
-import com.csg.cs.aura.core.domain.base.IdentifiableEntity;
-import com.csg.cs.aura.core.domain.base.UUIDGenerator;
+import com.github.gekoh.yagen.api.Constants;
 import org.hibernate.annotations.Type;
 import org.joda.time.DateTime;
 
@@ -11,27 +9,28 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.MappedSuperclass;
+import java.util.UUID;
 
 /**
  * @author Georg Kohlweiss
  */
 @SuppressWarnings({"UnusedDeclaration", "FieldCanBeLocal"})
 @MappedSuperclass
-public abstract class BaseEntity implements IdentifiableEntity {
+public abstract class BaseEntity {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(BaseEntity.class);
 
     /**
      * Technical unique key of the row.
      */
     @Id
-    @Column(name = "HST_UUID", length = FieldConstants.UUID_LEN)
+    @Column(name = "HST_UUID", length = Constants.UUID_LEN)
     private String uuid;
 
     /**
     * operation on live data
     */
    @Enumerated(EnumType.STRING)
-   @Column(name = "OPERATION", length = FieldConstants.ENUM_DEFAULT_LEN, nullable = false)
+   @Column(name = "OPERATION", length = Constants.ENUM_DEFAULT_LEN, nullable = false)
    private Operation operation;
 
     /**
@@ -51,7 +50,7 @@ public abstract class BaseEntity implements IdentifiableEntity {
     private DateTime invalidatedAt;
 
     protected BaseEntity() {
-        this.uuid = UUIDGenerator.next();
+        this.uuid = UUID.randomUUID().toString().replaceAll("-", "").toUpperCase();
     }
 
     public BaseEntity(String liveUuid, Operation operation, DateTime transactionTimestamp, DateTime invalidatedAt) {
