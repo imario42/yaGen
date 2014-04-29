@@ -134,6 +134,8 @@ public class CreateDDL {
 
     private List<String> dbObjects = new ArrayList<String>();
 
+    private boolean historyInitSet = false;
+
     public CreateDDL(DDLGenerator.Profile profile, Dialect dialect) {
         init(profile);
         initViewsAndRegisterDDLs(dialect);
@@ -435,6 +437,11 @@ public class CreateDDL {
                 }
                 else {
                     buf.append(getHsqlDBHistTriggerSql(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols));
+                }
+
+                if (!historyInitSet) {
+                    getProfile().addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(CreateDDL.class.getResource("/com/github/gekoh/yagen/ddl/InitHistory.ddl.sql")));
+                    historyInitSet = true;
                 }
             } catch (ClassNotFoundException e) {
                 LOG.info("not generating history table of live table {} since corresponding history entity class not found in classpath", nameLC);

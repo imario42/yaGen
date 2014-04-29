@@ -19,6 +19,10 @@
 
     <name>yaGen - example domain lib with ddl generation</name>
 
+    <properties>
+        <hst-src.dir>${project.build.directory}/generated-sources/hst</hst-src.dir>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.github.gekoh.yagen</groupId>
@@ -30,10 +34,81 @@
             <artifactId>hibernate-jpa-2.0-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.gekoh.yagen</groupId>
+            <artifactId>yagen-generator-lib</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.velocity</groupId>
+            <artifactId>velocity</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <executions>
+                    <execution>
+                        <id>precompile-domain</id>
+                        <phase>generate-sources</phase>
+                        <goals><goal>compile</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>1.7</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals><goal>add-source</goal></goals>
+                        <configuration>
+                            <sources>
+                                <source>${hst-src.dir}</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <executions>
+                    <!-- generating history entity sources (classes annotated with @TemporalEntity) to be able to use them in JPA -->
+                    <execution>
+                        <id>generate-entity-classes</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.github.gekoh.yagen.hst.CreateEntities</mainClass>
+                            <arguments>
+                                <argument>${hst-src.dir}</argument>
+                                <argument>src/main/resources/META-INF/example-domain.orm.xml</argument>
+                                <argument>${project.build.outputDirectory}/META-INF/example-domain-hst.orm.xml</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>

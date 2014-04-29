@@ -137,6 +137,11 @@ public class DDLGenerator {
             this.name = name;
 
             PROFILES.add(this);
+
+            addHeaderDdl(new AddDDLEntry("-- this prevents us from being asked by the executing SQL console to replace a variable\n" +
+                    "-- when using entity declarations like &amp; in varchar values\n" +
+                    "-- this works in sqlplus, SqlDeveloper and TOAD (execute as script)\n" +
+                    "set define off;\n"));
         }
 
         public void setName(String name) {

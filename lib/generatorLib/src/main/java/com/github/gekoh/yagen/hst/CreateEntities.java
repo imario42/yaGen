@@ -64,6 +64,22 @@ public class CreateEntities {
 
     public static final String HISTORY_ENTITY_SUFFIX = "Hst";
 
+    public static void main (String[] args) {
+        CreateEntities createEntities = new CreateEntities(new File(args[0]));
+
+        String[] persistenceXmlFiles = args[1].split(";[\\s]*");
+        createEntities.processBaseEntityClasses(
+                scanEntityClasses(persistenceXmlFiles));
+
+        File orm20OutFile = new File(args[2]);
+        createEntities.writeOrmFile(orm20OutFile, "2.0");
+
+        if (args.length > 3) {
+            File orm10OutFile = new File(args[3]);
+            createEntities.writeOrmFile(orm10OutFile, "1.0");
+        }
+    }
+
     private File outputDirectory;
 
     private String template = readClasspathResource("HstTemplate.java.vm");
@@ -482,20 +498,6 @@ public class CreateEntities {
         } catch (IOException e) {
             LOG.error("error writing to orm file", e);
         }
-    }
-
-    public static void main (String[] args) {
-        CreateEntities createEntities = new CreateEntities(new File(args[0]));
-
-        String[] persistenceXmlFiles = args[1].split(";[\\s]*");
-        createEntities.processBaseEntityClasses(
-                scanEntityClasses(persistenceXmlFiles));
-
-        File orm20OutFile = new File(args[2]);
-        File orm10OutFile = new File(args[3]);
-
-        createEntities.writeOrmFile(orm20OutFile, "2.0");
-        createEntities.writeOrmFile(orm10OutFile, "1.0");
     }
 
     /**
