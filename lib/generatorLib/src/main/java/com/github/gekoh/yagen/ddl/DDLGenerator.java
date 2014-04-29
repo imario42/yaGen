@@ -137,11 +137,6 @@ public class DDLGenerator {
             this.name = name;
 
             PROFILES.add(this);
-
-            addHeaderDdl(new AddDDLEntry("-- this prevents us from being asked by the executing SQL console to replace a variable\n" +
-                    "-- when using entity declarations like &amp; in varchar values\n" +
-                    "-- this works in sqlplus, SqlDeveloper and TOAD (execute as script)\n" +
-                    "set define off;\n"));
         }
 
         public void setName(String name) {
@@ -427,6 +422,10 @@ public class DDLGenerator {
             super(url);
         }
 
+        public AddTemplateDDLEntry(String ddlText) {
+            super(ddlText);
+        }
+
         @Override
         public String getDdlText(Dialect dialect) {
             if (text == null) {
@@ -435,7 +434,7 @@ public class DDLGenerator {
                 ctx.put("dialect", dialect);
 
                 StringWriter wr = new StringWriter();
-                Velocity.evaluate(ctx, wr, url.toString(), template);
+                Velocity.evaluate(ctx, wr, url != null ? url.toString() : ddlText, template);
                 text = wr.toString();
             }
             return text;

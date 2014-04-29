@@ -39,6 +39,13 @@ public class CoreDDLGenerator extends CommentsDDLGenerator {
             throw new IllegalStateException("cannot init patches for ddl generator", e);
         }
 
+        PROFILE.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry("#if( ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )\n" +
+                "-- this prevents us from being asked by the executing SQL console to replace a variable\n" +
+                "-- when using entity declarations like &amp; in varchar values\n" +
+                "-- this works in sqlplus, SqlDeveloper and TOAD (execute as script)\n" +
+                "set define off;\n" +
+                "#end"));
+
 /*
         try {
             PROFILE.addDuplexer(new com.github.gekoh.yagen.ddl.AuditTriggerDuplexer(new java.io.File("auditTriggers_"+ PROFILE.getName()+".ddl.sql"), "\n/\n"));
