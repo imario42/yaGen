@@ -80,6 +80,8 @@
     <build>
         <plugins>
             <plugin>
+                <!-- need to precompile domain classes cause we need them already
+                     in the classpath when generating history entities in the generate-sources phase -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.1</version>
@@ -187,7 +189,7 @@
                         <executions>
                             <!--
                               Ad additionalparam: I didn't find a simple way to escape the backslash of absolute paths in Windows directories,
-                              when specifying an absolute directory as additionalparam, you end with special characters within
+                              when specifying an absolute directory as additionalparam, you end up with special characters within
                               parameter values
                             -->
                             <execution>
