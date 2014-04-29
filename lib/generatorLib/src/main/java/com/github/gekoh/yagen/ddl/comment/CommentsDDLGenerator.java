@@ -1,5 +1,7 @@
 package com.github.gekoh.yagen.ddl.comment;
 
+import com.github.gekoh.yagen.ddl.CoreDDLGenerator;
+import com.github.gekoh.yagen.ddl.DDLGenerator;
 import com.sun.javadoc.AnnotationDesc;
 import com.sun.javadoc.AnnotationValue;
 import com.sun.javadoc.ClassDoc;
@@ -68,9 +70,35 @@ public class CommentsDDLGenerator extends Doclet {
     private static Set<String> RENDERED_OBJECTS;
 
     @SuppressWarnings("UnusedDeclaration")
+    public static int optionLength(String option) {
+        String longOpt = option.substring(2);
+
+        if (CoreDDLGenerator.OPTIONS.getOption(longOpt).hasArg()) {
+            return 2;
+        }
+        if (CoreDDLGenerator.OPTIONS.hasOption(longOpt)) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private static DDLGenerator.Profile parseOptions(String[][] options) {
+        List<String> args = new ArrayList<String>();
+        for (String[] opt : options) {
+            if (opt[0].startsWith("--") && CoreDDLGenerator.OPTIONS.hasOption(opt[0].substring(2))) {
+                args.add(opt[0]);
+                if (opt.length > 1) {
+                    args.add(opt[1]);
+                }
+            }
+        }
+        return CoreDDLGenerator.createProfileFrom(args.toArray(new String[args.size()]));
+    }
+
+    @SuppressWarnings("UnusedDeclaration")
     public static boolean start(RootDoc root) {
 
-        languageVersion();
+        DDLGenerator.Profile profile = parseOptions(root.options());
 
         OUTPUT_COMMENTS = new LinkedHashMap<String, Map<String, String>>();
 
@@ -78,6 +106,10 @@ public class CommentsDDLGenerator extends Doclet {
         for (final ClassDoc klass : classes) {
             handleClass(root, klass, null, null);
         }
+
+        profile.setComments(OUTPUT_COMMENTS);
+
+        CoreDDLGenerator.generateFrom(profile);
 
         return true;
     }
@@ -534,9 +566,5 @@ public class CommentsDDLGenerator extends Doclet {
 
     public static void setRenderedObjects(Set<String> objectNames) {
         RENDERED_OBJECTS = objectNames;
-    }
-
-    public static Map<String, Map<String, String>> getComments () {
-        return OUTPUT_COMMENTS;
     }
 }

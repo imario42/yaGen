@@ -19,7 +19,7 @@ public class MetadataSerializationSupport {
         XSTREAM.aliasType("date", LocalDate.class);
         XSTREAM.aliasType("ts", DateTime.class);
         XSTREAM.aliasPackage("comment", TableMetadata.class.getPackage().getName());
-        XSTREAM.setMode(XStream.ID_REFERENCES); // use ids for reference attributes
+        XSTREAM.setMode(XStream.XPATH_ABSOLUTE_REFERENCES);
         XSTREAM.aliasSystemAttribute(IDREF_ATTRIBUTE_NAME, REFERENCE_ATTRIBUTE_NAME); //replace all reference attributes with idref
         XSTREAM.autodetectAnnotations(false); // donot change to true -> xstream will not be thread safe!
     }

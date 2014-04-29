@@ -1,45 +1,58 @@
 package com.github.gekoh.yagen.ddl;
 
-import com.github.gekoh.yagen.ddl.comment.CommentsDDLGenerator;
 import com.github.gekoh.yagen.hibernate.PatchGlue;
-import com.sun.javadoc.RootDoc;
-import org.hibernate.ejb.Ejb3Configuration;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.GnuParser;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 
 /**
  * @author Georg Kohlweiss
  */
-public class CoreDDLGenerator extends CommentsDDLGenerator {
+public class CoreDDLGenerator {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CoreDDLGenerator.class);
 
-    private static final String PARAM_PROFILE_NAME = "--profile-name";
-    private static final String PARAM_PROFILE_PROVIDER_CLASS = "--profile-provider-class";
-    private static final String PARAM_PERSISTENCE_UNIT_NAME = "--persistence-unit-name";
-    private static final String PARAM_PERSISTENCE_XML_LIST = "--persistence-xml-list";
-    private static final String PARAM_OUTPUT_FILENAME = "--output-file";
-    private static final String PARAM_HBMXML_OUTPUT_FILENAME = "--hbm-xml-output-file";
-    private static final String PARAM_HEADER_DDLS_LIST = "--header-ddl-list";
-    private static final String PARAM_ADDITIONAL_DDLS_LIST = "--additional-ddl-list";
-    private static final String PARAM_DISABLE_FKS = "--disable-foreign-keys";
-    private static final String PARAM_REGEX_RENDER_ONLY_ENTITIES = "--only-entities-regex";
-    private static final String PARAM_NO_HISTORY_GENERATION = "--no-history";
+    private static final String PARAM_PROFILE_NAME = "profile-name";
+    private static final String PARAM_PROFILE_PROVIDER_CLASS = "profile-provider-class";
+    private static final String PARAM_PERSISTENCE_UNIT_NAME = "persistence-unit-name";
+    private static final String PARAM_PERSISTENCE_XML_LIST = "persistence-xml-list";
+    private static final String PARAM_OUTPUT_FILENAME = "output-file";
+    private static final String PARAM_HEADER_DDLS_LIST = "header-ddl-list";
+    private static final String PARAM_ADDITIONAL_DDLS_LIST = "additional-ddl-list";
+    private static final String PARAM_DISABLE_FKS = "disable-foreign-keys";
+    private static final String PARAM_REGEX_RENDER_ONLY_ENTITIES = "only-entities-regex";
+    private static final String PARAM_NO_HISTORY_GENERATION = "no-history";
 
-    private static DDLGenerator.Profile PROFILE;
+    public static final Options OPTIONS = new Options();
+    static {
+        addOption(PARAM_PROFILE_NAME, true, "name of profile to be used");
+        addOption(PARAM_OUTPUT_FILENAME, true, "path of generated ddl file");
+        addOption(PARAM_PROFILE_PROVIDER_CLASS, true, "full qualified class name of profile provider");
+        addOption(PARAM_PERSISTENCE_UNIT_NAME, true, "name of the persistent unit holding the entity configuration");
+        addOption(PARAM_PERSISTENCE_XML_LIST, true, "semicolon separated list of persistence files to be scanned");
+        addOption(PARAM_HEADER_DDLS_LIST, true, "semicolon separated list of header include files");
+        addOption(PARAM_ADDITIONAL_DDLS_LIST, true, "semicolon separated list of footer include files");
+        addOption(PARAM_REGEX_RENDER_ONLY_ENTITIES, true, "entities matching specified regex will be rendered");
+        addOption(PARAM_DISABLE_FKS, false, "indicates that foreign keys should be initially disabled");
+        addOption(PARAM_NO_HISTORY_GENERATION, false, "indicates that no history tables should be generated even if @TemporalEntity is used");
+    }
+    private static void addOption(String longOpt, boolean hasArg, String description) {
+        OPTIONS.addOption(null, longOpt, hasArg, description);
+    }
 
-    private static String profileName;
-    private static ProfileProvider profileProvider;
+    public static void main(String[] args) {
+        generateFrom(createProfileFrom(args));
+    }
 
-    @SuppressWarnings("UnusedDeclaration")
-    public static boolean start(final RootDoc root) {
-
-        parseOptions(root.options());
-
+    public static void generateFrom(DDLGenerator.Profile profile) {
         try {
-            PatchGlue.init(PROFILE);
+            PatchGlue.init(profile);
         } catch (Exception e) {
             throw new IllegalStateException("cannot init patches for ddl generator", e);
         }
 
-        PROFILE.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry("#if( ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )\n" +
+        profile.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry("#if( ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )\n" +
                 "-- this prevents us from being asked by the executing SQL console to replace a variable\n" +
                 "-- when using entity declarations like &amp; in varchar values\n" +
                 "-- this works in sqlplus, SqlDeveloper and TOAD (execute as script)\n" +
@@ -54,79 +67,68 @@ public class CoreDDLGenerator extends CommentsDDLGenerator {
         }
 */
 
-        CommentsDDLGenerator.start(root);
-        PROFILE.setComments(getComments());
-
-        DDLGenerator generator = new DDLGenerator();
-
-        generator.writeDDL(PROFILE);
-
-        return true;
+        new DDLGenerator().writeDDL(profile);
     }
 
-    @SuppressWarnings("UnusedDeclaration")
-    public static int optionLength(String option) {
-        if (option.equals(PARAM_OUTPUT_FILENAME) ||
-                option.equals(PARAM_HBMXML_OUTPUT_FILENAME) ||
-                option.equals(PARAM_PERSISTENCE_UNIT_NAME) ||
-                option.equals(PARAM_PERSISTENCE_XML_LIST) ||
-                option.equals(PARAM_HEADER_DDLS_LIST) ||
-                option.equals(PARAM_ADDITIONAL_DDLS_LIST) ||
-                option.equals(PARAM_PROFILE_NAME) ||
-                option.equals(PARAM_PROFILE_PROVIDER_CLASS) ||
-                option.equals(PARAM_REGEX_RENDER_ONLY_ENTITIES)) {
-            return 2;
-        } else if (option.equals(PARAM_DISABLE_FKS) ||
-                option.equals(PARAM_NO_HISTORY_GENERATION)) {
-            return 1;
+    public static DDLGenerator.Profile createProfileFrom(String[] args) {
+        DDLGenerator.Profile profile = null;
+        CommandLineParser clp = new GnuParser();
+        CommandLine cl;
+
+        try {
+            cl = clp.parse(OPTIONS, args);
+        } catch (ParseException e) {
+            LOG.error("error parsing arguments");
+            return null;
         }
-        return 0;
-    }
 
-    private static void parseOptions(String[][] options) {
-        for (String[] opt : options) {
-            try {
-                if (opt[0].equals(PARAM_PROFILE_NAME)) {
-                    profileName = opt[1];
-                } else if (opt[0].equals(PARAM_PROFILE_PROVIDER_CLASS)) {
-                    try {
-                        profileProvider = (ProfileProvider) Class.forName(opt[1]).newInstance();
-                    } catch (Exception e) {
-                        LOG.error("cannot instantiate profile provider class {}", opt[1]);
-                    }
-                } else if (opt[0].equals(PARAM_OUTPUT_FILENAME)) {
-                    getProfile().setOutputFile(opt[1]);
-                } else if (opt[0].equals(PARAM_PERSISTENCE_UNIT_NAME)) {
-                    getProfile().setPersistenceUnitName(opt[1]);
-                } else if (opt[0].equals(PARAM_PERSISTENCE_XML_LIST)) {
-                    getProfile().addPersistenceFile(opt[1].split(";[\\s]*"));
-                } else if (opt[0].equals(PARAM_HEADER_DDLS_LIST)) {
-                    getProfile().addHeaderDdlFile(opt[1].split(";[\\s]*"));
-                } else if (opt[0].equals(PARAM_ADDITIONAL_DDLS_LIST)) {
-                    getProfile().addDdlFile(opt[1].split(";[\\s]*"));
-                } else if (opt[0].equals(PARAM_DISABLE_FKS)) {
-                    getProfile().setDisableFKs(true);
-                } else if (opt[0].equals(PARAM_NO_HISTORY_GENERATION)) {
-                    getProfile().setNoHistory(true);
-                } else if (opt[0].equals(PARAM_REGEX_RENDER_ONLY_ENTITIES)) {
-                    getProfile().setOnlyRenderEntitiesRegex(opt[1]);
-                }
-            } catch (NullPointerException e) {
-                throw new IllegalArgumentException("profile name must be the first argument");
+        try {
+
+            if (cl.hasOption(PARAM_PROFILE_PROVIDER_CLASS)) {
+                profile = ((ProfileProvider) Class.forName(cl.getOptionValue(PARAM_PROFILE_PROVIDER_CLASS)).newInstance())
+                        .getProfile(cl.getOptionValue(PARAM_PROFILE_NAME));
             }
+            else {
+                profile = new DDLGenerator.Profile(cl.getOptionValue(PARAM_PROFILE_NAME));
+            }
+
+            if (cl.hasOption(PARAM_OUTPUT_FILENAME)) {
+                profile.setOutputFile(cl.getOptionValue(PARAM_OUTPUT_FILENAME));
+            }
+
+            if (cl.hasOption(PARAM_PERSISTENCE_UNIT_NAME)) {
+                profile.setPersistenceUnitName(cl.getOptionValue(PARAM_PERSISTENCE_UNIT_NAME));
+            }
+
+            if (cl.hasOption(PARAM_PERSISTENCE_XML_LIST)) {
+                profile.addPersistenceFile(cl.getOptionValue(PARAM_PERSISTENCE_XML_LIST).split(";[\\s]*"));
+            }
+
+            if (cl.hasOption(PARAM_HEADER_DDLS_LIST)) {
+                profile.addHeaderDdlFile(cl.getOptionValue(PARAM_HEADER_DDLS_LIST).split(";[\\s]*"));
+            }
+
+            if (cl.hasOption(PARAM_ADDITIONAL_DDLS_LIST)) {
+                profile.addDdlFile(cl.getOptionValue(PARAM_ADDITIONAL_DDLS_LIST).split(";[\\s]*"));
+            }
+
+            if (cl.hasOption(PARAM_DISABLE_FKS)) {
+                profile.setDisableFKs(true);
+            }
+
+            if (cl.hasOption(PARAM_NO_HISTORY_GENERATION)) {
+                profile.setNoHistory(true);
+            }
+
+            if (cl.hasOption(PARAM_REGEX_RENDER_ONLY_ENTITIES)) {
+                profile.setOnlyRenderEntitiesRegex(cl.getOptionValue(PARAM_REGEX_RENDER_ONLY_ENTITIES));
+            }
+        } catch (ClassNotFoundException e) {
+            LOG.error("cannot instantiate profile provider class {}", cl.getOptionValue(PARAM_PROFILE_PROVIDER_CLASS));
+        } catch (Exception e) {
+            LOG.error("error setting up generator profile", e);
         }
-    }
 
-    private static DDLGenerator.Profile getProfile() {
-        if (PROFILE == null) {
-            if (profileProvider != null) {
-                PROFILE = profileProvider.getProfile(profileName);
-            }
-            if (PROFILE == null) {
-                PROFILE = new DDLGenerator.Profile(profileName);
-            }
-        }
-        return PROFILE;
+        return profile;
     }
-
 }
