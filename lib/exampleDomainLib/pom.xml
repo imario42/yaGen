@@ -101,7 +101,7 @@
                             <mainClass>com.github.gekoh.yagen.hst.CreateEntities</mainClass>
                             <arguments>
                                 <argument>${hst-src.dir}</argument>
-                                <argument>src/main/resources/META-INF/example-domain.orm.xml</argument>
+                                <argument>${project.basedir}/src/main/resources/META-INF/example-domain.orm.xml</argument>
                                 <argument>${project.build.outputDirectory}/META-INF/example-domain-hst.orm.xml</argument>
                             </arguments>
                         </configuration>
