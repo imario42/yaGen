@@ -11,6 +11,8 @@
     <modules>
         <module>lib/api</module>
         <module>lib/generatorLib</module>
+
+        <module>lib/exampleDomainLib</module>
     </modules>
 
     <properties>
@@ -25,6 +27,12 @@
             <dependency>
                 <groupId>com.github.gekoh.yagen</groupId>
                 <artifactId>yagen-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.gekoh.yagen</groupId>
+                <artifactId>yagen-generator-lib</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

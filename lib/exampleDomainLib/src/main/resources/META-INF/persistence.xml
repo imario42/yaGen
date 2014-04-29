@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence xmlns="http://java.sun.com/xml/ns/persistence" version="1.0">
+
+    <persistence-unit name="generation-unit" transaction-type="RESOURCE_LOCAL">
+
+        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+
+        <mapping-file>META-INF/example-domain.orm.xml</mapping-file>
+
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <property name="hibernate.dialect" value="com.github.gekoh.yagen.hibernate.Oracle10gDialect"/>
+            <property name="hibernate.connection.driver_class" value="java.sql.Driver"/>
+        </properties>
+
+    </persistence-unit>
+
+</persistence>
+
+

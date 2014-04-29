@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<entity-mappings xmlns="http://java.sun.com/xml/ns/persistence/orm"
+                 version="2.0">
+
+    <mapped-superclass class="com.github.gekoh.yagen.example.BaseEntity"/>
+
+    <entity class="com.github.gekoh.yagen.example.Aircraft"/>
+
+</entity-mappings>
+
+

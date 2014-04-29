@@ -68,7 +68,11 @@ public class DDLGenerator {
                         e.printStackTrace();
                     }
                 }
-                cfg = new Ejb3Configuration().configure(profile.getPersistenceUnitName(), null).getHibernateConfiguration();
+                Ejb3Configuration ejb3Configuration = new Ejb3Configuration().configure(profile.getPersistenceUnitName(), null);
+                if (ejb3Configuration == null) {
+                    throw new IllegalArgumentException("cannot find persistence unit " + profile.getPersistenceUnitName());
+                }
+                cfg = ejb3Configuration.getHibernateConfiguration();
             }
             else {
                 cfg = new Configuration();

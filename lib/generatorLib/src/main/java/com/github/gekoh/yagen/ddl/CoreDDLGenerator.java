@@ -47,13 +47,8 @@ public class CoreDDLGenerator extends CommentsDDLGenerator {
         }
 */
 
-        PatchGlue.addConfigurationInterceptor(new PatchGlue.ConfigurationInterceptor() {
-            @Override
-            public void use(Ejb3Configuration configuration) {
-                CommentsDDLGenerator.start(root);
-                PROFILE.setComments(getComments());
-            }
-        });
+        CommentsDDLGenerator.start(root);
+        PROFILE.setComments(getComments());
 
         DDLGenerator generator = new DDLGenerator();
 

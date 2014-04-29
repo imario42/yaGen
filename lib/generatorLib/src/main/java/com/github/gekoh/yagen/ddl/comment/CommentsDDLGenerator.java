@@ -1,10 +1,42 @@
 package com.github.gekoh.yagen.ddl.comment;
 
-import com.sun.javadoc.*;
+import com.sun.javadoc.AnnotationDesc;
+import com.sun.javadoc.AnnotationValue;
+import com.sun.javadoc.ClassDoc;
+import com.sun.javadoc.Doclet;
+import com.sun.javadoc.FieldDoc;
+import com.sun.javadoc.LanguageVersion;
+import com.sun.javadoc.MethodDoc;
+import com.sun.javadoc.ProgramElementDoc;
+import com.sun.javadoc.RootDoc;
 import org.apache.commons.lang.StringUtils;
 
-import javax.persistence.*;
-import java.util.*;
+import javax.persistence.AttributeOverride;
+import javax.persistence.AttributeOverrides;
+import javax.persistence.Basic;
+import javax.persistence.Column;
+import javax.persistence.DiscriminatorValue;
+import javax.persistence.Embeddable;
+import javax.persistence.Embedded;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.Inheritance;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
+import javax.persistence.MappedSuperclass;
+import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
+import javax.persistence.Table;
+import javax.persistence.Version;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class CommentsDDLGenerator extends Doclet {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CommentsDDLGenerator.class);
@@ -25,7 +57,6 @@ public class CommentsDDLGenerator extends Doclet {
     public static final Class<?>[] joinTableAnnotations = new Class<?>[]{JoinTable.class};
     public static final Class<?>[] attributeOverrideAnnotation = new Class<?>[]{AttributeOverride.class, AttributeOverrides.class};
     public static final Class<?>[] discriminatorAnnotation = new Class<?>[]{DiscriminatorValue.class};
-    public static final Class<?>[] enumeratedAnnotation = new Class<?>[]{Enumerated.class};
     public static final Class<?>[] inheritanceAnnotation = new Class<?>[]{Inheritance.class};
     public static final Class<?>[] auraTableAnnotation = new Class<?>[]{com.github.gekoh.yagen.api.Table.class};
 
@@ -115,12 +146,7 @@ public class CommentsDDLGenerator extends Doclet {
         TableMetadata metadata = new TableMetadata(tableShortName, classDoc.qualifiedName(), comment);
 
         if (StringUtils.isEmpty(comment)) {
-            LOG.warn("missing comment on table {}", tableName);
-
-            if (tableShortName == null) {
-                LOG.info("no comment and no short name, skip comment creation for table {}", tableName);
-                return null;
-            }
+            LOG.info("missing comment on table {}", tableName);
         }
         return MetadataSerializationSupport.toXML(metadata);
     }
@@ -297,10 +323,6 @@ public class CommentsDDLGenerator extends Doclet {
         return DocletUtils.hasAnnotation(field, embededColumnAnnotations);
     }
 
-    public static boolean isEnumeratedColumn(FieldDoc field) {
-        return DocletUtils.hasAnnotation(field, enumeratedAnnotation);
-    }
-
     public static boolean isOneToManyColumn(FieldDoc field) {
         return DocletUtils.hasAnnotation(field, oneToManyAnnotaions);
     }
@@ -343,13 +365,13 @@ public class CommentsDDLGenerator extends Doclet {
 
     public static String getShortTableName(ClassDoc klass) {
         String shortTableName = null;
-        for (FieldDoc field : klass.fields(true)) {
-            if (DocletUtils.hasAnnotation(klass, auraTableAnnotation)) {
-                String shortName = getParameterStringValue("shortName", DocletUtils.findAnnotation(klass, auraTableAnnotation).elementValues());
-                if (StringUtils.isNotEmpty(shortName)) {
-                    return shortName;
-                }
+        if (DocletUtils.hasAnnotation(klass, auraTableAnnotation)) {
+            String shortName = getParameterStringValue("shortName", DocletUtils.findAnnotation(klass, auraTableAnnotation).elementValues());
+            if (StringUtils.isNotEmpty(shortName)) {
+                return shortName;
             }
+        }
+        for (FieldDoc field : klass.fields(true)) {
             if ("TABLE_NAME_SHORT".equals(field.name())) {
                 return field.constantValue().toString();
             }
@@ -464,14 +486,6 @@ public class CommentsDDLGenerator extends Doclet {
         AnnotationDesc annotationDesc = DocletUtils.findAnnotation(field, inheritanceAnnotation);
         if (annotationDesc != null) {
             return getParameterStringValue("strategy", annotationDesc.elementValues());
-        }
-        return null;
-    }
-
-    private static String getEnumTypeValue(ProgramElementDoc field, Class<?>[] annotations) {
-        AnnotationDesc annotationDesc = DocletUtils.findAnnotation(field, annotations);
-        if (annotationDesc != null) {
-            return getParameterStringValue("value", annotationDesc.elementValues());
         }
         return null;
     }
