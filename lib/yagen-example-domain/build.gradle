@@ -35,7 +35,7 @@ task compileGenerated(dependsOn: processResources, type: JavaCompile) {
 }
 
 task generateDDL(type: Javadoc) {
-    source = sourceSets.generated.allJava
+    source = sourceSets.main.allJava
     classpath = sourceSets.main.runtimeClasspath
     options.docletpath = sourceSets.main.runtimeClasspath.asType(List)
     options.doclet = "com.github.gekoh.yagen.ddl.comment.CommentsDDLGenerator"
