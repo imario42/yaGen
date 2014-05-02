@@ -42,7 +42,11 @@ public class CoreDDLGenerator {
     }
 
     public static void main(String[] args) {
-        generateFrom(createProfileFrom(args));
+        try {
+            generateFrom(createProfileFrom(args));
+        } catch (ParseException e) {
+            LOG.error("error parsing arguments", e);
+        }
     }
 
     public static void generateFrom(DDLGenerator.Profile profile) {
@@ -70,17 +74,10 @@ public class CoreDDLGenerator {
         new DDLGenerator().writeDDL(profile);
     }
 
-    public static DDLGenerator.Profile createProfileFrom(String[] args) {
+    public static DDLGenerator.Profile createProfileFrom(String[] args) throws ParseException {
         DDLGenerator.Profile profile = null;
         CommandLineParser clp = new GnuParser();
-        CommandLine cl;
-
-        try {
-            cl = clp.parse(OPTIONS, args);
-        } catch (ParseException e) {
-            LOG.error("error parsing arguments");
-            return null;
-        }
+        CommandLine cl = clp.parse(OPTIONS, args);
 
         try {
 

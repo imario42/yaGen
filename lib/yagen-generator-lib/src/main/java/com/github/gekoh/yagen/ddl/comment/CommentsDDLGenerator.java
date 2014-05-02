@@ -5,12 +5,14 @@ import com.github.gekoh.yagen.ddl.DDLGenerator;
 import com.sun.javadoc.AnnotationDesc;
 import com.sun.javadoc.AnnotationValue;
 import com.sun.javadoc.ClassDoc;
+import com.sun.javadoc.DocErrorReporter;
 import com.sun.javadoc.Doclet;
 import com.sun.javadoc.FieldDoc;
 import com.sun.javadoc.LanguageVersion;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.ProgramElementDoc;
 import com.sun.javadoc.RootDoc;
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 
 import javax.persistence.AttributeOverride;
@@ -33,6 +35,7 @@ import javax.persistence.OneToOne;
 import javax.persistence.Table;
 import javax.persistence.Version;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -69,17 +72,38 @@ public class CommentsDDLGenerator extends Doclet {
     private static Set<String> ENTITY_CLASS_NAMES_ONLY;
     private static Set<String> RENDERED_OBJECTS;
 
+    // need to drop unused arguments specified by gradle javadoc task
+    private static final List<String> UNUSED_OPTIONS = Arrays.asList("-d", "-doctitle", "-windowtitle");
+
     @SuppressWarnings("UnusedDeclaration")
     public static int optionLength(String option) {
         String longOpt = option.substring(2);
 
-        if (CoreDDLGenerator.OPTIONS.getOption(longOpt).hasArg()) {
+        if (UNUSED_OPTIONS.contains(option)) {
+            LOG.warn("unused option {} recognized", option);
             return 2;
         }
+
         if (CoreDDLGenerator.OPTIONS.hasOption(longOpt)) {
+            if (CoreDDLGenerator.OPTIONS.getOption(longOpt).hasArg()) {
+                return 2;
+            }
             return 1;
         }
+
         return 0;
+    }
+
+    @SuppressWarnings("UnusedDeclaration")
+    public static boolean validOptions(String options[][],
+                                       DocErrorReporter reporter) {
+        try {
+            parseOptions(options);
+            return true;
+        } catch (Exception e) {
+            reporter.printError(e.getMessage());
+        }
+        return false;
     }
 
     private static DDLGenerator.Profile parseOptions(String[][] options) {
@@ -92,7 +116,12 @@ public class CommentsDDLGenerator extends Doclet {
                 }
             }
         }
-        return CoreDDLGenerator.createProfileFrom(args.toArray(new String[args.size()]));
+        try {
+            return CoreDDLGenerator.createProfileFrom(args.toArray(new String[args.size()]));
+        } catch (ParseException e) {
+            LOG.error("error parsing arguments", e);
+        }
+        return null;
     }
 
     @SuppressWarnings("UnusedDeclaration")
@@ -114,6 +143,7 @@ public class CommentsDDLGenerator extends Doclet {
         return true;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public static LanguageVersion languageVersion() {
         return LanguageVersion.JAVA_1_5;
     }

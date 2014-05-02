@@ -1,0 +1,16 @@
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'maven'
+
+    group = 'com.github.gekoh.yagen'
+
+    repositories {
+       mavenCentral()
+    }
+
+    dependencies {
+    }
+
+    version = '0-SNAPSHOT'
+
+}

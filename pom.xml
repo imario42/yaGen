@@ -9,10 +9,10 @@
     <name>yaGen - yet another Generator</name>
 
     <modules>
-        <module>lib/api</module>
-        <module>lib/generatorLib</module>
+        <module>lib/yagen-api</module>
+        <module>lib/yagen-generator-lib</module>
 
-        <module>lib/exampleDomainLib</module>
+        <module>lib/yagen-example-domain</module>
     </modules>
 
     <properties>

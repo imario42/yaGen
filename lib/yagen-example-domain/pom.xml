@@ -20,7 +20,7 @@
     <name>yaGen - example domain lib with ddl generation</name>
 
     <properties>
-        <hst-src.dir>${project.build.directory}/generated-sources/hst</hst-src.dir>
+        <hst-src.dir>${project.build.directory}/generated-src/main/java</hst-src.dir>
     </properties>
 
     <dependencies>
@@ -163,7 +163,7 @@
                                         <argument>--persistence-unit-name</argument>
                                         <argument>generation-unit</argument>
                                         <argument>--output-file</argument>
-                                        <argument>"${project.build.directory}/schema-objects-generated.ddl.sql"</argument>
+                                        <argument>"${project.build.outputDirectory}/META-INF/schema-objects-generated.ddl.sql"</argument>
                                     </arguments>
                                 </configuration>
                             </execution>
@@ -225,7 +225,7 @@
                                     <additionalparam>
                                         --profile-name anyName
                                         --persistence-unit-name generation-unit
-                                        --output-file "${project.build.directory}/schema-objects-generated.ddl.sql"
+                                        --output-file "${project.build.outputDirectory}/META-INF/schema-objects-generated.ddl.sql"
                                     </additionalparam>
                                 </configuration>
                             </execution>

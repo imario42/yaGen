@@ -1,0 +1,47 @@
+dependencies {
+    compile project(':lib:yagen-generator-lib')
+
+    compile 'org.hibernate.javax.persistence:hibernate-jpa-2.0-api:1.0.1.Final'
+
+    runtime 'org.slf4j:slf4j-log4j12:1.6.1'
+//    runtime 'joda-time:joda-time:2.0'
+}
+
+sourceSets {
+    generated {
+        java { srcDirs = [
+            "$buildDir/generated-src/main/java"
+          ] }
+    compileClasspath += sourceSets.main.output
+    }
+}
+
+compileJava << {
+    javaexec {
+        main = 'com.github.gekoh.yagen.hst.CreateEntities'
+        classpath = sourceSets.main.runtimeClasspath
+        args = [
+            sourceSets.generated.java.srcDirs.iterator().next().toString(),
+            "$projectDir/src/main/resources/META-INF/example-domain.orm.xml",
+            "$buildDir/resources/main/META-INF/example-domain-hst.orm.xml"
+        ]
+    }
+}
+
+task compileGenerated(dependsOn: processResources, type: JavaCompile) {
+    source = sourceSets.generated.java.srcDirs
+    classpath = sourceSets.main.runtimeClasspath
+    destinationDir = sourceSets.main.output.classesDir
+}
+
+task generateDDL(type: Javadoc) {
+    source = sourceSets.generated.allJava
+    classpath = sourceSets.main.runtimeClasspath
+    options.docletpath = sourceSets.main.runtimeClasspath.asType(List)
+    options.doclet = "com.github.gekoh.yagen.ddl.comment.CommentsDDLGenerator"
+    options.addStringOption("-profile-name", "anyName")
+    options.addStringOption("-persistence-unit-name", "generation-unit")
+    options.addStringOption("-output-file", "$buildDir/resources/main/META-INF/schema-objects-generated.ddl.sql")
+}
+
+jar.dependsOn compileGenerated, generateDDL
