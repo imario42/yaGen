@@ -553,11 +553,15 @@ public class TableConfig {
             }
 
             if (fieldOrMethod.isAnnotationPresent(Default.class)) {
+                String defaultValue = fieldOrMethod.getAnnotation(Default.class).sqlExpression();
                 if (fieldOrMethod.isAnnotationPresent(Column.class)) {
-                    colNameToDefault.put(fieldOrMethod.getAnnotation(Column.class).name().toLowerCase(), fieldOrMethod.getAnnotation(Default.class).sqlExpression());
+                    colNameToDefault.put(fieldOrMethod.getAnnotation(Column.class).name().toLowerCase(), defaultValue);
+                }
+                else if (fieldOrMethod instanceof Field) {
+                    colNameToDefault.put(ddlEnhancer.getProfile().getNamingStrategy().columnName(((Field) fieldOrMethod).getName()).toLowerCase(), defaultValue);
                 }
                 else {
-                    LOG.warn(Default.class+" only supported on fields also annotated with "+Column.class);
+                    LOG.warn(Default.class+" only supported on fields or @{} annotated methods", Column.class.toString());
                 }
             }
         }

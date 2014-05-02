@@ -5,6 +5,7 @@
     <mapped-superclass class="com.github.gekoh.yagen.example.BaseEntity"/>
 
     <entity class="com.github.gekoh.yagen.example.Aircraft"/>
+    <entity class="com.github.gekoh.yagen.example.BoardBookEntry"/>
 
 </entity-mappings>
 
