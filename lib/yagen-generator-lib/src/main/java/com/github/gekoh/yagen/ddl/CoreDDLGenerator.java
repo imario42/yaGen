@@ -1,3 +1,18 @@
+/*
+ Copyright 2014 Georg Kohlweiss
+
+ Licensed under the Apache License, Version 2.0 (the License);
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an AS IS BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+*/
 package com.github.gekoh.yagen.ddl;
 
 import com.github.gekoh.yagen.hibernate.PatchGlue;
@@ -56,7 +71,8 @@ public class CoreDDLGenerator {
             throw new IllegalStateException("cannot init patches for ddl generator", e);
         }
 
-        profile.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry("#if( ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )\n" +
+        profile.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(
+                "#if( ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )\n" +
                 "-- this prevents us from being asked by the executing SQL console to replace a variable\n" +
                 "-- when using entity declarations like &amp; in varchar values\n" +
                 "-- this works in sqlplus, SqlDeveloper and TOAD (execute as script)\n" +
