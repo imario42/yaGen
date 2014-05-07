@@ -27,6 +27,7 @@ import com.sun.javadoc.LanguageVersion;
 import com.sun.javadoc.MethodDoc;
 import com.sun.javadoc.ProgramElementDoc;
 import com.sun.javadoc.RootDoc;
+import com.sun.javadoc.Type;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang.StringUtils;
 
@@ -569,18 +570,18 @@ public class CommentsDDLGenerator extends Doclet {
 
     private static ClassDoc getAnnotationTargetEntity(FieldDoc field, Class<?>[] annotations) {
         AnnotationDesc annotationDesc = DocletUtils.findAnnotation(field, annotations);
-        ClassDoc res = null;
+        Type res = null;
         if (annotationDesc != null) {
-            res= (ClassDoc) getParameterValue("targetEntity", annotationDesc.elementValues());
+            res = (Type) getParameterValue("targetEntity", annotationDesc.elementValues());
         }
         if (res == null) {
             try {
-                res = (ClassDoc) field.type().asParameterizedType().typeArguments()[0];
+                res = field.type().asParameterizedType().typeArguments()[0];
             } catch (Exception e) {
-                throw new IllegalStateException("cannot determine target entity, provide targetEntity attribute", e);
+                throw new IllegalStateException("cannot determine target entity, provide targetEntity attribute within relation annotation on field " + field.containingClass().name() + "." + field.name(), e);
             }
         }
-        return res;
+        return res.asClassDoc();
     }
 
     private static String getAnnotationColumnNameValue(ProgramElementDoc field, Class<?>[] annotations) {
