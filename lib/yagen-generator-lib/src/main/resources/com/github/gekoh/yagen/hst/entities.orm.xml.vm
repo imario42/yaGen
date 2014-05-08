@@ -6,7 +6,7 @@
 <entity-mappings xmlns="http://java.sun.com/xml/ns/persistence/orm"
                  version="${orm-version}">
 
-    <mapped-superclass class="com.github.gekoh.yagen.hst.BaseEntity"/>
+    <mapped-superclass class="${baseClassPackageName}.BaseEntity"/>
 #foreach( $mappedSuperClassName in $mappedSuperClassNames )
     <mapped-superclass class="${mappedSuperClassName}"/>
 #end

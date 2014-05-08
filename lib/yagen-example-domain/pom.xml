@@ -25,7 +25,7 @@
     <parent>
         <groupId>com.github.gekoh.yagen</groupId>
         <artifactId>yagen-master</artifactId>
-        <version>1.1-SNAPSHOT</version>
+        <version>1.1</version>
         <relativePath>../..</relativePath>
     </parent>
 
@@ -149,6 +149,7 @@
                             <mainClass>com.github.gekoh.yagen.hst.CreateEntities</mainClass>
                             <arguments>
                                 <argument>${hst-src.dir}</argument>
+                                <argument>com.github.gekoh.yagen.example.hst</argument>
                                 <argument>${project.basedir}/src/main/resources/META-INF/example-domain.orm.xml</argument>
                                 <argument>${project.build.outputDirectory}/META-INF/example-domain-hst.orm.xml</argument>
                             </arguments>

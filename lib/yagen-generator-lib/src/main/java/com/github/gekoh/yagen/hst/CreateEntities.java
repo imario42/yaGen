@@ -80,18 +80,25 @@ public class CreateEntities {
     public static final String HISTORY_ENTITY_SUFFIX = "Hst";
 
     public static void main (String[] args) {
+        if (args == null || args.length<1) {
+            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-xml-file-path> <orm2.0-file-out-path> [<orm1.0-file-out-path>]");
+            return;
+        }
         CreateEntities createEntities = new CreateEntities(new File(args[0]));
 
-        String[] persistenceXmlFiles = args[1].split(";[\\s]*");
+        createEntities.writeBaseClasses(args[1]);
+
+        String[] persistenceXmlFiles = args[2].split(";[\\s]*");
         createEntities.processBaseEntityClasses(
+                args[1],
                 scanEntityClasses(persistenceXmlFiles));
 
-        File orm20OutFile = new File(args[2]);
-        createEntities.writeOrmFile(orm20OutFile, "2.0");
+        File orm20OutFile = new File(args[3]);
+        createEntities.writeOrmFile(orm20OutFile, args[1], "2.0");
 
-        if (args.length > 3) {
-            File orm10OutFile = new File(args[3]);
-            createEntities.writeOrmFile(orm10OutFile, "1.0");
+        if (args.length > 4) {
+            File orm10OutFile = new File(args[4]);
+            createEntities.writeOrmFile(orm10OutFile, args[1], "1.0");
         }
     }
 
@@ -112,7 +119,7 @@ public class CreateEntities {
         Velocity.init();
     }
 
-    public void processBaseEntityClasses (Collection<Class> baseEntities) {
+    public void processBaseEntityClasses (String baseClassPackageName, Collection<Class> baseEntities) {
         Map<Class, List<AccessibleObject>> inverseFKs = getInverseFKs (baseEntities);
 
         for (Class baseEntity : baseEntities) {
@@ -120,7 +127,7 @@ public class CreateEntities {
             if (baseEntity.isAnnotationPresent(MappedSuperclass.class) ||
                     (tableEntity != null && tableEntity.isAnnotationPresent(TemporalEntity.class))) {
 
-                String className = createHistoryEntity(baseEntity, new StringReader(template), inverseFKs.get(baseEntity));
+                String className = createHistoryEntity(baseClassPackageName, baseEntity, new StringReader(template), inverseFKs.get(baseEntity));
 
                 if (baseEntity.isAnnotationPresent(MappedSuperclass.class)) {
                     createdMappedSuperClasses.add(className);
@@ -132,7 +139,7 @@ public class CreateEntities {
 
             for (AccessibleObject accessibleObject : getFieldsAndMethods(baseEntity)) {
                 if (accessibleObject.isAnnotationPresent(TemporalEntity.class) && accessibleObject.isAnnotationPresent(JoinTable.class)) {
-                    String className = createHistoryEntity(accessibleObject, new StringReader(template));
+                    String className = createHistoryEntity(baseClassPackageName, accessibleObject, new StringReader(template));
                     createdEntityClasses.add(className);
                 }
             }
@@ -195,7 +202,8 @@ public class CreateEntities {
         return false;
     }
 
-    private String createHistoryEntity(AccessibleObject fieldOrMethod,
+    private String createHistoryEntity(String baseClassPackageName,
+                                       AccessibleObject fieldOrMethod,
                                        Reader template) {
         TemporalEntity temporalEntity = fieldOrMethod.getAnnotation(TemporalEntity.class);
         JoinTable joinTable = fieldOrMethod.getAnnotation(JoinTable.class);
@@ -230,6 +238,7 @@ public class CreateEntities {
         fieldInfos.add(getIdFieldInfo(targetEntity, getFieldNameFromReferencingClassName(targetEntity.getSimpleName()), joinTable.inverseJoinColumns()[0].name()));
 
         return createHistoryEntity(
+                baseClassPackageName,
                 packageName,
                 hstEntityClassSimpleName,
                 temporalEntity.historyTableName(),
@@ -243,7 +252,8 @@ public class CreateEntities {
         return classSimpleName.substring(0, 1).toLowerCase() + classSimpleName.substring(1);
     }
 
-    private String createHistoryEntity (Class baseEntity,
+    private String createHistoryEntity (String baseClassPackageName,
+                                        Class baseEntity,
                                         Reader template,
                                         List<AccessibleObject> inverseFKs) {
         List<FieldInfo> fields = new ArrayList<FieldInfo>(convertFields(baseEntity));
@@ -254,6 +264,7 @@ public class CreateEntities {
         TemporalEntity temporalEntity = (TemporalEntity) baseEntity.getAnnotation(TemporalEntity.class);
 
         return createHistoryEntity(
+                baseClassPackageName,
                 baseEntity.getPackage().getName(),
                 baseEntity.getSimpleName() + HISTORY_ENTITY_SUFFIX,
                 temporalEntity != null ? temporalEntity.historyTableName() : null,
@@ -263,7 +274,8 @@ public class CreateEntities {
                 fields);
     }
 
-    private String createHistoryEntity (String hstEntityClassPackageName,
+    private String createHistoryEntity (String baseClassPackageName,
+                                        String hstEntityClassPackageName,
                                         String hstEntityClassSimpleName,
                                         String historyTableName,
                                         String historyTableShortName,
@@ -275,6 +287,7 @@ public class CreateEntities {
         String classAnnotations = "";
 
         VelocityContext context = new VelocityContext();
+        context.put("baseClassPackageName", baseClassPackageName);
         context.put("entityClassPackageName", hstEntityClassPackageName);
         context.put("entityClassSimpleName", hstEntityClassSimpleName);
 
@@ -339,6 +352,14 @@ public class CreateEntities {
         evaluate2JavaFile(hstEntityClassName, template, context);
 
         return hstEntityClassName;
+    }
+
+    private void writeBaseClasses(String baseClassPackageName) {
+        VelocityContext context = new VelocityContext();
+        context.put("baseClassPackageName", baseClassPackageName);
+
+        evaluate2JavaFile(baseClassPackageName+".BaseEntity", new StringReader(readClasspathResource("BaseEntity.java.vm")), context);
+        evaluate2JavaFile(baseClassPackageName+".Operation", new StringReader(readClasspathResource("Operation.java.vm")), context);
     }
 
     private void evaluate2JavaFile(String entityClassName, Reader template, VelocityContext context) {
@@ -494,13 +515,14 @@ public class CreateEntities {
         return entityClass.getSuperclass() != null ? getIdFieldOrMethod(entityClass.getSuperclass()) : null;
     }
 
-    public void writeOrmFile (File ormOutFile, String ormVersion) {
+    public void writeOrmFile (File ormOutFile, String baseClassPackageName, String ormVersion) {
         if (!ormOutFile.getParentFile().exists() && !ormOutFile.getParentFile().mkdirs()) {
             throw new IllegalArgumentException(
                     "Could not create the output directory for the ORM file '" + ormOutFile.getAbsolutePath() + "'.");
         }
 
         VelocityContext context = new VelocityContext();
+        context.put("baseClassPackageName", baseClassPackageName);
         context.put("mappedSuperClassNames", createdMappedSuperClasses);
         context.put("entityClassNames", createdEntityClasses);
         context.put("orm-version", ormVersion);
