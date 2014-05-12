@@ -782,13 +782,13 @@ public class CreateEntities {
                                 curPath));
                     }
                 }
-                else if (((column = field.getAnnotation(Column.class)) != null && !column.nullable()) ||
+                else if (((column = field.getAnnotation(Column.class)) != null && (!column.nullable() || column.unique())) ||
                         (field.isAnnotationPresent(Basic.class) && !field.getAnnotation(Basic.class).optional())) {
                     String columnName = column != null ? column.name() : field.getName();
                     int length = column != null ? column.length() : 255;
 
                     String override = "@javax.persistence.AttributeOverride(name=\"" + path + field.getName() + "\", column=" +
-                            "@javax.persistence.Column(name=\"" + columnName + "\", length=" + length + ", nullable=true))";
+                            "@javax.persistence.Column(name=\"" + columnName + "\", length=" + length + ", nullable=true, unique=false))";
 
                     addAttributeOverride(overrides, override);
                 }
