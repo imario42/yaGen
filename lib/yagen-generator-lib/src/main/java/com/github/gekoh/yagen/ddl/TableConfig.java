@@ -42,6 +42,7 @@ import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinColumns;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
@@ -611,6 +612,9 @@ public class TableConfig {
             try {
                 if (fieldOrMethod.getAnnotation(JoinColumn.class) != null) {
                     return fieldOrMethod.getAnnotation(JoinColumn.class);
+                }
+                else if (fieldOrMethod.isAnnotationPresent(JoinColumns.class)) {
+                    return null; // TODO: implement compound FK
                 }
                 else {
                     Class<?> targetEntityClass = MappingUtils.determineTargetEntity(fieldOrMethod, o2m.targetEntity());
