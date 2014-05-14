@@ -25,6 +25,7 @@ import com.github.gekoh.yagen.api.Generated;
 import com.github.gekoh.yagen.api.Index;
 import com.github.gekoh.yagen.api.IntervalPartitioning;
 import com.github.gekoh.yagen.api.NamingStrategy;
+import com.github.gekoh.yagen.api.NoForeignKeyConstraint;
 import com.github.gekoh.yagen.api.Profile;
 import com.github.gekoh.yagen.api.Sequence;
 import com.github.gekoh.yagen.api.TemporalEntity;
@@ -579,6 +580,9 @@ public class CreateDDL {
 
         String refTblNameLC = null;
         if (constraint instanceof ForeignKey) {
+            if (tableConfig.getColumnNamesIsNoFK().contains(constraint.getColumn(0).getName().toLowerCase())) {
+                return "-- skipped creation of foreign key constraint '" + name + "' for table '" + table.getName() + "' according to annotation of type " + NoForeignKeyConstraint.class.getSimpleName();
+            }
             refTblNameLC = getProfile().getNamingStrategy().tableName(((ForeignKey) constraint).getReferencedTable().getName()).toLowerCase();
         }
 

@@ -22,6 +22,7 @@ import com.github.gekoh.yagen.api.Default;
 import com.github.gekoh.yagen.api.Deferrable;
 import com.github.gekoh.yagen.api.I18NDetailEntityRelation;
 import com.github.gekoh.yagen.api.IntervalPartitioning;
+import com.github.gekoh.yagen.api.NoForeignKeyConstraint;
 import com.github.gekoh.yagen.api.Profile;
 import com.github.gekoh.yagen.api.Sequence;
 import com.github.gekoh.yagen.api.TemporalEntity;
@@ -90,6 +91,7 @@ public class TableConfig {
     private Map<String, Deferrable> columnNameToDeferrable = new HashMap<String, Deferrable>();
     private Set<String> columnNamesIsCascadeDelete = new HashSet<String>();
     private Set<String> columnNamesIsCascadeNullable = new HashSet<String>();
+    private Set<String> columnNamesIsNoFK = new HashSet<String>();
     private Map<String, String> colNameToDefault = new HashMap<String, String>();
     private String i18nBaseEntityFkCol;
     private String i18nBaseEntityTblName;
@@ -202,6 +204,10 @@ public class TableConfig {
         return columnNamesIsCascadeNullable;
     }
 
+    public Set<String> getColumnNamesIsNoFK() {
+        return columnNamesIsNoFK;
+    }
+
     public Map<String, String> getColNameToDefault() {
         return colNameToDefault;
     }
@@ -312,6 +318,20 @@ public class TableConfig {
                             colName = attributeName.toLowerCase();
                         }
                         columnNamesIsCascadeNullable.add(colName);
+                    }
+                }
+
+                if (fOm.isAnnotationPresent(NoForeignKeyConstraint.class)) {
+                    String colName = attr2colName.get(attrPathField);
+                    if (colName == null) {
+                        if (fOm.isAnnotationPresent(JoinColumn.class)) {
+                            colName = fOm.getAnnotation(JoinColumn.class).name().toLowerCase();
+                        }
+
+                        if (StringUtils.isEmpty(colName)) {
+                            colName = attributeName.toLowerCase();
+                        }
+                        columnNamesIsNoFK.add(colName);
                     }
                 }
 
