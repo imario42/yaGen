@@ -23,6 +23,10 @@ dependencies {
     runtime 'joda-time:joda-time-hibernate:1.3'
 }
 
+/**
+ * adding generated sources directory for dynamically created history entities
+ * for each domain entity annotated with @TemporalEntity
+ */
 sourceSets {
     generated {
         java { srcDirs = [
@@ -32,12 +36,18 @@ sourceSets {
     }
 }
 
+/**
+ * this will call the generator for history entities
+ * for each domain entity annotated with @TemporalEntity you can then use
+ * the history entity "<OrigDomainEntityName>Hst" in JPA queries
+ */
 compileJava << {
     javaexec {
         main = 'com.github.gekoh.yagen.hst.CreateEntities'
         classpath = sourceSets.main.runtimeClasspath
         args = [
             sourceSets.generated.java.srcDirs.iterator().next().toString(),
+            "com.github.gekoh.yagen.example.hst",
             "$projectDir/src/main/resources/META-INF/example-domain.orm.xml",
             "$buildDir/resources/main/META-INF/example-domain-hst.orm.xml"
         ]
@@ -50,6 +60,10 @@ task compileGenerated(dependsOn: processResources, type: JavaCompile) {
     destinationDir = sourceSets.main.output.classesDir
 }
 
+/**
+ * this actually generates the DDL including comments for tables and columns
+ * out of the javadoc comments (currently only supported when using an Oracle dialect)
+ */
 task generateDDL(type: Javadoc) {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.runtimeClasspath
