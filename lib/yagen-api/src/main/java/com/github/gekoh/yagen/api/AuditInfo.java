@@ -36,7 +36,7 @@ public abstract class AuditInfo implements Serializable {
     /**
      * Entity was created at.
      */
-    @Type(type = "com.csg.cs.aura.core.infra.hibernate.DateTimeType")
+    @Type(type = "org.joda.time.contrib.hibernate.PersistentDateTime")
     @Column(name = CREATED_AT, nullable = false)
     private DateTime createdAt;
 
@@ -49,7 +49,7 @@ public abstract class AuditInfo implements Serializable {
     /**
      * Entity was last modified at.
      */
-    @Type(type = "com.csg.cs.aura.core.infra.hibernate.DateTimeType")
+    @Type(type = "org.joda.time.contrib.hibernate.PersistentDateTime")
     @Column(name = LAST_MODIFIED_AT)
     private DateTime lastModifiedAt;
 

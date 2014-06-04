@@ -17,5 +17,5 @@
 dependencies {
     compile 'joda-time:joda-time:2.0'
     compile 'commons-lang:commons-lang:2.6'
-    compile 'org.hibernate:hibernate-entitymanager:3.6.10.Final'
+    compile 'org.hibernate:hibernate-core:3.6.10.Final'
 }

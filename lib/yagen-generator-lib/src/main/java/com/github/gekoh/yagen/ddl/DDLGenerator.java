@@ -73,7 +73,7 @@ public class DDLGenerator {
         public SchemaExport createSchemaExport (Profile profile) {
             Configuration cfg;
             if (StringUtils.isNotEmpty(profile.getPersistenceUnitName())) {
-//            need to patch the class NumericBooleanType only for oracle until all AURA applications have
+//            need to patch the class NumericBooleanType only for oracle until all applications have
 //            upgraded hibernate to 3.6.10-Final and the type specifications @Type(type = "org.hibernate.type.NumericBooleanType")
 //            are replaced back to @Type(type = "numeric_boolean")
                 if (profile.getPersistenceUnitName().contains("oracle")) {

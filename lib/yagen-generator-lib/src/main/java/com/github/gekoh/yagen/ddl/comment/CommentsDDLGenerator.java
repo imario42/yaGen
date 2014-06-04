@@ -79,7 +79,7 @@ public class CommentsDDLGenerator extends Doclet {
     public static final Class<?>[] attributeOverrideAnnotation = new Class<?>[]{AttributeOverride.class, AttributeOverrides.class};
     public static final Class<?>[] discriminatorAnnotation = new Class<?>[]{DiscriminatorValue.class};
     public static final Class<?>[] inheritanceAnnotation = new Class<?>[]{Inheritance.class};
-    public static final Class<?>[] auraTableAnnotation = new Class<?>[]{com.github.gekoh.yagen.api.Table.class};
+    public static final Class<?>[] tableAnnotation = new Class<?>[]{com.github.gekoh.yagen.api.Table.class};
 
     // maps table name to map of column name to comment
     // table comment specified as comment of a "null" column name
@@ -443,8 +443,8 @@ public class CommentsDDLGenerator extends Doclet {
 
     public static String getShortTableName(ClassDoc klass) {
         String shortTableName = null;
-        if (DocletUtils.hasAnnotation(klass, auraTableAnnotation)) {
-            String shortName = getParameterStringValue("shortName", DocletUtils.findAnnotation(klass, auraTableAnnotation).elementValues());
+        if (DocletUtils.hasAnnotation(klass, tableAnnotation)) {
+            String shortName = getParameterStringValue("shortName", DocletUtils.findAnnotation(klass, tableAnnotation).elementValues());
             if (StringUtils.isNotEmpty(shortName)) {
                 return shortName;
             }

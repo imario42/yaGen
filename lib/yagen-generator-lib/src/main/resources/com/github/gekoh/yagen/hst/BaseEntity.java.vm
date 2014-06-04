@@ -60,14 +60,14 @@ public abstract class BaseEntity {
      * (currently we use the timestamp when the first entity of a transaction was changed,
      * but this timestamp then is used for all changed entities within the same transaction)
      */
-    @Type(type = "com.csg.cs.aura.core.infra.hibernate.DateTimeType")
+    @Type(type = "org.joda.time.contrib.hibernate.PersistentDateTime")
     @Column(name = "TRANSACTION_TIMESTAMP", nullable = false)
     private DateTime transactionTimestamp;
 
     /**
      * Entity was invalidated at.
      */
-    @Type(type = "com.csg.cs.aura.core.infra.hibernate.DateTimeType")
+    @Type(type = "org.joda.time.contrib.hibernate.PersistentDateTime")
     @Column(name = "INVALIDATED_AT", nullable = true)
     private DateTime invalidatedAt;
 

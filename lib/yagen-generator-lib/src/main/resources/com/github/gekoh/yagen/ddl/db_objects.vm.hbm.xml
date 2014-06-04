@@ -7,7 +7,7 @@
         <create><![CDATA[
             CREATE FUNCTION sys_guid() RETURNS char(32)
             LANGUAGE JAVA DETERMINISTIC NO SQL
-            EXTERNAL NAME 'CLASSPATH:com.csg.cs.aura.core.domain.base.UUIDGenerator.next'
+            EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.createUUID'
             ;
         ]]></create>
         <drop></drop>

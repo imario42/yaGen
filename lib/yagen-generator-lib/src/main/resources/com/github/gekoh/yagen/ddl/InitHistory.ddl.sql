@@ -77,10 +77,10 @@ end;
   1) java initialized
     - installed package (e.g. postgresql-9.1-pljava-gcj)
     - set trusted language (UPDATE pg_language SET lanpltrusted = true WHERE lanname LIKE 'java';)
-  2) aura-core-domain-base to be loaded
-    - e.g.: select sqlj.install_jar('file:///home/f477448/.m2/repository/com/csg/cs/aura/portal/core/aura-core-domain-base/R1312-0-Maintenance-SNAPSHOT/aura-core-domain-base-R1312-0-Maintenance-SNAPSHOT.jar', 'aura_core_domain_base', true);
+  2) DBHelper jar to be loaded
+    - e.g.: select sqlj.install_jar('file:///<path-to>.jar', 'dbhelper', true);
   3) classpath set
-    - e.g.: select sqlj.set_classpath('public', 'aura_core_domain_base');
+    - e.g.: select sqlj.set_classpath('public', 'dbhelper');
  */
 CREATE FUNCTION sys_guid() RETURNS VARCHAR
 AS 'com.github.gekoh.yagen.util.DBHelper.createUUID'

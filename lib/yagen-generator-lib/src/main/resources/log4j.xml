@@ -35,11 +35,6 @@
         <level value="INFO"/>
     </category>
 
-
-    <category name="com.csg.cs.aura">
-        <level value="INFO"/>
-    </category>
-
     <root>
         <priority value="INFO" />
         <appender-ref ref="A1" />
