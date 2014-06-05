@@ -636,7 +636,7 @@ public class CreateEntities {
             this.type = type;
             this.name = name;
             this.columnName = columnName.toLowerCase();
-            columnAnnotation = "@" + Column.class.getName() + "(name = \"" + columnName + "\", length = " + columnLength + ")";
+            columnAnnotation = "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + columnLength + ")";
             isEnum = false;
             isEmbedded = false;
         }
@@ -646,7 +646,7 @@ public class CreateEntities {
             this.name = name;
             this.columnName = columnName.toLowerCase();
             columnAnnotation =
-                    "@" + Column.class.getName() + "(name = \"" + columnName + "\", nullable = " + nullable + ")" + (typeAnnotation != null ? " @" + Type.class.getName() + "(type = \"" + typeAnnotation + "\")" : "");
+                    "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", nullable = " + nullable + ")" + (typeAnnotation != null ? " @" + Type.class.getName() + "(type = \"" + typeAnnotation + "\")" : "");
             isEnum = false;
             isEmbedded = false;
         }
@@ -692,7 +692,7 @@ public class CreateEntities {
             int idx = 0;
             while (m.find(idx)) {
                 result.append(a.substring(idx, m.start(2)));
-                result.append("\"").append(m.group(2)).append("\"");
+                result.append("\"").append(escapeAttributeValue(m.group(2))).append("\"");
                 result.append(a.substring(m.end(2), m.end()));
                 idx = m.end();
             }
@@ -733,6 +733,10 @@ public class CreateEntities {
             }
 
             return result.toString().replaceAll("=\\[([^\\]]*)\\]", "={$1}");
+        }
+
+        private static String escapeAttributeValue(String value) {
+            return value.replace("\"", "\\\"");
         }
 
         private static final Pattern ATTR_OVERR_NAME = Pattern.compile("AttributeOverride\\s*\\(\\s*name\\s*=\\s*\"([^\"]+)\"");
