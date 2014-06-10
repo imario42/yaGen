@@ -100,7 +100,7 @@ public class TableConfig {
     public TableConfig(CreateDDL ddlEnhancer, Class baseClass, String tableName) {
         this.ddlEnhancer = ddlEnhancer;
         this.baseClass = baseClass;
-        this.tableName = tableName.toLowerCase();
+        this.tableName = getIdentifierForReference(tableName);
     }
 
     public void scanEntityClass(Class entityClass, boolean selectiveRendering) {
@@ -234,11 +234,11 @@ public class TableConfig {
                     String colName = attr2colName.get(attrPathField);
                     if (colName == null) {
                         if (fOm.isAnnotationPresent(Column.class)) {
-                            colName = fOm.getAnnotation(Column.class).name().toLowerCase();
+                            colName = getIdentifierForReference(fOm.getAnnotation(Column.class).name());
                         }
 
                         if (StringUtils.isEmpty(colName)) {
-                            colName = attributeName.toLowerCase();
+                            colName = getIdentifierForReference(attributeName);
                         }
                     }
                     boolean useName = fOm.isAnnotationPresent(Enumerated.class) && fOm.getAnnotation(Enumerated.class).value() == EnumType.STRING;
@@ -312,11 +312,11 @@ public class TableConfig {
                     String colName = attr2colName.get(attrPathField);
                     if (colName == null) {
                         if (fOm.isAnnotationPresent(JoinColumn.class)) {
-                            colName = fOm.getAnnotation(JoinColumn.class).name().toLowerCase();
+                            colName = getIdentifierForReference(fOm.getAnnotation(JoinColumn.class).name());
                         }
 
                         if (StringUtils.isEmpty(colName)) {
-                            colName = attributeName.toLowerCase();
+                            colName = getIdentifierForReference(attributeName);
                         }
                         columnNamesIsCascadeNullable.add(colName);
                     }
@@ -326,11 +326,11 @@ public class TableConfig {
                     String colName = attr2colName.get(attrPathField);
                     if (colName == null) {
                         if (fOm.isAnnotationPresent(JoinColumn.class)) {
-                            colName = fOm.getAnnotation(JoinColumn.class).name().toLowerCase();
+                            colName = getIdentifierForReference(fOm.getAnnotation(JoinColumn.class).name());
                         }
 
                         if (StringUtils.isEmpty(colName)) {
-                            colName = attributeName.toLowerCase();
+                            colName = getIdentifierForReference(attributeName);
                         }
                         columnNamesIsNoFK.add(colName);
                     }
@@ -340,8 +340,8 @@ public class TableConfig {
                 String fkTableName = null;
                 if (fOm.isAnnotationPresent(JoinTable.class)) {
                     JoinTable joinTable = fOm.getAnnotation(JoinTable.class);
-                    fkCols.add(joinTable.joinColumns()[0].name().toLowerCase());
-                    fkCols.add(joinTable.inverseJoinColumns()[0].name().toLowerCase());
+                    fkCols.add(getIdentifierForReference(joinTable.joinColumns()[0].name()));
+                    fkCols.add(getIdentifierForReference(joinTable.inverseJoinColumns()[0].name()));
                     fkTableName = joinTable.name();
                 }
                 else if (fOm.isAnnotationPresent(OneToMany.class)) {
@@ -349,21 +349,21 @@ public class TableConfig {
                     if (joinColumn != null) {
                         Class<?> targetEntityClass = MappingUtils.determineTargetEntity(fOm, fOm.getAnnotation(OneToMany.class).targetEntity());
                         fkTableName = getTableAnnotation(targetEntityClass).name();
-                        fkCols.add(joinColumn.name().toLowerCase());
+                        fkCols.add(getIdentifierForReference(joinColumn.name()));
                     }
                 }
                 else if (fOm.isAnnotationPresent(ManyToOne.class) || fOm.isAnnotationPresent(OneToOne.class)) {
                     JoinColumn joinColumn = getJoinColumn(fOm);
                     if (joinColumn != null) {
                         fkTableName = tableName;
-                        fkCols.add(joinColumn.name().toLowerCase());
+                        fkCols.add(getIdentifierForReference(joinColumn.name()));
                     }
                 }
 
                 if (fkTableName != null && (
                         onDeleteCascade || fOm.isAnnotationPresent(CascadeDelete.class
                         ))) {
-                    TableConfig fkConfig = ddlEnhancer.getConfigForTableName(fkTableName.toLowerCase());
+                    TableConfig fkConfig = ddlEnhancer.getConfigForTableName(getIdentifierForReference(fkTableName));
                     if (fkConfig != null) {
                         fkConfig.columnNamesIsCascadeDelete.addAll(fkCols);
                     }
@@ -391,11 +391,11 @@ public class TableConfig {
                     String colName = attr2colName.get(attrPathField);
                     if (colName == null) {
                         if (fOm.isAnnotationPresent(JoinColumn.class)) {
-                            colName = fOm.getAnnotation(JoinColumn.class).name().toLowerCase();
+                            colName = getIdentifierForReference(fOm.getAnnotation(JoinColumn.class).name());
                         }
 
                         if (StringUtils.isEmpty(colName)) {
-                            colName = attributeName.toLowerCase();
+                            colName = getIdentifierForReference(attributeName);
                         }
                         columnNameToDeferrable.put(colName, fOm.getAnnotation(Deferrable.class));
                     }
@@ -461,7 +461,7 @@ public class TableConfig {
             String attr = attrPath+"."+override.name();
 
             if (!attr2colName.containsKey(attr)) {
-                attr2colName.put(attr, override.column().name().toLowerCase());
+                attr2colName.put(attr, getIdentifierForReference(override.column().name()));
             }
         }
     }
@@ -519,7 +519,7 @@ public class TableConfig {
     private void processAnnotations (AccessibleObject[] fieldsOrMethods, boolean selectiveRendering) {
         for (AccessibleObject fieldOrMethod: fieldsOrMethods) {
             JoinTable joinTable = fieldOrMethod.getAnnotation(JoinTable.class);
-            TableConfig joinTableConfig = joinTable != null ? ddlEnhancer.getConfigForTableName(joinTable.name().toLowerCase()) : null;
+            TableConfig joinTableConfig = joinTable != null ? ddlEnhancer.getConfigForTableName(getIdentifierForReference(joinTable.name())) : null;
 
             if (joinTable != null && joinTableConfig == null) {
                 joinTableConfig = new TableConfig(ddlEnhancer, null, joinTable.name());
@@ -591,10 +591,10 @@ public class TableConfig {
             if (fieldOrMethod.isAnnotationPresent(Default.class)) {
                 String defaultValue = fieldOrMethod.getAnnotation(Default.class).sqlExpression();
                 if (fieldOrMethod.isAnnotationPresent(Column.class)) {
-                    colNameToDefault.put(fieldOrMethod.getAnnotation(Column.class).name().toLowerCase(), defaultValue);
+                    colNameToDefault.put(getIdentifierForReference(fieldOrMethod.getAnnotation(Column.class).name()), defaultValue);
                 }
                 else if (fieldOrMethod instanceof Field) {
-                    colNameToDefault.put(ddlEnhancer.getProfile().getNamingStrategy().columnName(((Field) fieldOrMethod).getName()).toLowerCase(), defaultValue);
+                    colNameToDefault.put(getIdentifierForReference(ddlEnhancer.getProfile().getNamingStrategy().columnName(((Field) fieldOrMethod).getName())), defaultValue);
                 }
                 else {
                     LOG.warn(Default.class+" only supported on fields or @{} annotated methods", Column.class.toString());
@@ -645,7 +645,7 @@ public class TableConfig {
                     detailTableName = getTableName();
                 }
 
-                TableConfig detailTableConfig = ddlEnhancer.getConfigForTableName(detailTableName.toLowerCase());
+                TableConfig detailTableConfig = ddlEnhancer.getConfigForTableName(getIdentifierForReference(detailTableName));
 
                 if (joinColumn != null && detailTableConfig != null) {
                     detailTableConfig.i18nBaseEntityFkCol = joinColumn.name();
@@ -673,4 +673,8 @@ public class TableConfig {
         return null;
     }
 
+
+    public static String getIdentifierForReference(String identifier) {
+        return identifier.replaceAll("[\"'`]", "").toLowerCase();
+    }
 }

@@ -78,9 +78,11 @@ public class CreateDDL {
 
     public static final String STATIC_FIELD_TABLE_NAME_SHORT = "TABLE_NAME_SHORT";
 
+    private static final String REGEX_COLNAME = "[\"'`]?[a-zA-Z]+[0-9a-zA-Z_]*[\"'`]?";
+
     private static final Pattern TBL_PATTERN = Pattern.compile(".*"
             + "create table[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]*\\("
-            + "(.*(,([\\s](primary key[\\s]*\\(([a-zA-Z]+[0-9a-zA-Z_]*([\\s]*,[\\s]*[a-zA-Z]+[0-9a-zA-Z_]*)*)\\))))"
+            + "(.*(,([\\s](primary key[\\s]*\\((" + REGEX_COLNAME +"([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\))))"
             + ".*)\\)\\s*(partition\\s+by.*)?");
     private static final int TBL_PATTERN_IDX_TBLNAME = 1;
     private static final int TBL_PATTERN_IDX_TBL_DEF = 2;
@@ -101,7 +103,7 @@ public class CreateDDL {
     private static final Pattern SEQ_CREATE_PATTERN = Pattern.compile("create sequence[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final Pattern PKG_CREATE_PATTERN = Pattern.compile("create( or replace)?[\\s]+package[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)([a-zA-Z]+[0-9a-zA-Z_]*)([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(timestamp)|(date)|(clob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(double)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+not)?[\\s]+null)?([\\s]+unique)?[^\\(,]*(,|\\))");
+    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(timestamp)|(date)|(clob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(double)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+not)?[\\s]+null)?([\\s]+unique)?[^\\(,]*(,|\\))");
     private static final int COL_PATTERN_IDX_COLNAME = 2;
     private static final int COL_PATTERN_IDX_TYPE    = 4;
     private static final int COL_PATTERN_IDX_DEFAULT = 20;
@@ -109,7 +111,7 @@ public class CreateDDL {
     private static final int COL_PATTERN_IDX_NOT     = 23;
     private static final int COL_PATTERN_IDX_UNIQUE  = 24;
 
-    private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\(([a-zA-Z]+[0-9a-zA-Z_]*([\\s]*,[\\s]*[a-zA-Z]+[0-9a-zA-Z_]*)*)\\)))");
+    private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
     private static final Pattern CONSTRAINT_PATTERN = Pattern.compile("constraint[\\s]*([a-zA-Z]+[0-9a-zA-Z_]*)");
 
     private static final Pattern VIEW_NAME_PATTERN = Pattern.compile("create( or replace)?[\\s]+view[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
@@ -772,7 +774,7 @@ public class CreateDDL {
         StringBuilder sb = new StringBuilder();
 
         while (matcher.find(idx)) {
-            String colName = matcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase();
+            String colName = TableConfig.getIdentifierForReference(matcher.group(COL_PATTERN_IDX_COLNAME));
 
             if (columns.contains(colName) && matcher.group(COL_PATTERN_IDX_NOT) != null) {
                 sb.append(sqlCreate.substring(idx, matcher.start(COL_PATTERN_IDX_NOTNULL)));
@@ -843,7 +845,7 @@ public class CreateDDL {
         int idx = 0;
 
         while (matcher.find(idx)) {
-            String colName = matcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase();
+            String colName = TableConfig.getIdentifierForReference(matcher.group(COL_PATTERN_IDX_COLNAME));
 
             if (matcher.group(COL_PATTERN_IDX_DEFAULT) == null) {
                 String defaultExpr = tableConfig.getColNameToDefault().get(colName);
@@ -1095,13 +1097,14 @@ public class CreateDDL {
         int idx = 0;
 
         while (matcher.find(idx)) {
-            String colName = matcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase();
+            String defColName = matcher.group(COL_PATTERN_IDX_COLNAME);
+            String colName = TableConfig.getIdentifierForReference(defColName);
 
             String constraintDef = column2EnumConstraint != null ? column2EnumConstraint.get(colName) : null;
             if (constraintDef != null) {
                 String constraintName = getProfile().getNamingStrategy().constraintName(getEntityClassName(nameLC), nameLC, colName, Constants._CK);
                 enumConstraints.append(", constraint ").append(constraintName);
-                enumConstraints.append(" check (").append(colName).append(" in (").append(constraintDef).append("))");
+                enumConstraints.append(" check (").append(defColName).append(" in (").append(constraintDef).append("))");
             }
 
             // name not null constraint
@@ -1396,7 +1399,7 @@ public class CreateDDL {
 
             StringBuilder colDef = new StringBuilder();
             while (colMatcher.find(idx)) {
-                String colName = colMatcher.group(COL_PATTERN_IDX_COLNAME);
+                String colName = TableConfig.getIdentifierForReference(colMatcher.group(COL_PATTERN_IDX_COLNAME));
                 if (!colName.toLowerCase().equals(I18N_COLUMN_IS_PERSISTENT) && !colName.toLowerCase().equals(I18N_COLUMN_COMPOSITE_ID)) {
                     colDef.append(" ").append(sqlCreate.substring(colMatcher.start(COL_PATTERN_IDX_COLNAME), colMatcher.end()));
                 }
@@ -1671,7 +1674,7 @@ public class CreateDDL {
         Matcher uniqueColMatcher = COL_PATTERN.matcher(sql.toString());
         int colIdx = 0;
         while (uniqueColMatcher.find(colIdx)) {
-            String colName = uniqueColMatcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase();
+            String colName = TableConfig.getIdentifierForReference(uniqueColMatcher.group(COL_PATTERN_IDX_COLNAME));
 //                remove unique constraint from single column
             if (uniqueColMatcher.group(COL_PATTERN_IDX_UNIQUE) != null) {
                 sql.delete(uniqueColMatcher.start(COL_PATTERN_IDX_UNIQUE), uniqueColMatcher.end(COL_PATTERN_IDX_UNIQUE));
