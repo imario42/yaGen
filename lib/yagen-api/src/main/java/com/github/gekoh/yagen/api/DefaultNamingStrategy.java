@@ -19,6 +19,7 @@ import org.apache.commons.lang.StringUtils;
 import org.hibernate.cfg.EJB3NamingStrategy;
 import org.hibernate.mapping.Constraint;
 import org.hibernate.mapping.ForeignKey;
+import org.hibernate.mapping.UniqueKey;
 
 import java.lang.reflect.Field;
 
@@ -88,7 +89,7 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
     public String constraintName(Constraint constraint, String entityClass) {
         String name = constraint.getName();
 
-        if (constraint instanceof ForeignKey) {
+        if (constraint instanceof ForeignKey || constraint instanceof UniqueKey) {
             StringBuilder colList = new StringBuilder();
 
             for (org.hibernate.mapping.Column column : (Iterable<? extends org.hibernate.mapping.Column>) constraint.getColumns()) {
@@ -98,7 +99,7 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
                 colList.append(column.getName().toLowerCase());
             }
 
-            name = beautifyFkName(name, entityClass, tableName(constraint.getTable().getName()), concatColumnNames(colList.toString()));
+            name = beautifyConstraintName(name, entityClass, tableName(constraint.getTable().getName()), concatColumnNames(colList.toString()));
         }
 
         return constraintName(name);
@@ -149,11 +150,11 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
         return sequenceName;
     }
 
-    private String beautifyFkName(String name, String entityClass, String tableName, String colList) {
-        if (name.startsWith("FK")) {
-            String fk = findName(entityClass, tableName, colList, "_FK");
-            LOG.debug("no foreign key constraint name specified for {}({}), using {}", new Object[]{tableName, colList, fk});
-            return fk;
+    private String beautifyConstraintName(String name, String entityClass, String tableName, String colList) {
+        if (name.startsWith("FK") || name.startsWith("UK")) {
+            String newName = findName(entityClass, tableName, colList, "_" + name.substring(0, 2));
+            LOG.debug("no constraint name specified for {}({}), using {}", new Object[]{tableName, colList, newName});
+            return newName;
         }
         return name;
     }

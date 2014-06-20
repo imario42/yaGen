@@ -17,6 +17,7 @@ package com.github.gekoh.yagen.ddl;
 
 import com.github.gekoh.yagen.api.DefaultNamingStrategy;
 import com.github.gekoh.yagen.api.NamingStrategy;
+import com.github.gekoh.yagen.hibernate.PatchGlue;
 import com.github.gekoh.yagen.hibernate.PatchHibernateMappingClasses;
 import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
@@ -29,7 +30,6 @@ import org.dom4j.io.DOMWriter;
 import org.dom4j.io.SAXReader;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.ejb.Ejb3Configuration;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
 
 import java.io.File;
@@ -40,6 +40,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -59,7 +60,6 @@ public class DDLGenerator {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DDLGenerator.class);
 
     public void writeDDL (Profile profile) {
-
         SchemaExport export = new SchemaExportFactory().createSchemaExport(profile);
         export.setDelimiter(";");
         export.setFormat(true);
@@ -70,8 +70,10 @@ public class DDLGenerator {
     }
 
     public static class SchemaExportFactory {
+
+        private Configuration cfg;
+
         public SchemaExport createSchemaExport (Profile profile) {
-            Configuration cfg;
             if (StringUtils.isNotEmpty(profile.getPersistenceUnitName())) {
 //            need to patch the class NumericBooleanType only for oracle until all applications have
 //            upgraded hibernate to 3.6.10-Final and the type specifications @Type(type = "org.hibernate.type.NumericBooleanType")
@@ -83,11 +85,8 @@ public class DDLGenerator {
                         e.printStackTrace();
                     }
                 }
-                Ejb3Configuration ejb3Configuration = new Ejb3Configuration().configure(profile.getPersistenceUnitName(), null);
-                if (ejb3Configuration == null) {
-                    throw new IllegalArgumentException("cannot find persistence unit " + profile.getPersistenceUnitName());
-                }
-                cfg = ejb3Configuration.getHibernateConfiguration();
+
+                createConfiguration(profile);
             }
             else {
                 cfg = new Configuration();
@@ -110,6 +109,45 @@ public class DDLGenerator {
             }
 
             return new SchemaExport(cfg);
+        }
+
+        private void createConfiguration(Profile profile) {
+            try {
+                Class persistenceProviderClass = Class.forName("org.hibernate.jpa.HibernatePersistenceProvider");
+
+                PatchGlue.addConfigurationInterceptor(new PatchGlue.ConfigurationInterceptor() {
+                    @Override
+                    public void use(Configuration configuration) {
+                        cfg = configuration;
+                    }
+                });
+
+                try {
+                    Method createEntityManagerFactory = persistenceProviderClass.getMethod("createEntityManagerFactory", String.class, Map.class);
+                    Object provider = persistenceProviderClass.newInstance();
+                    createEntityManagerFactory.invoke(provider, new Object[]{profile.getPersistenceUnitName(), null});
+                } catch (Exception e) {
+                    throw new IllegalStateException("cannot init hibernate", e);
+                }
+
+            } catch (ClassNotFoundException e) {
+
+                try {
+                    Class ejbConfigurationClass = Class.forName("org.hibernate.ejb.Ejb3Configuration");
+                    Method configure = ejbConfigurationClass.getMethod("configure", String.class, Map.class);
+                    Method getHibernateConfiguration = ejbConfigurationClass.getMethod("getHibernateConfiguration");
+
+                    Object ejb3Configuration = ejbConfigurationClass.newInstance();
+                    ejb3Configuration = configure.invoke(ejb3Configuration, new Object[]{profile.getPersistenceUnitName(), null});
+
+                    if (ejb3Configuration == null) {
+                        throw new IllegalArgumentException("cannot find persistence unit " + profile.getPersistenceUnitName());
+                    }
+                    cfg = (Configuration) getHibernateConfiguration.invoke(ejb3Configuration);
+                } catch (Exception e1) {
+                    throw new IllegalStateException("cannot detect hibernate version or init failed", e1);
+                }
+            }
         }
 
         private Properties extractProperties(Document persistenceFile) {

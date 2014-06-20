@@ -18,7 +18,6 @@ package com.github.gekoh.yagen.example;
 import com.github.gekoh.yagen.api.CascadeDelete;
 import com.github.gekoh.yagen.api.Constants;
 import com.github.gekoh.yagen.api.TemporalEntity;
-import org.hibernate.annotations.IndexColumn;
 
 import javax.persistence.CascadeType;
 import javax.persistence.Column;
@@ -65,7 +64,6 @@ public class Aircraft extends BaseEntity {
 
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "AIRCRAFT_UUID", nullable = false)
-    @IndexColumn(name = "num", base = 1, nullable = false)
     @CascadeDelete
     private List<BoardBookEntry> boardBookEntries;
 

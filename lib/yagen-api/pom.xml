@@ -25,7 +25,7 @@
     <parent>
         <groupId>com.github.gekoh.yagen</groupId>
         <artifactId>yagen-master</artifactId>
-        <version>1.4</version>
+        <version>1.5</version>
         <relativePath>../..</relativePath>
     </parent>
 
@@ -35,6 +35,12 @@
     <name>yaGen - API</name>
 
     <dependencies>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>

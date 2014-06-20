@@ -17,21 +17,22 @@ package com.github.gekoh.yagen.hibernate;
 
 import com.github.gekoh.yagen.ddl.CreateDDL;
 import com.github.gekoh.yagen.ddl.DDLGenerator;
+import javassist.CannotCompileException;
 import javassist.ClassClassPath;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtConstructor;
 import javassist.CtMethod;
+import javassist.Modifier;
+import javassist.NotFoundException;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.dialect.Dialect;
 import org.joda.time.DateTime;
 
-import java.io.IOException;
 import java.io.StringWriter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
+import java.util.Collection;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,7 +44,8 @@ public class PatchHibernateMappingClasses {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PatchHibernateMappingClasses.class);
 
     private static final Pattern SEPARATOR_PATTERN = Pattern.compile("\r?\n"+CreateDDL.STATEMENT_SEPARATOR.trim()+"\r?\n");
-    private static final Pattern PLSQL_END_PATTERN = Pattern.compile("[\\s]+end[\\s]*([a-z_]+)?;$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern PLSQL_END_PATTERN = Pattern.compile("[\\s]+end[\\s]*([a-z_]+)?;([\\s]*\\n?/?)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("(((--).*(\\n|$))+)|((/\\*).*(\\*/))", Pattern.CASE_INSENSITIVE|Pattern.MULTILINE);
 
     static List CONFIGURATION_INTERCEPTOR_INSTANCES = new ArrayList();
 
@@ -71,6 +73,24 @@ public class PatchHibernateMappingClasses {
                     "com.github.gekoh.yagen.hibernate.PatchGlue.initDialect($1, getNamingStrategy(), getProperties());"
             );
 
+            method = clazz.getDeclaredMethod("generateSchemaCreationScript");
+
+            method.insertAfter(
+                    "$_ = com.github.gekoh.yagen.hibernate.PatchHibernateMappingClasses.addHeaderAndFooter($_, dialect);"
+            );
+
+            method = clazz.getDeclaredMethod("reset");
+
+            method.insertAfter(
+                    "java.util.List interceptors = com.github.gekoh.yagen.hibernate.PatchGlue.getConfigurationInterceptors();\n" +
+                            "if (interceptors != null) {\n" +
+                            "    java.util.Iterator it = interceptors.iterator();\n" +
+                            "    while(it.hasNext()) {\n" +
+                            "        ((com.github.gekoh.yagen.hibernate.PatchGlue.ConfigurationInterceptor)it.next()).use(this);\n" +
+                            "    }\n" +
+                            "}"
+            );
+
             CtClass mappingsImpl = null;
             for (CtClass nestedClass : clazz.getNestedClasses()) {
                 if (nestedClass.getSimpleName().equals("Configuration$MappingsImpl")) {
@@ -86,23 +106,6 @@ public class PatchHibernateMappingClasses {
             }
             LOG.info("patched class {}", clazz.toClass().toString());
             LOG.info("patched class {}", mappingsImpl.toClass().toString());
-        }
-
-        {
-            CtClass clazz = cp.get("org.hibernate.ejb.Ejb3Configuration");
-            CtMethod method = clazz.getDeclaredMethod("configure", new CtClass[]{cp.get("java.util.Properties"), cp.get("java.util.Map")});
-
-            method.insertAfter(
-                    "java.util.List interceptors = com.github.gekoh.yagen.hibernate.PatchGlue.getConfigurationInterceptors();\n" +
-                            "if (interceptors != null && $1 != null) {\n" +
-                            "    java.util.Iterator it = interceptors.iterator();\n" +
-                            "    while(it.hasNext()) {\n" +
-                            "        ((com.github.gekoh.yagen.hibernate.PatchGlue.ConfigurationInterceptor)it.next()).use(this);\n" +
-                            "    }\n" +
-                            "}"
-            );
-
-            LOG.info("patched class {}", clazz.toClass().toString());
         }
 
         {
@@ -145,6 +148,17 @@ public class PatchHibernateMappingClasses {
         }
 
         {
+            CtClass clazz = cp.get("org.hibernate.mapping.UniqueKey");
+            CtMethod method = clazz.getDeclaredMethod("sqlCreateString");
+
+            method.insertAfter(
+                    "$_ = com.github.gekoh.yagen.hibernate.PatchGlue.afterConstraintSqlCreateString(getTable(), $1, $_, $0);"
+            );
+
+            LOG.info("patched class {}", clazz.toClass().toString());
+        }
+
+        {
             CtClass clazz = cp.get("org.hibernate.id.SequenceGenerator");
             CtMethod method = clazz.getDeclaredMethod("sqlCreateStrings");
 
@@ -157,11 +171,57 @@ public class PatchHibernateMappingClasses {
 
         {
             CtClass clazz = cp.get("org.hibernate.tool.hbm2ddl.SchemaExport");
+            try {
+                // Hibernate 4.3.5
+                CtMethod method = clazz.getDeclaredMethod("perform");
+                method.setName("performApi");
+                method.setModifiers(Modifier.setPublic(method.getModifiers()));
+                method.addParameter(cp.get("java.lang.String"));
+
+                method.insertBefore("delimiter = $3;");
+
+                CtMethod newMethod = CtMethod.make(
+                        "private void perform(String[] sqlCommands, java.util.List exporters) {\n" +
+                                "    com.github.gekoh.yagen.hibernate.PatchGlue.schemaExportPerform (sqlCommands, exporters, $0);\n" +
+                                "}"
+                        ,
+                        clazz
+                );
+                clazz.addMethod(newMethod);
+            } catch (NotFoundException e) {
+                // Hibernate 3
+                CtClass writerCl = cp.get("java.io.Writer");
+                CtClass statementCl = cp.get("java.sql.Statement");
+                CtClass stringCl = cp.get("java.lang.String");
+
+                CtMethod method = clazz.getDeclaredMethod("execute", new CtClass[]{CtClass.booleanType, CtClass.booleanType, writerCl, statementCl, stringCl});
+                method.setName("executeApi");
+                method.setModifiers(Modifier.setPublic(method.getModifiers()));
+                method.addParameter(cp.get("java.lang.String"));
+
+                method.insertBefore("delimiter = $6;");
+
+                CtMethod newMethod = CtMethod.make(
+                        "private void execute(boolean script, boolean export, java.io.Writer fileOutput, java.sql.Statement statement, java.lang.String sql) {\n" +
+                                "    com.github.gekoh.yagen.hibernate.PatchGlue.schemaExportExecute (script, export, fileOutput, statement, sql, $0);\n" +
+                                "}"
+                        ,
+                        clazz
+                );
+                clazz.addMethod(newMethod);
+            }
+
+            LOG.info("patched class {}", clazz.toClass().toString());
+        }
+
+/*
+        {
+            CtClass clazz = cp.get("org.hibernate.tool.hbm2ddl.SchemaExport");
             CtClass writerCl = cp.get("java.io.Writer");
             CtClass statementCl = cp.get("java.sql.Statement");
             CtClass stringCl = cp.get("java.lang.String");
 
-            CtMethod method = clazz.getDeclaredMethod("create", new CtClass[]{CtClass.booleanType, CtClass.booleanType, writerCl, statementCl});
+            CtMethod method = clazz.getDeclaredMethod("create", new CtClass[]{CtClass.booleanType, CtClass.booleanType});
 
             method.insertBefore(
                     "createSQL = com.github.gekoh.yagen.hibernate.PatchHibernateMappingClasses.addHeaderAndFooter(createSQL, dialect);"
@@ -203,6 +263,7 @@ public class PatchHibernateMappingClasses {
 
             LOG.info("patched class {}", clazz.toClass().toString());
         }
+*/
     }
 
     public static void patchCollectionsAlwaysLazy() throws Exception {
@@ -268,7 +329,7 @@ public class PatchHibernateMappingClasses {
         return idx > 0 || indexOfSeparator(sql, Math.min(CreateDDL.STATEMENT_SEPARATOR.length(), sql.length())) > 0;
     }
 
-    public static Iterator<String> splitSQL(String sql) {
+    public static Collection<String> splitSQL(String sql) {
         Matcher matcher = SEPARATOR_PATTERN.matcher(sql);
         int endIdx, idx=0;
         ArrayList<String> statements = new ArrayList<String>();
@@ -286,64 +347,52 @@ public class PatchHibernateMappingClasses {
         }
 
         if (idx < sql.length()) {
-            statements.add(sql.substring(idx));
+            String singleSql = sql.substring(idx);
+            if (StringUtils.isNotEmpty(singleSql.trim())) {
+                statements.add(singleSql);
+            }
         }
 
-        return statements.iterator();
+        for (int i=0; i<statements.size(); i++) {
+            String stmt = statements.get(i);
+            matcher = COMMENT_PATTERN.matcher(stmt);
+            if (matcher.find() && stmt.substring(0, matcher.start()).trim().length() < 1) {
+                statements.remove(i);
+                statements.add(i, stmt.substring(matcher.end()));
+                statements.add(i, stmt.substring(0, matcher.end()));
+            }
+        }
+
+        return statements;
     }
 
-    public static String prepareDDL(String sql, Writer fileOutput, boolean script){
-        Iterator<String> it = splitSQL(sql);
-        while(it.hasNext()) {
-            sql = it.next();
-        }
+    public static SqlStatement prepareDDL(String sql){
         sql = sql.trim();
+        String delimiter = "";
 
-        if (PLSQL_END_PATTERN.matcher(sql).find()) {
-            sql += "\n/";
+        Matcher matcher = PLSQL_END_PATTERN.matcher(sql);
+        if (matcher.find()) {
+            if (matcher.group(2) != null) {
+                sql = sql.substring(0, matcher.start(2));
+            }
+            sql += "\n";
+            delimiter = "/";
         }
         // remove trailing semicolon in case of non pl/sql type objects/statements
         else if (sql.endsWith(";")) {
             sql = sql.substring(0, sql.length()-1);
         }
 
-        StringWriter wr = new StringWriter();
-        int nlIdx=-1, prevIdx;
-        String line;
-        try {
-            do {
-                prevIdx = nlIdx+1;
-                nlIdx = sql.indexOf('\n', prevIdx);
-                if (nlIdx < 0) {
-                    line = StringUtils.stripEnd(sql.substring(prevIdx), null);
-                }
-                else {
-                    line = StringUtils.stripEnd(sql.substring(prevIdx, nlIdx), null) + "\n";
-                }
-                if (wr.getBuffer().length() < 1) {
-                    if (line.trim().startsWith("/*")) {
-                        nlIdx = sql.indexOf("*/", prevIdx);
-                        line = StringUtils.stripEnd(sql.substring(prevIdx, nlIdx >= 0 ? nlIdx+2 : sql.length()), null) + "\n";
-                        nlIdx+= line.trim().endsWith("*/") ? 2 : 1;
-                    }
-                    if (line.trim().startsWith("--") || line.trim().startsWith("/*"))
-                    {
-                        if (script) {
-                            System.out.print(line);
-                        }
-                        if (fileOutput != null) {
-                            fileOutput.write(line);
-                        }
-                        continue;
-                    }
-                }
-
-                wr.write(line);
-            } while (nlIdx >= 0);
-        } catch (IOException e) {
-            LOG.error("unable to prepare DDL", e);
+        StringBuilder sqlWoComments = new StringBuilder(sql);
+        while ((matcher = COMMENT_PATTERN.matcher(sqlWoComments.toString())).find()) {
+            sqlWoComments.delete(matcher.start(), matcher.end());
         }
-        return wr.toString().trim();
+
+        if (delimiter.length() < 1 && sqlWoComments.toString().trim().length() > 0) {
+            delimiter = ";";
+        }
+
+        return new SqlStatementImpl(sql, delimiter);
     }
 
     public static String[] addHeaderAndFooter(String[] createSQL, Dialect dialect){
@@ -398,5 +447,23 @@ public class PatchHibernateMappingClasses {
             return matcher.start();
         }
         return -1;
+    }
+
+    public static class SqlStatementImpl implements SqlStatement {
+        private String sql;
+        private String delimiter;
+
+        private SqlStatementImpl(String sql, String delimiter) {
+            this.sql = sql;
+            this.delimiter = delimiter;
+        }
+
+        public String getSql() {
+            return sql;
+        }
+
+        public String getDelimiter() {
+            return delimiter;
+        }
     }
 }

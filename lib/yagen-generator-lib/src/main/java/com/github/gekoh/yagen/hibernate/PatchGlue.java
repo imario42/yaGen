@@ -18,14 +18,20 @@ package com.github.gekoh.yagen.hibernate;
 import com.github.gekoh.yagen.api.DefaultNamingStrategy;
 import com.github.gekoh.yagen.ddl.CreateDDL;
 import com.github.gekoh.yagen.ddl.DDLGenerator;
+import org.hibernate.cfg.Configuration;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.ejb.Ejb3Configuration;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Constraint;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
+import org.hibernate.tool.hbm2ddl.SchemaExport;
 import org.hibernate.type.Type;
 
+import java.io.IOException;
+import java.io.Writer;
+import java.lang.reflect.Method;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -41,6 +47,8 @@ public class PatchGlue {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PatchGlue.class);
 
     private static DDLGenerator.Profile profile;
+
+    private static Method schemaExportPerform;
 
     public PatchGlue() throws Exception {
         init();
@@ -171,7 +179,50 @@ public class PatchGlue {
     }
 
     public static interface ConfigurationInterceptor {
-        void use(Ejb3Configuration configuration);
+        void use(Configuration configuration);
+    }
+
+    // Hibernate 3
+    public static void schemaExportExecute(boolean script, boolean export, Writer fileOutput, Statement statement, String sql, SchemaExport schemaExport)
+            throws IOException, SQLException {
+        if (schemaExportPerform == null) {
+            try {
+                schemaExportPerform = SchemaExport.class.getMethod("executeApi", boolean.class, boolean.class, Writer.class, Statement.class, String.class, String.class);
+            } catch (NoSuchMethodException e) {
+                LOG.error("cannot find api method inserted by patch", e);
+            }
+        }
+        for (String singleSql : PatchHibernateMappingClasses.splitSQL(sql)) {
+            SqlStatement ddlStmt = PatchHibernateMappingClasses.prepareDDL(singleSql);
+            try {
+                schemaExportPerform.invoke(schemaExport, new Object[]{script, export, fileOutput, statement, ddlStmt.getSql(), ddlStmt.getDelimiter()});
+            } catch (Exception e) {
+                LOG.error("cannot call patched api method in SchemaExport", e);
+            }
+        }
+    }
+
+    // Hibernate 4.3.5
+    public static void schemaExportPerform (String[] sqlCommands, List exporters, SchemaExport schemaExport) {
+        if (schemaExportPerform == null) {
+            try {
+                schemaExportPerform = SchemaExport.class.getMethod("performApi", String[].class, List.class, String.class);
+            } catch (NoSuchMethodException e) {
+                LOG.error("cannot find api method inserted by patch", e);
+            }
+        }
+        String[] wrapArr = new String[1];
+        for (String sqlCommand : sqlCommands) {
+            for (String singleSql : PatchHibernateMappingClasses.splitSQL(sqlCommand)) {
+                SqlStatement ddlStmt = PatchHibernateMappingClasses.prepareDDL(singleSql);
+                wrapArr[0] = ddlStmt.getSql();
+                try {
+                    schemaExportPerform.invoke(schemaExport, new Object[]{wrapArr, exporters, ddlStmt.getDelimiter()});
+                } catch (Exception e) {
+                    LOG.error("cannot call patched api method in SchemaExport", e);
+                }
+            }
+        }
     }
 
     public static <T> String join(List<T> list, String separator, StringValueExtractor<T> valueExtractor) {
