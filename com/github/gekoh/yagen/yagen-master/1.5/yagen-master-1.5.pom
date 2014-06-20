@@ -19,7 +19,7 @@
 
     <groupId>com.github.gekoh.yagen</groupId>
     <artifactId>yagen-master</artifactId>
-    <version>1.4</version>
+    <version>1.5</version>
     <packaging>pom</packaging>
     <name>yaGen - yet another Generator</name>
 
@@ -33,7 +33,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>1.6.1</slf4j.version>
-        <hibernate.version>3.6.10.Final</hibernate.version>
+        <hibernate.version>4.3.5.Final</hibernate.version>
         <commons-cli.version>1.2</commons-cli.version>
         <joda-time-hibernate.version>1.3</joda-time-hibernate.version>
 
@@ -106,8 +106,14 @@
 
             <dependency>
                 <groupId>org.hibernate.javax.persistence</groupId>
-                <artifactId>hibernate-jpa-2.0-api</artifactId>
-                <version>1.0.1.Final</version>
+                <artifactId>hibernate-jpa-2.1-api</artifactId>
+                <version>1.0.0.Final</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
             </dependency>
 
             <dependency>
