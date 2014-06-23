@@ -15,9 +15,11 @@
 */
 package com.github.gekoh.yagen.hibernate;
 
+import org.hibernate.dialect.Dialect;
+
 /**
  * @author Georg Kohlweiss 
  */
-public class OracleXE11gDialect extends Oracle10gDialect {
+public class OracleXE11gDialect extends Dialect {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(OracleXE11gDialect.class);
 }

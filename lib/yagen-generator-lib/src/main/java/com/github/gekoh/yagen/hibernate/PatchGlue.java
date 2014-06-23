@@ -29,6 +29,7 @@ import org.hibernate.type.Type;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -100,7 +101,7 @@ public class PatchGlue {
             }
         }
         else {
-            LOG.warn("dialect does not implement {}", DDLEnhancer.class.getName());
+            LOG.warn("{} was not patched, generator enhancements not working", Dialect.class.getName());
         }
     }
 
@@ -167,7 +168,7 @@ public class PatchGlue {
             DDLEnhancer ddlEnhancer = (DDLEnhancer) dialect;
             return ddlEnhancer.getDDLEnhancer();
         }
-        throw new IllegalArgumentException("dialect must implement " + DDLEnhancer.class.getName());
+        throw new IllegalArgumentException(Dialect.class.getName() + " was not patched, generator enhancements inoperable");
     }
 
     public static void addConfigurationInterceptor(ConfigurationInterceptor interceptor) {
@@ -196,8 +197,13 @@ public class PatchGlue {
             SqlStatement ddlStmt = PatchHibernateMappingClasses.prepareDDL(singleSql);
             try {
                 schemaExportPerform.invoke(schemaExport, new Object[]{script, export, fileOutput, statement, ddlStmt.getSql(), ddlStmt.getDelimiter()});
+            } catch (InvocationTargetException e) {
+                if (e.getCause() instanceof SQLException && !PatchHibernateMappingClasses.isEmptyStatement(singleSql)) {
+                    LOG.warn("failed executing sql: {}", singleSql);
+                    LOG.warn("failure: {}", e.getCause().getMessage());
+                }
             } catch (Exception e) {
-                LOG.error("cannot call patched api method in SchemaExport", e);
+                LOG.error("error calling patched api method in SchemaExport", e);
             }
         }
     }
@@ -218,6 +224,11 @@ public class PatchGlue {
                 wrapArr[0] = ddlStmt.getSql();
                 try {
                     schemaExportPerform.invoke(schemaExport, new Object[]{wrapArr, exporters, ddlStmt.getDelimiter()});
+                } catch (InvocationTargetException e) {
+                    if (e.getCause() instanceof SQLException && !PatchHibernateMappingClasses.isEmptyStatement(singleSql)) {
+                        LOG.warn("failed executing sql: {}", singleSql);
+                        LOG.warn("failure: {}", e.getCause().getMessage());
+                    }
                 } catch (Exception e) {
                     LOG.error("cannot call patched api method in SchemaExport", e);
                 }

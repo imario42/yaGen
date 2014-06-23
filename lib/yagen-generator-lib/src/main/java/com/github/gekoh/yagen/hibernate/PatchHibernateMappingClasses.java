@@ -17,11 +17,11 @@ package com.github.gekoh.yagen.hibernate;
 
 import com.github.gekoh.yagen.ddl.CreateDDL;
 import com.github.gekoh.yagen.ddl.DDLGenerator;
-import javassist.CannotCompileException;
 import javassist.ClassClassPath;
 import javassist.ClassPool;
 import javassist.CtClass;
 import javassist.CtConstructor;
+import javassist.CtField;
 import javassist.CtMethod;
 import javassist.Modifier;
 import javassist.NotFoundException;
@@ -44,8 +44,8 @@ public class PatchHibernateMappingClasses {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PatchHibernateMappingClasses.class);
 
     private static final Pattern SEPARATOR_PATTERN = Pattern.compile("\r?\n"+CreateDDL.STATEMENT_SEPARATOR.trim()+"\r?\n");
-    private static final Pattern PLSQL_END_PATTERN = Pattern.compile("[\\s]+end[\\s]*([a-z_]+)?;([\\s]*\\n?/?)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("(((--).*(\\n|$))+)|((/\\*).*(\\*/))", Pattern.CASE_INSENSITIVE|Pattern.MULTILINE);
+    private static final Pattern PLSQL_END_PATTERN = Pattern.compile("[\\s]+end[\\s]*([a-z_]+)?;([\\s]*(\\r?\\n)?/?)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern COMMENT_PATTERN = Pattern.compile("(((--).*((\\r?\\n)|$))+)|((/\\*).*(\\*/))", Pattern.CASE_INSENSITIVE|Pattern.MULTILINE);
 
     static List CONFIGURATION_INTERCEPTOR_INSTANCES = new ArrayList();
 
@@ -214,6 +214,42 @@ public class PatchHibernateMappingClasses {
             LOG.info("patched class {}", clazz.toClass().toString());
         }
 
+        {
+            CtClass clazz = cp.get("org.hibernate.dialect.Dialect");
+            clazz.addField(CtField.make("private com.github.gekoh.yagen.ddl.CreateDDL ddlEnhancer;", clazz));
+
+            clazz.addMethod(CtMethod.make(
+                    "public void initDDLEnhancer(com.github.gekoh.yagen.ddl.DDLGenerator.Profile profile, org.hibernate.dialect.Dialect dialect) {\n" +
+                            "        ddlEnhancer = new com.github.gekoh.yagen.ddl.CreateDDL(profile, dialect);\n" +
+                            "    }",
+                    clazz
+            ));
+
+            clazz.addMethod(CtMethod.make(
+                    "public com.github.gekoh.yagen.ddl.CreateDDL getDDLEnhancer() {\n" +
+                            "        return ddlEnhancer;\n" +
+                            "    }",
+                    clazz
+            ));
+
+            // when using hibernate 3 in runtime classpath we need to add a wrapper method since the signature changed slightly and
+            // yagen is build against hibernate 4
+            try {
+                clazz.getDeclaredMethod("getTypeName", new CtClass[]{CtClass.intType, CtClass.longType, CtClass.intType, CtClass.intType});
+            } catch (NotFoundException e) {
+                clazz.addMethod(CtMethod.make(
+                        "public java.lang.String getTypeName(int code, long length, int precision, int scale) throws org.hibernate.HibernateException {\n" +
+                                "return getTypeName(code, (int) length, precision, scale);\n" +
+                                "}",
+                        clazz
+                ));
+            }
+
+            clazz.addInterface(cp.get("com.github.gekoh.yagen.hibernate.DDLEnhancer"));
+
+            LOG.info("patched class {}", clazz.toClass().toString());
+        }
+
 /*
         {
             CtClass clazz = cp.get("org.hibernate.tool.hbm2ddl.SchemaExport");
@@ -355,15 +391,35 @@ public class PatchHibernateMappingClasses {
 
         for (int i=0; i<statements.size(); i++) {
             String stmt = statements.get(i);
+            if (stmt == null || stmt.trim().length() < 1) {
+                statements.remove(i);
+                i--;
+                continue;
+            }
             matcher = COMMENT_PATTERN.matcher(stmt);
             if (matcher.find() && stmt.substring(0, matcher.start()).trim().length() < 1) {
                 statements.remove(i);
                 statements.add(i, stmt.substring(matcher.end()));
-                statements.add(i, stmt.substring(0, matcher.end()));
+                if (stmt.substring(0, matcher.end()).trim().length() > 0) {
+                    statements.add(i, stmt.substring(0, matcher.end()));
+                }
             }
         }
 
         return statements;
+    }
+
+    public static boolean isEmptyStatement(String sqlStmt) {
+        Matcher matcher = COMMENT_PATTERN.matcher(sqlStmt);
+        int idx = 0;
+
+        while (matcher.find(idx)) {
+            if (sqlStmt.substring(idx, matcher.start()).trim().length() > 0) {
+                return false;
+            }
+            idx = matcher.end();
+        }
+        return true;
     }
 
     public static SqlStatement prepareDDL(String sql){
@@ -403,6 +459,7 @@ public class PatchHibernateMappingClasses {
             profile = ddlEnhancer.getDDLEnhancer().getProfile();
         }
         else {
+            LOG.warn("{} was not patched, generator enhancements not working", Dialect.class.getName());
             return createSQL;
         }
 
