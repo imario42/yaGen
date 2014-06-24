@@ -19,7 +19,7 @@
 
     <groupId>com.github.gekoh.yagen</groupId>
     <artifactId>yagen-master</artifactId>
-    <version>1.6</version>
+    <version>1.7</version>
     <packaging>pom</packaging>
     <name>yaGen - yet another Generator</name>
 
@@ -191,6 +191,38 @@
                 </plugins>
             </build>
         </profile>
+        <profile>
+            <id>cs-deploy</id>
+
+            <distributionManagement>
+                <repository>
+                    <id>aura-release</id>
+                    <url>dav:http://artifacts.rowini.net:8081/nexus/content/repositories/AURA-Release/</url>
+                </repository>
+                <snapshotRepository>
+                    <id>aura-snapshot</id>
+                    <url>dav:http://artifacts.rowini.net:8081/nexus/content/repositories/AURA-Snapshot/</url>
+                </snapshotRepository>
+            </distributionManagement>
+
+        </profile>
+
+        <profile>
+            <id>irian-deploy</id>
+
+            <distributionManagement>
+                <repository>
+                    <id>irian_repository</id>
+                    <url>dav:http://maven.irian.at/content/repositories/releases</url>
+                </repository>
+                <snapshotRepository>
+                    <id>irian_snapshots</id>
+                    <url>dav:http://maven.irian.at/content/repositories/snapshots/</url>
+                </snapshotRepository>
+            </distributionManagement>
+
+        </profile>
+
 
     </profiles>
 
