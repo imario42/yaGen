@@ -150,7 +150,7 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
         return sequenceName;
     }
 
-    private String beautifyConstraintName(String name, String entityClass, String tableName, String colList) {
+    protected String beautifyConstraintName(String name, String entityClass, String tableName, String colList) {
         if (name.startsWith("FK") || name.startsWith("UK")) {
             String newName = findName(entityClass, tableName, colList, "_" + name.substring(0, 2));
             LOG.debug("no constraint name specified for {}({}), using {}", new Object[]{tableName, colList, newName});
@@ -187,7 +187,7 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
 
     public static String concatColumnNames(String columnNameList) {
         StringBuilder colName = new StringBuilder();
-        for (String s : columnNameList.split("[(), ]")) {
+        for (String s : columnNameList.split("[, ]")) {
             if (s.trim().length() < 1) {
                 continue;
             }

@@ -45,7 +45,10 @@ public class PatchHibernateMappingClasses {
 
     private static final Pattern SEPARATOR_PATTERN = Pattern.compile("\r?\n"+CreateDDL.STATEMENT_SEPARATOR.trim()+"\r?\n");
     private static final Pattern PLSQL_END_PATTERN = Pattern.compile("[\\s]+end[\\s]*([a-z_]+)?;([\\s]*(\\r?\\n)?/?)$", Pattern.CASE_INSENSITIVE);
-    private static final Pattern COMMENT_PATTERN = Pattern.compile("(((--).*((\\r?\\n)|$))+)|((/\\*).*(\\*/))", Pattern.CASE_INSENSITIVE|Pattern.MULTILINE);
+    private static final Pattern COMMENT_PATTERN = Pattern.compile(
+            "(((--).*((\\r?\\n)|$))+)|" + // single line comment(s)
+            "(/\\*(?:.|(\\r?\\n))*?\\*/)", // block comment
+            Pattern.CASE_INSENSITIVE|Pattern.MULTILINE);
 
     static List CONFIGURATION_INTERCEPTOR_INSTANCES = new ArrayList();
 
