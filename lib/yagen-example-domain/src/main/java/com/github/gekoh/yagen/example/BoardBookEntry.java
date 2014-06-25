@@ -13,12 +13,6 @@
  See the License for the specific language governing permissions and
  limitations under the License.
 */
-/*
- * BoardBookEntry
- * Copyright (c) 2012 CREDIT SUISSE Technology and Operations. All Rights Reserved.
- * This software is the proprietary information of CREDIT SUISSE Technology and Operations.
- * Use is subject to license and non-disclosure terms.
- */
 package com.github.gekoh.yagen.example;
 
 import com.github.gekoh.yagen.api.Default;
@@ -32,7 +26,7 @@ import javax.persistence.Entity;
 import javax.persistence.Table;
 
 /**
- * @author Georg Kohlweiss (F477448)
+ * @author Georg Kohlweiss
  */
 @Entity
 @Table(name = "BOARD_BOOK_ENTRY")
