@@ -74,6 +74,8 @@ public class PatchHibernateMappingClasses {
 
             clazz.getDeclaredMethod("generateDropSchemaScript").insertBefore(initDialectSrc);
             clazz.getDeclaredMethod("generateSchemaCreationScript").insertBefore(initDialectSrc);
+            clazz.getDeclaredMethod("generateSchemaUpdateScriptList").insertBefore(initDialectSrc);
+            clazz.getDeclaredMethod("generateSchemaUpdateScript").insertBefore(initDialectSrc);
 
             CtMethod method = clazz.getDeclaredMethod("generateSchemaCreationScript");
 
