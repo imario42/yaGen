@@ -1,0 +1,267 @@
+<?xml version="1.0"?>
+<!--
+ Copyright 2014 Georg Kohlweiss
+
+ Licensed under the Apache License, Version 2.0 (the License);
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an AS IS BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="
+            http://maven.apache.org/POM/4.0.0
+            http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.github.gekoh.yagen</groupId>
+        <artifactId>yagen-master</artifactId>
+        <version>1.8</version>
+        <relativePath>../..</relativePath>
+    </parent>
+
+    <artifactId>yagen-example-domain</artifactId>
+    <packaging>jar</packaging>
+
+    <name>yaGen - example domain lib with ddl generation</name>
+
+    <properties>
+        <hst-src.dir>${project.build.directory}/generated-src/main/java</hst-src.dir>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.github.gekoh.yagen</groupId>
+            <artifactId>yagen-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate.javax.persistence</groupId>
+            <artifactId>hibernate-jpa-2.1-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.gekoh.yagen</groupId>
+            <artifactId>yagen-generator-lib</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>javassist</groupId>
+            <artifactId>javassist</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-entitymanager</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-log4j12</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.velocity</groupId>
+            <artifactId>velocity</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.hibernate</groupId>
+            <artifactId>hibernate-core</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time-hibernate</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <!-- need to precompile domain classes cause we need them already
+                     in the classpath when generating history entities in the generate-sources phase -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.1</version>
+                <executions>
+                    <execution>
+                        <id>precompile-domain</id>
+                        <phase>generate-sources</phase>
+                        <goals><goal>compile</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>build-helper-maven-plugin</artifactId>
+                <version>1.7</version>
+                <executions>
+                    <execution>
+                        <phase>generate-sources</phase>
+                        <goals><goal>add-source</goal></goals>
+                        <configuration>
+                            <sources>
+                                <source>${hst-src.dir}</source>
+                            </sources>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <executions>
+                    <!-- generating history entity sources (classes annotated with @TemporalEntity) to be able to use them in JPA -->
+                    <execution>
+                        <id>generate-entity-classes</id>
+                        <phase>generate-sources</phase>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>com.github.gekoh.yagen.hst.CreateEntities</mainClass>
+                            <arguments>
+                                <argument>${hst-src.dir}</argument>
+                                <argument>com.github.gekoh.yagen.example.hst</argument>
+                                <argument>${project.basedir}/src/main/resources/META-INF/example-domain.orm.xml</argument>
+                                <argument>${project.build.outputDirectory}/META-INF/example-domain-hst.orm.xml</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <!-- generating schema ddl via direct java call -->
+            <id>ddl-gen</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>1.2.1</version>
+                        <executions>
+                            <execution>
+                                <id>generateDDL</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>java</goal>
+                                </goals>
+                                <configuration>
+                                    <mainClass>com.github.gekoh.yagen.ddl.CoreDDLGenerator</mainClass>
+                                    <arguments>
+                                        <argument>--profile-name</argument>
+                                        <argument>anyName</argument>
+                                        <argument>--persistence-unit-name</argument>
+                                        <argument>generation-unit</argument>
+                                        <argument>--output-file</argument>
+                                        <argument>"${project.build.outputDirectory}/META-INF/schema-objects-generated.ddl.sql"</argument>
+                                    </arguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <!-- generating schema ddl including table and column comments via javadoc doclet class -->
+            <id>ddl-gen-with-tabNcol-comments</id>
+
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>2.9.1</version>
+                        <executions>
+                            <!--
+                              Ad additionalparam: I didn't find a simple way to escape the backslash of absolute paths in Windows directories,
+                              when specifying an absolute directory as additionalparam, you end up with special characters within
+                              parameter values
+                            -->
+                            <execution>
+                                <id>generateDLL</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>javadoc</goal>
+                                </goals>
+                                <configuration>
+                                    <doclet>com.github.gekoh.yagen.ddl.comment.CommentsDDLGenerator</doclet>
+                                    <docletArtifacts>
+                                        <docletArtifact>
+                                            <groupId>org.slf4j</groupId>
+                                            <artifactId>slf4j-log4j12</artifactId>
+                                            <version>${slf4j.version}</version>
+                                        </docletArtifact>
+                                        <docletArtifact>
+                                            <groupId>com.github.gekoh.yagen</groupId>
+                                            <artifactId>yagen-generator-lib</artifactId>
+                                            <version>${project.version}</version>
+                                        </docletArtifact>
+                                        <docletArtifact>
+                                            <groupId>joda-time</groupId>
+                                            <artifactId>joda-time-hibernate</artifactId>
+                                            <version>${joda-time-hibernate.version}</version>
+                                        </docletArtifact>
+                                    </docletArtifacts>
+
+                                    <!-- add build output to doclet classpath otherwise we would not find files like persistence.xml -->
+                                    <docletPath>${project.build.outputDirectory}</docletPath>
+
+                                    <!-- setting all output dirs to build dir since we need no extra folder being created -->
+                                    <useStandardDocletOptions>false</useStandardDocletOptions>
+                                    <destDir>.</destDir>
+                                    <outputDirectory>${project.build.directory}</outputDirectory>
+                                    <reportOutputDirectory>${project.build.directory}</reportOutputDirectory>
+
+                                    <additionalparam>
+                                        --profile-name anyName
+                                        --persistence-unit-name generation-unit
+                                        --output-file "${project.build.outputDirectory}/META-INF/schema-objects-generated.ddl.sql"
+                                    </additionalparam>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+
+</project>
