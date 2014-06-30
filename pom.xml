@@ -19,7 +19,7 @@
 
     <groupId>com.github.gekoh.yagen</groupId>
     <artifactId>yagen-master</artifactId>
-    <version>1.7</version>
+    <version>1.8</version>
     <packaging>pom</packaging>
     <name>yaGen - yet another Generator</name>
 

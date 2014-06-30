@@ -121,13 +121,23 @@ public class PatchGlue {
             allColumns.put(column.getName().toLowerCase(), column);
         }
 
-        return getDDLEnhancerFromDialect(dialect).updateCreateTable(dialect, buf.append(dialect.getTableTypeString()), table.getName(), allColumns);
+        CreateDDL ddlEnhancer = getDDLEnhancerFromDialect(dialect);
+        if (ddlEnhancer == null) {
+            return returnValue;
+        }
+
+        return ddlEnhancer.updateCreateTable(dialect, buf.append(dialect.getTableTypeString()), table.getName(), allColumns);
     }
 
     public static String afterTableSqlDropString(Table table, Dialect dialect, String returnValue) {
         StringBuffer buf = new StringBuffer(returnValue);
 
-        return getDDLEnhancerFromDialect(dialect).updateDropTable(dialect, buf, table.getName());
+        CreateDDL ddlEnhancer = getDDLEnhancerFromDialect(dialect);
+        if (ddlEnhancer == null) {
+            return returnValue;
+        }
+
+        return ddlEnhancer.updateDropTable(dialect, buf, table.getName());
     }
 
     public static String afterConstraintSqlCreateString(Table table, Dialect dialect, String returnValue, Constraint constraint) {
@@ -137,7 +147,12 @@ public class PatchGlue {
 
         StringBuffer buf = new StringBuffer(returnValue);
 
-        return getDDLEnhancerFromDialect(dialect).updateCreateConstraint(dialect, buf, constraint.getName(), table, constraint);
+        CreateDDL ddlEnhancer = getDDLEnhancerFromDialect(dialect);
+        if (ddlEnhancer == null) {
+            return returnValue;
+        }
+
+        return ddlEnhancer.updateCreateConstraint(dialect, buf, constraint.getName(), table, constraint);
     }
 
     public static String afterIndexSqlCreateString(Table table, Dialect dialect, String returnValue, String name, Iterator columns) {
@@ -149,7 +164,12 @@ public class PatchGlue {
             columnList.add(column);
         }
 
-        return getDDLEnhancerFromDialect(dialect).updateCreateIndex(dialect, buf, name, table, columnList);
+        CreateDDL ddlEnhancer = getDDLEnhancerFromDialect(dialect);
+        if (ddlEnhancer == null) {
+            return returnValue;
+        }
+
+        return ddlEnhancer.updateCreateIndex(dialect, buf, name, table, columnList);
     }
 
     public static String[] afterSequenceSqlCreateStrings(Dialect dialect, String[] ddl, Type type) {
@@ -160,12 +180,20 @@ public class PatchGlue {
             }
         });
 
-        return new String[]{getDDLEnhancerFromDialect(dialect).updateCreateSequence(dialect, returnValue, type)};
+        CreateDDL ddlEnhancer = getDDLEnhancerFromDialect(dialect);
+        if (ddlEnhancer == null) {
+            return ddl;
+        }
+
+        return new String[]{ddlEnhancer.updateCreateSequence(dialect, returnValue, type)};
     }
 
     public static CreateDDL getDDLEnhancerFromDialect(Dialect dialect) {
         if (dialect instanceof DDLEnhancer) {
             DDLEnhancer ddlEnhancer = (DDLEnhancer) dialect;
+            if (ddlEnhancer.getDDLEnhancer() == null) {
+                LOG.warn("cannot enhance DDL since dialect was not initialized");
+            }
             return ddlEnhancer.getDDLEnhancer();
         }
         throw new IllegalArgumentException(Dialect.class.getName() + " was not patched, generator enhancements inoperable");
