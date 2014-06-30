@@ -70,13 +70,12 @@ public class PatchHibernateMappingClasses {
 
         {
             CtClass clazz = cp.get("org.hibernate.cfg.Configuration");
-            CtMethod method = clazz.getDeclaredMethod("generateDropSchemaScript");
+            String initDialectSrc = "com.github.gekoh.yagen.hibernate.PatchGlue.initDialect($1, getNamingStrategy(), getProperties());";
 
-            method.insertBefore(
-                    "com.github.gekoh.yagen.hibernate.PatchGlue.initDialect($1, getNamingStrategy(), getProperties());"
-            );
+            clazz.getDeclaredMethod("generateDropSchemaScript").insertBefore(initDialectSrc);
+            clazz.getDeclaredMethod("generateSchemaCreationScript").insertBefore(initDialectSrc);
 
-            method = clazz.getDeclaredMethod("generateSchemaCreationScript");
+            CtMethod method = clazz.getDeclaredMethod("generateSchemaCreationScript");
 
             method.insertAfter(
                     "$_ = com.github.gekoh.yagen.hibernate.PatchHibernateMappingClasses.addHeaderAndFooter($_, dialect);"
