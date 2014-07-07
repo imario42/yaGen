@@ -19,7 +19,7 @@
 
     <groupId>com.github.gekoh.yagen</groupId>
     <artifactId>yagen-master</artifactId>
-    <version>1.8</version>
+    <version>1.9</version>
     <packaging>pom</packaging>
     <name>yaGen - yet another Generator</name>
 
@@ -123,9 +123,9 @@
             </dependency>
 
             <dependency>
-                <groupId>joda-time</groupId>
-                <artifactId>joda-time-hibernate</artifactId>
-                <version>${joda-time-hibernate.version}</version>
+                <groupId>org.jadira.usertype</groupId>
+                <artifactId>usertype.core</artifactId>
+                <version>3.2.0.GA</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
