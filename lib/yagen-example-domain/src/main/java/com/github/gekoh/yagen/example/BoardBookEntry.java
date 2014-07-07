@@ -59,7 +59,7 @@ public class BoardBookEntry extends BaseEntity {
      * timestamp of departure in UTC
      */
     @Basic(optional = false)
-    @Type(type="org.joda.time.contrib.hibernate.PersistentDateTime")
+    @Type(type="org.jadira.usertype.dateandtime.joda.PersistentDateTime")
     private DateTime departed;
 
     /**
@@ -74,7 +74,7 @@ public class BoardBookEntry extends BaseEntity {
      */
     @Basic(optional = false)
     @Column(name = "LANDING_TIME")
-    @Type(type="org.joda.time.contrib.hibernate.PersistentDateTime")
+    @Type(type="org.jadira.usertype.dateandtime.joda.PersistentDateTime")
     private DateTime landingTime;
 
     /**

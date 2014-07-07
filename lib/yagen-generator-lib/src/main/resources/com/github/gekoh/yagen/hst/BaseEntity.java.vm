@@ -23,6 +23,7 @@
 package ${baseClassPackageName};
 
 import com.github.gekoh.yagen.api.Constants;
+import com.github.gekoh.yagen.api.Generated;
 import org.hibernate.annotations.Type;
 import org.joda.time.DateTime;
 
@@ -37,6 +38,7 @@ import java.util.UUID;
  * @author Georg Kohlweiss
  */
 @SuppressWarnings({"UnusedDeclaration", "FieldCanBeLocal"})
+@Generated
 @MappedSuperclass
 public abstract class BaseEntity {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(BaseEntity.class);
@@ -60,14 +62,14 @@ public abstract class BaseEntity {
      * (currently we use the timestamp when the first entity of a transaction was changed,
      * but this timestamp then is used for all changed entities within the same transaction)
      */
-    @Type(type = "org.joda.time.contrib.hibernate.PersistentDateTime")
+    @Type(type = "org.jadira.usertype.dateandtime.joda.PersistentDateTime")
     @Column(name = "TRANSACTION_TIMESTAMP", nullable = false)
     private DateTime transactionTimestamp;
 
     /**
      * Entity was invalidated at.
      */
-    @Type(type = "org.joda.time.contrib.hibernate.PersistentDateTime")
+    @Type(type = "org.jadira.usertype.dateandtime.joda.PersistentDateTime")
     @Column(name = "INVALIDATED_AT", nullable = true)
     private DateTime invalidatedAt;
 
