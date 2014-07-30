@@ -49,6 +49,7 @@ import javax.persistence.MappedSuperclass;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import javax.persistence.Version;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -67,6 +68,7 @@ public class CommentsDDLGenerator extends Doclet {
     public static final Class<?>[] tableAnnotations = new Class<?>[]{Table.class};
     public static final Class<?>[] columnAnnotations = new Class<?>[]{Column.class};
     public static final Class<?>[] allColumnAnnotations = new Class<?>[]{Id.class, Column.class, Version.class, Basic.class};
+    public static final Class<?>[] transientAnnotations = new Class<?>[]{Transient.class};
     public static final Class<?>[] embededColumnAnnotations = new Class<?>[]{Embedded.class};
     public static final Class<?>[] embeddableClassAnnotations = new Class<?>[]{Embeddable.class};
     public static final Class<?>[] relationAnnotations = new Class<?>[]{ManyToMany.class, OneToMany.class, OneToOne.class, ManyToOne.class};
@@ -238,6 +240,10 @@ public class CommentsDDLGenerator extends Doclet {
                                           RootDoc root,
                                           ClassDoc klass, String tableName) {
         for (final FieldDoc fieldDoc : klass.fields(false)) {
+            if (isTransient(fieldDoc)) {
+                continue;
+            }
+
             String comment = fieldDoc.commentText();
 
             if (isEmbeddedColumn(fieldDoc)) {
@@ -272,6 +278,10 @@ public class CommentsDDLGenerator extends Doclet {
     private static void handleClassMethods(Map<String, String> comments,
                                            ClassDoc klass, String tableName) {
         for (final MethodDoc methodDoc : klass.methods(false)) {
+            if (isTransient(methodDoc)) {
+                continue;
+            }
+
             String comment = methodDoc.commentText();
 
             if (isColumn(methodDoc)) {
@@ -387,6 +397,10 @@ public class CommentsDDLGenerator extends Doclet {
                 }
             }
         }
+    }
+
+    public static boolean isTransient(ProgramElementDoc field) {
+        return DocletUtils.hasAnnotation(field, transientAnnotations);
     }
 
     public static boolean isColumn(ProgramElementDoc field) {
