@@ -425,8 +425,9 @@ public class CreateEntities {
                 fi = new FieldInfo(type, name, false, column);
             }
             else if ((field.isAnnotationPresent(ManyToOne.class) && !field.isAnnotationPresent(JoinTable.class)) ||
-                    (field.isAnnotationPresent(OneToOne.class) && field.getAnnotation(OneToOne.class).mappedBy() == null)) {
-                fi = getIdFieldInfo(type, name, field.getAnnotation(JoinColumn.class).name());
+                    (field.isAnnotationPresent(OneToOne.class) && StringUtils.isEmpty(field.getAnnotation(OneToOne.class).mappedBy()))) {
+                String columnName = field.isAnnotationPresent(JoinColumn.class) ? field.getAnnotation(JoinColumn.class).name() : field.getName();
+                fi = getIdFieldInfo(type, name, columnName);
             }
             else {
                 continue;

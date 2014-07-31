@@ -21,6 +21,7 @@
 
     <entity class="com.github.gekoh.yagen.example.Aircraft"/>
     <entity class="com.github.gekoh.yagen.example.BoardBookEntry"/>
+    <entity class="com.github.gekoh.yagen.example.PilotLogEntry"/>
 
 </entity-mappings>
 

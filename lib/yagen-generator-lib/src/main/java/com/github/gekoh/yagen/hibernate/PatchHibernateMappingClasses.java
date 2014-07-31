@@ -17,6 +17,7 @@ package com.github.gekoh.yagen.hibernate;
 
 import com.github.gekoh.yagen.ddl.CreateDDL;
 import com.github.gekoh.yagen.ddl.DDLGenerator;
+import javassist.CannotCompileException;
 import javassist.ClassClassPath;
 import javassist.ClassPool;
 import javassist.CtClass;
@@ -74,8 +75,13 @@ public class PatchHibernateMappingClasses {
 
             clazz.getDeclaredMethod("generateDropSchemaScript").insertBefore(initDialectSrc);
             clazz.getDeclaredMethod("generateSchemaCreationScript").insertBefore(initDialectSrc);
-            clazz.getDeclaredMethod("generateSchemaUpdateScriptList").insertBefore(initDialectSrc);
-            clazz.getDeclaredMethod("generateSchemaUpdateScript").insertBefore(initDialectSrc);
+
+            try {
+                clazz.getDeclaredMethod("generateSchemaUpdateScriptList").insertBefore(initDialectSrc);
+                clazz.getDeclaredMethod("generateSchemaUpdateScript").insertBefore(initDialectSrc);
+            } catch (NotFoundException ignore) {
+                // seems that used hibernate version does not have these methods
+            }
 
             CtMethod method = clazz.getDeclaredMethod("generateSchemaCreationScript");
 

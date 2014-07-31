@@ -144,6 +144,8 @@ public class DDLGenerator {
                         throw new IllegalArgumentException("cannot find persistence unit " + profile.getPersistenceUnitName());
                     }
                     cfg = (Configuration) getHibernateConfiguration.invoke(ejb3Configuration);
+                    // ensure mappings were ready (needed e.g. for hibernate 4.2.7.Final)
+                    cfg.buildMappings();
                 } catch (Exception e1) {
                     throw new IllegalStateException("cannot detect hibernate version or init failed", e1);
                 }
