@@ -47,9 +47,9 @@ public class PatchHibernateMappingClasses {
     private static final Pattern SEPARATOR_PATTERN = Pattern.compile("\r?\n"+CreateDDL.STATEMENT_SEPARATOR.trim()+"\r?\n");
     private static final Pattern PLSQL_END_PATTERN = Pattern.compile("[\\s]+end[\\s]*([a-z_]+)?;([\\s]*(\\r?\\n)?/?)$", Pattern.CASE_INSENSITIVE);
     private static final Pattern COMMENT_PATTERN = Pattern.compile(
-            "(((--).*((\\r?\\n)|$))+)|" + // single line comment(s)
-            "(/\\*(?:.|(\\r?\\n))*?\\*/)", // block comment
-            Pattern.CASE_INSENSITIVE|Pattern.MULTILINE);
+            "(((--)[^\\n]*((\\r?\\n)|$))+)|" + // single line comment(s)
+            "(/\\*+(.*?)\\*+/)", // block comment
+            Pattern.DOTALL);
 
     static List CONFIGURATION_INTERCEPTOR_INSTANCES = new ArrayList();
 
@@ -421,15 +421,13 @@ public class PatchHibernateMappingClasses {
 
     public static boolean isEmptyStatement(String sqlStmt) {
         Matcher matcher = COMMENT_PATTERN.matcher(sqlStmt);
-        int idx = 0;
 
-        while (matcher.find(idx)) {
-            if (sqlStmt.substring(idx, matcher.start()).trim().length() > 0) {
-                return false;
-            }
-            idx = matcher.end();
+        while (matcher.find()) {
+            sqlStmt = sqlStmt.substring(0, matcher.start()) + sqlStmt.substring(matcher.end());
+            matcher = COMMENT_PATTERN.matcher(sqlStmt);
         }
-        return true;
+
+        return sqlStmt.trim().length()<1;
     }
 
     public static SqlStatement prepareDDL(String sql){

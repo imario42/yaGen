@@ -397,10 +397,14 @@ public class CreateDDL {
 
                 if (entityClassName != null) {
                     String hstEntityClassName = entityClassName + CreateEntities.HISTORY_ENTITY_SUFFIX;
-                    // this will throw an exception when the history entity class is not found
-                    Class.forName(hstEntityClassName);
-
                     histTableName = getProfile().getNamingStrategy().classToTableName(hstEntityClassName);
+
+                    // this will throw an exception when the history entity class is not found
+                    TableConfig hstConfig = new TableConfig(this, Class.forName(hstEntityClassName), histTableName);
+
+                    hstConfig.setTableToBeRendered(false);
+
+                    tblNameToConfig.put(hstConfig.getTableName(), hstConfig);
                 }
                 else {
 //                  there is no entity for the live table, e.g. for ManyToMany relations
