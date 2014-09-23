@@ -250,10 +250,19 @@ public class PatchGlue {
             for (String singleSql : PatchHibernateMappingClasses.splitSQL(sqlCommand)) {
                 SqlStatement ddlStmt = PatchHibernateMappingClasses.prepareDDL(singleSql);
                 wrapArr[0] = ddlStmt.getSql();
+                boolean emptyStatement = PatchHibernateMappingClasses.isEmptyStatement(singleSql);
                 try {
-                    schemaExportPerform.invoke(schemaExport, new Object[]{wrapArr, exporters, ddlStmt.getDelimiter()});
+                    List passedExporters = new ArrayList();
+                    passedExporters.add(null);
+                    for (Object exporter : exporters) {
+                        passedExporters.set(0, exporter);
+                        boolean databaseExporter = exporter.getClass().getSimpleName().equals("DatabaseExporter");
+                        if (!databaseExporter || !emptyStatement) {
+                            schemaExportPerform.invoke(schemaExport, new Object[]{wrapArr, passedExporters, databaseExporter ? null : ddlStmt.getDelimiter()});
+                        }
+                    }
                 } catch (InvocationTargetException e) {
-                    if (e.getCause() instanceof SQLException && !PatchHibernateMappingClasses.isEmptyStatement(singleSql)) {
+                    if (e.getCause() instanceof SQLException && !emptyStatement) {
                         LOG.warn("failed executing sql: {}", singleSql);
                         LOG.warn("failure: {}", e.getCause().getMessage());
                     }
