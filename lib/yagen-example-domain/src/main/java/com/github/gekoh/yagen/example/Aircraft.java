@@ -46,19 +46,20 @@ public class Aircraft extends BaseEntity {
     /**
      * aircraft type
      */
+    @Column(name = "TYPE", length = 20, nullable = false)
     private String type;
 
     /**
      * engine technology
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "ENGINE_TYPE", length = Constants.ENUM_DEFAULT_LEN)
+    @Column(name = "ENGINE_TYPE", length = Constants.ENUM_DEFAULT_LEN, nullable = false)
     private EngineType engineType;
 
     /**
      * national call sign
      */
-    @Column(name = "CALL_SIGN", length = 6, unique = true)
+    @Column(name = "CALL_SIGN", length = 7, unique = true, nullable = false)
     private String callSign;
 
 
@@ -70,10 +71,15 @@ public class Aircraft extends BaseEntity {
     Aircraft() {
     }
 
-    public Aircraft(String type, String callSign) {
+    public Aircraft(EngineType engineType, String type, String callSign) {
+        this.engineType = engineType;
         this.type = type;
         this.callSign = callSign;
         this.boardBookEntries = new ArrayList<BoardBookEntry>();
+    }
+
+    public EngineType getEngineType() {
+        return engineType;
     }
 
     public String getType() {

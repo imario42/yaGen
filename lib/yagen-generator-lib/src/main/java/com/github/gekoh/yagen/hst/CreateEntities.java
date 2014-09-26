@@ -342,7 +342,8 @@ public class CreateEntities {
             }
             else {
                 Column column = getUuidColumn(baseEntity);
-                name = column.name();
+                AccessibleObject idFieldOrMethod = getIdFieldOrMethod(baseEntity);
+                name = deriveColumnName(column, idFieldOrMethod);
                 length = column.length();
             }
             context.put("baseEntityUuidColumnName", name.toLowerCase());
@@ -516,6 +517,18 @@ public class CreateEntities {
         return entityClass.getSuperclass() != null ? getIdFieldOrMethod(entityClass.getSuperclass()) : null;
     }
 
+    private static String deriveColumnName(Column column, AccessibleObject fieldOrMethod) {
+        if (fieldOrMethod instanceof Field) {
+            return deriveColumnName(column, ((Field) fieldOrMethod).getName());
+        }
+        String name = ((Method) fieldOrMethod).getName();
+        return deriveColumnName(column, name.length()>3 ? name.substring(3) : name);
+    }
+
+    private static String deriveColumnName(Column column, String fieldName) {
+        return column == null || StringUtils.isEmpty(column.name()) ? fieldName : column.name();
+    }
+
     public void writeOrmFile (File ormOutFile, String baseClassPackageName, String ormVersion) {
         if (!ormOutFile.getParentFile().exists() && !ormOutFile.getParentFile().mkdirs()) {
             throw new IllegalArgumentException(
@@ -627,7 +640,7 @@ public class CreateEntities {
         public FieldInfo(Class type, String name, boolean anEnum, Column column) {
             this.type = type;
             this.name = name;
-            this.columnName = column.name().toLowerCase();
+            this.columnName = deriveColumnName(column, name).toLowerCase();
             isEnum = anEnum;
             isEmbedded = false;
             this.columnAnnotation = formatAnnotation(column);
