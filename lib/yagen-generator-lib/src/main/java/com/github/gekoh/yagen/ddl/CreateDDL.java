@@ -1714,7 +1714,8 @@ public class CreateDDL {
         }
 
         sqlCreateString = addConstraintsAndNames(dialect, additionalObjects, sqlCreateString, histTableName.toLowerCase(), null);
-        sqlCreateString = addDefaultValues(sqlCreateString, histTableName.toLowerCase());
+//        not adding default values to history tables, this will make investigations very hard
+//        sqlCreateString = addDefaultValues(sqlCreateString, histTableName.toLowerCase());
 
         getProfile().duplex(ObjectType.TABLE, histTableName, sqlCreateString);
 
