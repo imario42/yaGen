@@ -42,6 +42,8 @@ import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
 import org.hibernate.type.Type;
 
+import javax.persistence.CollectionTable;
+import javax.persistence.JoinTable;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -96,6 +98,7 @@ public class CreateDDL {
             + "create table[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)([\\s]*\\()"
             + ".*(\\))\\s*(partition\\s+by.*)?");
     private static final int TBL_PATTERN_WO_PK_IDX_TBLNAME = 1;
+    private static final int TBL_PATTERN_WO_PK_IDX_BEFORE_COL_DEF = 2;
     private static final int TBL_PATTERN_WO_PK_IDX_AFTER_COL_DEF = 3;
 
     private static final Pattern TBL_ALTER_PATTERN = Pattern.compile("alter table[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]");
@@ -422,6 +425,19 @@ public class CreateDDL {
 
                 if (StringUtils.isEmpty(histTableName)) {
                     histTableName = tblMatcher.group(TBL_PATTERN_WO_PK_IDX_TBLNAME) + Constants._HST;
+                }
+
+                if (pkCols == null) {
+                    JoinTable joinTable = tableConfig.getTableAnnotationOfType(JoinTable.class);
+                    CollectionTable collectionTable = tableConfig.getTableAnnotationOfType(CollectionTable.class);
+
+                    javax.persistence.UniqueConstraint[] uniqueConstraints = joinTable != null ? joinTable.uniqueConstraints() : collectionTable != null ? collectionTable.uniqueConstraints() : null;
+
+                    if (uniqueConstraints == null || uniqueConstraints.length < 1) {
+                        throw new IllegalStateException("cannot create history for table "+liveTableName+" since this table has no unique or primary key");
+                    }
+
+                    pkCols = Arrays.asList(uniqueConstraints[0].columnNames());
                 }
 
                 buf.append(STATEMENT_SEPARATOR).append("-- adding history table due to annotation ")
@@ -1645,35 +1661,66 @@ public class CreateDDL {
 
         StringBuilder sql = new StringBuilder();
 
+        // try matching create table sql with PK definition
         if (!matcher.matches()) {
-            throw new IllegalStateException("cannot find create table with PK in sql: " + sqlCreateString);
+            matcher = TBL_PATTERN_WO_PK.matcher(sqlCreateString);
+
+            // next try without PD definition (e.g. for CollectionTable)
+            if (!matcher.matches()) {
+                throw new IllegalStateException("cannot find create table in sql: " + sqlCreateString);
+            }
+
+            sql.append(sqlCreateString.substring(0, matcher.start(TBL_PATTERN_WO_PK_IDX_TBLNAME))).append(histTableName);
+            sql.append(sqlCreateString.substring(matcher.end(TBL_PATTERN_WO_PK_IDX_TBLNAME), matcher.end(TBL_PATTERN_WO_PK_IDX_BEFORE_COL_DEF)));
+            sql.append(formatColumn(dialect, HIST_TABLE_PK_COLUMN_NAME+" ${varcharType} not null", Constants.UUID_LEN, null, null)).append(", ");
+            sql.append(formatColumn(dialect, HIST_OPERATION_COLUMN_NAME+" ${varcharType} not null", 1, null, null)).append(", ");
+
+            sql.append(sqlCreateString.substring(matcher.end(TBL_PATTERN_WO_PK_IDX_BEFORE_COL_DEF), matcher.start(TBL_PATTERN_WO_PK_IDX_AFTER_COL_DEF)));
+
+            sql.append(", ");
+
+            if (!columns.contains(histColName)) {
+                sql.append(formatColumn(dialect, histColName+" ${timestampType} not null", null, null, null)).append(", ");
+            }
+
+            sql.append("primary key (");
+            sql.append(HIST_TABLE_PK_COLUMN_NAME).append("), ");
+
+            sql.append("unique (");
+            for (String columnName : pkCols) {
+                sql.append(columnName).append(", ");
+            }
+            sql.append(histColName);
+            sql.append(")");
+
         }
+        else {
+            sql.append(sqlCreateString.substring(0, matcher.start(TBL_PATTERN_IDX_TBLNAME))).append(histTableName);
+            sql.append(sqlCreateString.substring(matcher.end(TBL_PATTERN_IDX_TBLNAME), matcher.start(TBL_PATTERN_IDX_TBL_DEF)));
+            sql.append(formatColumn(dialect, HIST_TABLE_PK_COLUMN_NAME+" ${varcharType} not null", Constants.UUID_LEN, null, null)).append(", ");
+            sql.append(formatColumn(dialect, HIST_OPERATION_COLUMN_NAME+" ${varcharType} not null", 1, null, null)).append(", ");
 
-        sql.append(sqlCreateString.substring(0, matcher.start(TBL_PATTERN_IDX_TBLNAME))).append(histTableName);
-        sql.append(sqlCreateString.substring(matcher.end(TBL_PATTERN_IDX_TBLNAME), matcher.start(TBL_PATTERN_IDX_TBL_DEF)));
-        sql.append(formatColumn(dialect, HIST_TABLE_PK_COLUMN_NAME+" ${varcharType} not null", Constants.UUID_LEN, null, null)).append(", ");
-        sql.append(formatColumn(dialect, HIST_OPERATION_COLUMN_NAME+" ${varcharType} not null", 1, null, null)).append(", ");
+            sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_TBL_DEF), matcher.start(TBL_PATTERN_IDX_PK_CLAUSE)));
 
-        sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_TBL_DEF), matcher.start(TBL_PATTERN_IDX_PK_CLAUSE)));
+            if (!columns.contains(histColName)) {
+                sql.append(formatColumn(dialect, histColName+" ${timestampType} not null", null, null, null)).append(", ");
+            }
 
-        if (!columns.contains(histColName)) {
-            sql.append(formatColumn(dialect, histColName+" ${timestampType} not null", null, null, null)).append(", ");
+            sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_PK_CLAUSE), matcher.start(TBL_PATTERN_IDX_PK_COLLIST)));
+            sql.append(HIST_TABLE_PK_COLUMN_NAME).append("), ");
+            sql.append("unique (");
+            sql.append(matcher.group(TBL_PATTERN_IDX_PK_COLLIST));
+            sql.append(", ");
+            sql.append(histColName);
+            sql.append(")");
+
+            int restIdx = matcher.end(TBL_PATTERN_IDX_PK_CLAUSE);
+            while (matchUnique.find(restIdx)) {
+                restIdx = matchUnique.end(1);
+            }
+
+            sql.append(sqlCreateString.substring(restIdx));
         }
-
-        sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_PK_CLAUSE), matcher.start(TBL_PATTERN_IDX_PK_COLLIST)));
-        sql.append(HIST_TABLE_PK_COLUMN_NAME).append("), ");
-        sql.append("unique (");
-        sql.append(matcher.group(TBL_PATTERN_IDX_PK_COLLIST));
-        sql.append(", ");
-        sql.append(histColName);
-        sql.append(")");
-
-        int restIdx = matcher.end(TBL_PATTERN_IDX_PK_CLAUSE);
-        while (matchUnique.find(restIdx)) {
-            restIdx = matchUnique.end(1);
-        }
-
-        sql.append(sqlCreateString.substring(restIdx));
 
         Matcher uniqueColMatcher = COL_PATTERN.matcher(sql.toString());
         int colIdx = 0;

@@ -21,9 +21,16 @@ import org.hibernate.annotations.Type;
 import org.joda.time.DateTime;
 
 import javax.persistence.Basic;
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
+import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.JoinColumn;
 import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * @author Georg Kohlweiss
@@ -87,13 +94,18 @@ public class BoardBookEntry extends BaseEntity {
     /**
      * holds information about added fuel or oil
      */
-    @Column(name = "ADDED_OPERATING_RESOURCES")
-    private String addedOperatingResources;
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "OPERATING_RESOURCES", joinColumns = @JoinColumn(name = "BOARD_BOOK_UUID", nullable = false)
+            , uniqueConstraints = @UniqueConstraint(name = "OPR_UK", columnNames = {"BOARD_BOOK_UUID", "ADDED_OPERATING_RESOURCES"})
+    )
+    @TemporalEntity(historyTableName = "OPERATING_RESOURCES_HST")
+    @Column(name = "ADDED_OPERATING_RESOURCES", nullable = false)
+    private Collection<String> addedOperatingResources;
 
     BoardBookEntry() {
     }
 
-    public BoardBookEntry(int num, String crewAndPax, String departedFrom, DateTime departed, String landedAt, DateTime landingTime, int landings, String addedOperatingResources) {
+    public BoardBookEntry(int num, String crewAndPax, String departedFrom, DateTime departed, String landedAt, DateTime landingTime, int landings) {
         this.num = num;
         this.crewAndPax = crewAndPax;
         this.departedFrom = departedFrom;
@@ -101,7 +113,7 @@ public class BoardBookEntry extends BaseEntity {
         this.landedAt = landedAt;
         this.landingTime = landingTime;
         this.landings = landings;
-        this.addedOperatingResources = addedOperatingResources;
+        this.addedOperatingResources = new ArrayList<String>();
     }
 
     public int getNum() {
@@ -132,7 +144,7 @@ public class BoardBookEntry extends BaseEntity {
         return landings;
     }
 
-    public String getAddedOperatingResources() {
+    public Collection<String> getAddedOperatingResources() {
         return addedOperatingResources;
     }
 }

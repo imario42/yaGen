@@ -75,7 +75,9 @@ public class TableConfig {
             TemporalEntity.class,
             com.github.gekoh.yagen.api.Table.class,
             IntervalPartitioning.class,
-            Auditable.class
+            Auditable.class,
+            JoinTable.class,
+            CollectionTable.class
     ));
 
 
@@ -519,14 +521,18 @@ public class TableConfig {
     private void processAnnotations (AccessibleObject[] fieldsOrMethods, boolean selectiveRendering) {
         for (AccessibleObject fieldOrMethod: fieldsOrMethods) {
             JoinTable joinTable = fieldOrMethod.getAnnotation(JoinTable.class);
-            TableConfig joinTableConfig = joinTable != null ? ddlEnhancer.getConfigForTableName(getIdentifierForReference(joinTable.name())) : null;
+            CollectionTable collectionTable = fieldOrMethod.getAnnotation(CollectionTable.class);
+            String joinTableName = joinTable != null ? joinTable.name() : collectionTable != null ? collectionTable.name() : null;
+            TableConfig joinTableConfig = joinTableName != null ? ddlEnhancer.getConfigForTableName(getIdentifierForReference(joinTableName)) : null;
 
-            if (joinTable != null && joinTableConfig == null) {
-                joinTableConfig = new TableConfig(ddlEnhancer, null, joinTable.name());
+            if (joinTableName != null && joinTableConfig == null) {
+                joinTableConfig = new TableConfig(ddlEnhancer, null, joinTableName);
                 ddlEnhancer.addTableConfig(joinTableConfig);
             }
 
-            if (joinTable != null) {
+            if (joinTableConfig != null) {
+                joinTableConfig.putTableAnnotation(joinTable != null ? joinTable : collectionTable);
+
                 if (fieldOrMethod.isAnnotationPresent(IntervalPartitioning.class)) {
                     joinTableConfig.putTableAnnotation(fieldOrMethod.getAnnotation(IntervalPartitioning.class));
                 }
@@ -534,14 +540,10 @@ public class TableConfig {
                     joinTableConfig.putTableAnnotation(fieldOrMethod.getAnnotation(Auditable.class));
                 }
             }
-            else if (fieldOrMethod.isAnnotationPresent(CollectionTable.class)) {
-                joinTableConfig = new TableConfig(ddlEnhancer, null, fieldOrMethod.getAnnotation(CollectionTable.class).name());
-                ddlEnhancer.addTableConfig(joinTableConfig);
-            }
 
             if (fieldOrMethod.getAnnotation(Profile.class) != null) {
-                if (joinTable == null) {
-                    throw new IllegalArgumentException("need @"+JoinTable.class.getSimpleName()+" for @"+Profile.class.getSimpleName()+" on a field");
+                if (joinTableConfig == null) {
+                    throw new IllegalArgumentException("need @"+JoinTable.class.getSimpleName()+" or @"+CollectionTable.class.getSimpleName()+" for @"+Profile.class.getSimpleName()+" on a field");
                 }
                 Profile annotation = fieldOrMethod.getAnnotation(Profile.class);
 
@@ -550,8 +552,8 @@ public class TableConfig {
                 }
             }
             if (fieldOrMethod.getAnnotation(TemporalEntity.class) != null) {
-                if (joinTable == null) {
-                    throw new IllegalArgumentException("need @"+JoinTable.class.getSimpleName()+" for @"+TemporalEntity.class.getSimpleName()+" on a field");
+                if (joinTableConfig == null) {
+                    throw new IllegalArgumentException("need @"+JoinTable.class.getSimpleName()+" or @"+CollectionTable.class.getSimpleName()+" for @"+TemporalEntity.class.getSimpleName()+" on a field");
                 }
                 TemporalEntity annotation = fieldOrMethod.getAnnotation(TemporalEntity.class);
 
