@@ -30,6 +30,7 @@ import org.hibernate.annotations.Type;
 import javax.persistence.AttributeOverride;
 import javax.persistence.AttributeOverrides;
 import javax.persistence.Basic;
+import javax.persistence.CollectionTable;
 import javax.persistence.Column;
 import javax.persistence.DiscriminatorColumn;
 import javax.persistence.DiscriminatorValue;
@@ -396,7 +397,7 @@ public class CreateEntities {
             else if (field.isAnnotationPresent(Enumerated.class)) {
                 fi = new FieldInfo(type, name, true, column);
             }
-            else if (column != null) {
+            else if (column != null && !field.isAnnotationPresent(CollectionTable.class)) {
                 if (type.isPrimitive()) {
                     if (type.equals(Boolean.TYPE)) {
                         type = Boolean.class;
