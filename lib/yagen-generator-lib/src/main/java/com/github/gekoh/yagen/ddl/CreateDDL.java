@@ -1693,6 +1693,7 @@ public class CreateDDL {
             sql.append(histColName);
             sql.append(")");
 
+            sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_WO_PK_IDX_AFTER_COL_DEF)));
         }
         else {
             sql.append(sqlCreateString.substring(0, matcher.start(TBL_PATTERN_IDX_TBLNAME))).append(histTableName);
