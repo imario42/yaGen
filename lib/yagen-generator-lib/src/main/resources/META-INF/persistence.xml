@@ -18,7 +18,7 @@
 
     <persistence-unit name="oracle" transaction-type="RESOURCE_LOCAL">
 
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <mapping-file>META-INF/oracleDataTypes.hbm.xml</mapping-file>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
@@ -31,7 +31,7 @@
 
     <persistence-unit name="oracleXE" transaction-type="RESOURCE_LOCAL">
 
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <mapping-file>META-INF/oracleDataTypes.hbm.xml</mapping-file>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
@@ -44,7 +44,7 @@
 
     <persistence-unit name="hsql" transaction-type="RESOURCE_LOCAL">
 
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>
@@ -56,7 +56,7 @@
 
     <persistence-unit name="pgsql" transaction-type="RESOURCE_LOCAL">
 
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>

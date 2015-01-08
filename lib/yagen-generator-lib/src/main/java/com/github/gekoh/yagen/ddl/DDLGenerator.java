@@ -92,6 +92,10 @@ public class DDLGenerator {
                 cfg = new Configuration();
             }
 
+            if (cfg == null) {
+                throw new IllegalStateException("unable to obtain hibernate configuration");
+            }
+
             for (Class entityClass : profile.getEntityClasses()) {
                 if (cfg.getClassMapping(entityClass.getName()) == null) {
                     cfg.addAnnotatedClass(entityClass);
@@ -125,7 +129,9 @@ public class DDLGenerator {
                 try {
                     Method createEntityManagerFactory = persistenceProviderClass.getMethod("createEntityManagerFactory", String.class, Map.class);
                     Object provider = persistenceProviderClass.newInstance();
-                    createEntityManagerFactory.invoke(provider, new Object[]{profile.getPersistenceUnitName(), null});
+                    if (createEntityManagerFactory.invoke(provider, new Object[]{profile.getPersistenceUnitName(), null}) == null) {
+                        throw new IllegalArgumentException("persistence unit '" + profile.getPersistenceUnitName() + "' not found");
+                    };
                 } catch (Exception e) {
                     throw new IllegalStateException("cannot init hibernate", e);
                 }
