@@ -146,6 +146,7 @@ public class CreateDDL {
 
     private StringBuffer deferredDdl = new StringBuffer();
     private Set<String> objectNames = new HashSet<String>();
+    private Map<String, String> tblShortNameToTblName = new HashMap<String, String>();
     private Set<String> externalViews = new HashSet<String>();
     private Set<String> views;
     private Set<String> tblColNameHasSingleColIndex = new HashSet<String>();
@@ -179,6 +180,14 @@ public class CreateDDL {
             TableConfig tableConfig = tblNameToConfig.get(nameLC);
             if (tableConfig == null) {
                 tblNameToConfig.put(nameLC, tableConfig = new TableConfig(this, baseClass, nameLC));
+                String tableName = tableConfig.getTableName();
+                String shortName = getShortName(tableName);
+
+                String definedForTable = tblShortNameToTblName.get(shortName);
+                if (definedForTable != null && !definedForTable.equals(tableName)) {
+                    throw new IllegalStateException("error setting short name for table '" + tableName + "': short name '" + shortName + "' already defined for table '" + definedForTable + "'");
+                }
+                tblShortNameToTblName.put(shortName, tableName);
             }
 
             if (profile.getOnlyRenderEntities() != null && !profile.getOnlyRenderEntities().matcher(baseClass.getName()).matches()) {
