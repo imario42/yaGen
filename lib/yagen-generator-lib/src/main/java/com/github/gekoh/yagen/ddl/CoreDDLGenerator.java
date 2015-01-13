@@ -137,9 +137,9 @@ public class CoreDDLGenerator {
                 profile.setOnlyRenderEntitiesRegex(cl.getOptionValue(PARAM_REGEX_RENDER_ONLY_ENTITIES));
             }
         } catch (ClassNotFoundException e) {
-            LOG.error("cannot instantiate profile provider class {}", cl.getOptionValue(PARAM_PROFILE_PROVIDER_CLASS));
+            throw new IllegalStateException("cannot instantiate profile provider class " + cl.getOptionValue(PARAM_PROFILE_PROVIDER_CLASS));
         } catch (Exception e) {
-            LOG.error("error setting up generator profile", e);
+            throw new IllegalStateException("error setting up generator profile: " + e.getMessage(), e);
         }
 
         return profile;
