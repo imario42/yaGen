@@ -343,7 +343,9 @@ public class TableConfig {
                 if (fOm.isAnnotationPresent(JoinTable.class)) {
                     JoinTable joinTable = fOm.getAnnotation(JoinTable.class);
                     fkCols.add(getIdentifierForReference(joinTable.joinColumns()[0].name()));
-                    fkCols.add(getIdentifierForReference(joinTable.inverseJoinColumns()[0].name()));
+                    if (joinTable.inverseJoinColumns().length > 0) {
+                        fkCols.add(getIdentifierForReference(joinTable.inverseJoinColumns()[0].name()));
+                    }
                     fkTableName = joinTable.name();
                 }
                 else if (fOm.isAnnotationPresent(OneToMany.class)) {
