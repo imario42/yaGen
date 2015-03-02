@@ -19,6 +19,7 @@ import com.github.gekoh.yagen.api.CascadeDelete;
 import com.github.gekoh.yagen.api.CascadeNullable;
 import org.apache.commons.lang.StringUtils;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -243,6 +244,19 @@ public class MappingUtils {
         }
         return true;
     }
+
+    public static String deriveColumnName(Column column, AccessibleObject fieldOrMethod) {
+        if (fieldOrMethod instanceof Field) {
+            return deriveColumnName(column, ((Field) fieldOrMethod).getName());
+        }
+        String name = ((Method) fieldOrMethod).getName();
+        return deriveColumnName(column, name.length()>3 ? name.substring(3) : name);
+    }
+
+    public static String deriveColumnName(Column column, String fieldName) {
+        return column == null || StringUtils.isEmpty(column.name()) ? fieldName : column.name();
+    }
+
 
     public static Iterator<Class> getClassesSequenceIterator(EntityManager oracleEm, boolean topDown, Class... classes) throws Exception {
 
