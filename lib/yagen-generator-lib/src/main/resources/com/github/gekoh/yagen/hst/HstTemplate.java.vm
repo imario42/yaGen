@@ -65,7 +65,7 @@ public class ${entityClassSimpleName} extends
 #foreach( $fieldInfo in $fieldInfoList )
 
 ## skip Id column as we map it as liveUuid
-#if( !${fieldInfo.getColumnName()} || $baseEntityUuidColumnName != ${fieldInfo.getColumnName()} )
+#if( !${fieldInfo.isCollection()} && (!${fieldInfo.getColumnName()} || $baseEntityUuidColumnName != ${fieldInfo.getColumnName()}) )
 #if( ${fieldInfo.isEnum()} )
     @javax.persistence.Enumerated(value = javax.persistence.EnumType.STRING)
 #end
@@ -126,7 +126,7 @@ public class ${entityClassSimpleName} extends
      */
 #foreach( $fieldInfo in $fieldInfoList )
 ## skip Id column as we map it as liveUuid
-#if( !${fieldInfo.getColumnName()} || $baseEntityUuidColumnName != ${fieldInfo.getColumnName()} )
+#if( !${fieldInfo.isCollection()} && (!${fieldInfo.getColumnName()} || $baseEntityUuidColumnName != ${fieldInfo.getColumnName()}) )
 ## building the camel case method name for setter and getter
 #set( $nameCC = "${fieldInfo.getName().substring(0, 1).toUpperCase()}${fieldInfo.getName().substring(1)}")
 
