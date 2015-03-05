@@ -22,6 +22,7 @@ import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToOne;
+import javax.persistence.Transient;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
@@ -51,13 +52,11 @@ public class FieldInfo {
 
     private boolean isEnum;
     private boolean isEmbedded;
-    private boolean isCollection;
 
 
     public FieldInfo(Class type, String name) {
         this.type = type;
         this.name = name;
-        this.isCollection = Collection.class.isAssignableFrom(type);
     }
 
     public FieldInfo(Class type, String name, AttributeOverrides overrides) {
@@ -66,7 +65,6 @@ public class FieldInfo {
         this.columnName = null;
         isEnum = false;
         isEmbedded = true;
-        isCollection = false;
 
         StringBuilder columnAnnotation = new StringBuilder();
         if (overrides != null) {
@@ -86,7 +84,6 @@ public class FieldInfo {
         addAttributeOverrides(overrides, "", type);
 
         this.columnAnnotation = concatOverrides("", overrides.values());
-        isCollection = false;
     }
 
     public FieldInfo(Class type, String name, boolean anEnum, Column column) {
@@ -95,7 +92,6 @@ public class FieldInfo {
         this.columnName = MappingUtils.deriveColumnName(column, name).toLowerCase();
         isEnum = anEnum;
         isEmbedded = false;
-        isCollection = false;
         this.columnAnnotation = formatAnnotation(column);
     }
 
@@ -103,8 +99,7 @@ public class FieldInfo {
         this.type = type;
         this.name = name;
         this.columnName = columnName.toLowerCase();
-        isCollection = Collection.class.isAssignableFrom(type);
-        columnAnnotation = !isCollection ? "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + columnLength + ")" : null;
+        columnAnnotation = !isCollection() ? "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + columnLength + ")" : null;
         isEnum = false;
         isEmbedded = false;
     }
@@ -117,7 +112,6 @@ public class FieldInfo {
                 "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", nullable = " + nullable + ")" + (typeAnnotation != null ? " @" + Type.class.getName() + "(type = \"" + typeAnnotation + "\")" : "");
         isEnum = false;
         isEmbedded = false;
-        isCollection = false;
     }
 
     public Class getType() {
@@ -149,7 +143,7 @@ public class FieldInfo {
     }
 
     public boolean isCollection() {
-        return isCollection;
+        return Collection.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type);
     }
 
     public void addAnnotation(Annotation annotation) {
@@ -370,7 +364,9 @@ public class FieldInfo {
                     (field.isAnnotationPresent(OneToOne.class) && StringUtils.isEmpty(field.getAnnotation(OneToOne.class).mappedBy()))) {
                 String columnName = field.isAnnotationPresent(JoinColumn.class) ? field.getAnnotation(JoinColumn.class).name() : field.getName();
                 fi = getIdFieldInfo(type, name, columnName);
-            } else if (Collection.class.isAssignableFrom(type)) {
+            } else if (!field.isAnnotationPresent(Transient.class) &&
+                    (Collection.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type)) &&
+                    (field.isAnnotationPresent(JoinColumn.class) || field.isAnnotationPresent(JoinTable.class))) {
                 fi = new FieldInfo(type, name);
             } else {
                 continue;
