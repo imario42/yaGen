@@ -21,7 +21,6 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -104,10 +103,10 @@ public class FieldInfo {
         this.type = type;
         this.name = name;
         this.columnName = columnName.toLowerCase();
-        columnAnnotation = "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + columnLength + ")";
+        isCollection = Collection.class.isAssignableFrom(type);
+        columnAnnotation = !isCollection ? "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + columnLength + ")" : null;
         isEnum = false;
         isEmbedded = false;
-        isCollection = false;
     }
 
     public FieldInfo(Class type, String name, String columnName, boolean nullable, String typeAnnotation) {
@@ -371,7 +370,7 @@ public class FieldInfo {
                     (field.isAnnotationPresent(OneToOne.class) && StringUtils.isEmpty(field.getAnnotation(OneToOne.class).mappedBy()))) {
                 String columnName = field.isAnnotationPresent(JoinColumn.class) ? field.getAnnotation(JoinColumn.class).name() : field.getName();
                 fi = getIdFieldInfo(type, name, columnName);
-            } else if (field.isAnnotationPresent(OneToMany.class)) {
+            } else if (Collection.class.isAssignableFrom(type)) {
                 fi = new FieldInfo(type, name);
             } else {
                 continue;
