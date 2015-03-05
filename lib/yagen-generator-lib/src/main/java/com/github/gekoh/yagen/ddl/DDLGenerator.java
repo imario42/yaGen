@@ -198,6 +198,7 @@ public class DDLGenerator {
             this.name = name;
 
             PROFILES.add(this);
+            addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(DDLGenerator.class.getResource("/com/github/gekoh/yagen/ddl/InitDB.ddl.sql")));
         }
 
         public void setName(String name) {
