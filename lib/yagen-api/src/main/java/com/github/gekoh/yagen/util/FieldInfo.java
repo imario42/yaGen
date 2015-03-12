@@ -366,7 +366,7 @@ public class FieldInfo {
                 fi = getIdFieldInfo(type, name, columnName);
             } else if (!field.isAnnotationPresent(Transient.class) &&
                     (Collection.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type)) &&
-                    (field.isAnnotationPresent(JoinColumn.class) || field.isAnnotationPresent(JoinTable.class))) {
+                    (field.isAnnotationPresent(JoinColumn.class) || field.isAnnotationPresent(JoinTable.class) || field.isAnnotationPresent(CollectionTable.class))) {
                 fi = new FieldInfo(type, name);
             } else {
                 continue;
