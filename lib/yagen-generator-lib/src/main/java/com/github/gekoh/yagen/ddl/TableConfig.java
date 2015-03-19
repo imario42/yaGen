@@ -528,7 +528,7 @@ public class TableConfig {
             TableConfig joinTableConfig = joinTableName != null ? ddlEnhancer.getConfigForTableName(getIdentifierForReference(joinTableName)) : null;
 
             if (joinTableName != null && joinTableConfig == null) {
-                joinTableConfig = new TableConfig(ddlEnhancer, null, joinTableName);
+                joinTableConfig = new TableConfig(ddlEnhancer, null, ddlEnhancer.getProfile().getNamingStrategy().tableName(joinTableName));
                 ddlEnhancer.addTableConfig(joinTableConfig);
             }
 
