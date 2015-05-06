@@ -56,6 +56,9 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
                 try {
                     Field tblShortNameField = aClass.getDeclaredField("TABLE_NAME_SHORT");
                     if (tblShortNameField != null) {
+                        if (!tblShortNameField.isAccessible()) {
+                            tblShortNameField.setAccessible(true);
+                        }
                         tableShortName = tblShortNameField.get(null).toString();
                     }
                 } catch (Exception ignore) {

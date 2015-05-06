@@ -28,4 +28,5 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({TYPE, FIELD}) @Retention(RUNTIME)
 public @interface Auditable {
     boolean createNonExistingColumns() default true;
+    int userNameLength() default 35;
 }

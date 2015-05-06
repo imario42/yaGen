@@ -362,7 +362,7 @@ public class CreateDDL {
 
         Auditable auditable = tableConfig.getTableAnnotationOfType(Auditable.class);
         if (auditable != null && auditable.createNonExistingColumns()) {
-            sqlCreate = addAuditColumns(dialect, sqlCreate, columns);
+            sqlCreate = addAuditColumns(dialect, sqlCreate, columns, auditable.userNameLength());
         }
 
         sqlCreate = processCascadeNullable(dialect, buf, nameLC, sqlCreate, tableConfig.getColumnNamesIsCascadeNullable());
@@ -849,6 +849,7 @@ public class CreateDDL {
         context.put("operation", operation);
         context.put("tableName", tableName);
         context.put("fkColumnName", colName);
+        context.put("SYSTEM_SETTING", getProfile().getNamingStrategy().tableName("SYSTEM_SETTING"));
 
         setNewOldVar(dialect, context);
 
@@ -895,14 +896,14 @@ public class CreateDDL {
         return b.toString();
     }
 
-    private static String addAuditColumns(Dialect dialect, String sqlCreate, Set<String> columns) {
+    private static String addAuditColumns(Dialect dialect, String sqlCreate, Set<String> columns, int userNameLength) {
         Matcher matcher = TBL_PATTERN.matcher(sqlCreate);
 
         if (matcher.find()) {
             StringBuilder sb = new StringBuilder(sqlCreate.substring(0, matcher.start(TBL_PATTERN_IDX_AFTER_COL_DEF)));
             for (String auditColumn : AUDIT_COLUMNS) {
                 if (!columns.contains(auditColumn)) {
-                    sb.append(", ").append(formatColumn(dialect, AUDIT_COLUMN_DEFINITION.get(auditColumn), Constants.USER_NAME_LEN, null, null));
+                    sb.append(", ").append(formatColumn(dialect, AUDIT_COLUMN_DEFINITION.get(auditColumn), userNameLength, null, null));
                     columns.add(auditColumn);
                 }
             }

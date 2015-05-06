@@ -12,7 +12,7 @@ declare
 begin
   begin
     select BOOLEAN_VALUE into #if($is_postgres)strict #{end}null_permitted_setting
-    from SYSTEM_SETTING where REQUIRED_BY='IMP' and SETTING_KEY='CASCADE_NULLABLE_CTRL.null_permitted';
+    from $SYSTEM_SETTING where REQUIRED_BY='IMP' and SETTING_KEY='CASCADE_NULLABLE_CTRL.null_permitted';
   exception when others then null;
   end;
   if ${new}.${fkColumnName} is null and null_permitted_setting=0 then
