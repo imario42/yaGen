@@ -348,6 +348,11 @@ public class TableConfig {
                     }
                     fkTableName = joinTable.name();
                 }
+                else if (fOm.isAnnotationPresent(CollectionTable.class)) {
+                    CollectionTable annotation = fOm.getAnnotation(CollectionTable.class);
+                    fkTableName = annotation.name();
+                    fkCols.add(getIdentifierForReference(annotation.joinColumns()[0].name()));
+                }
                 else if (fOm.isAnnotationPresent(OneToMany.class)) {
                     JoinColumn joinColumn = getJoinColumn(fOm);
                     if (joinColumn != null) {
