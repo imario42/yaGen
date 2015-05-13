@@ -174,6 +174,11 @@
                     <artifactId>maven-release-plugin</artifactId>
                     <version>2.4.2</version>
                 </plugin>
+                <plugin>
+                    <groupId>com.github.github</groupId>
+                    <artifactId>site-maven-plugin</artifactId>
+                    <version>0.11</version>
+                </plugin>
             </plugins>
         </pluginManagement>
 
@@ -217,59 +222,5 @@
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>git-deploy</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-
-            <distributionManagement>
-                <repository>
-                    <id>internal.repo</id>
-                    <name>Temporary Staging Repository</name>
-                    <url>file://${user.dir}/target/mvn-repo</url>
-                </repository>
-            </distributionManagement>
-
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-deploy-plugin</artifactId>
-                        <version>2.8.1</version>
-                        <configuration>
-                            <altDeploymentRepository>internal.repo::default::file://${user.dir}/target/mvn-repo</altDeploymentRepository>
-                        </configuration>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>com.github.github</groupId>
-                        <artifactId>site-maven-plugin</artifactId>
-                        <version>0.11</version>
-                        <configuration>
-                            <message>Maven artifacts for ${project.version}</message>  <!-- git commit message -->
-                            <noJekyll>true</noJekyll>                                  <!-- disable webpage processing -->
-                            <outputDirectory>${user.dir}/target/mvn-repo</outputDirectory> <!-- matches distribution management repository url above -->
-                            <branch>refs/heads/mvn-repo</branch>                       <!-- remote branch name -->
-                            <includes><include>**/*</include></includes>
-                            <repositoryName>yaGen</repositoryName>      <!-- github repo name -->
-                            <repositoryOwner>gekoh</repositoryOwner>    <!-- github username  -->
-                        </configuration>
-                        <executions>
-                            <!-- run site-maven-plugin's 'site' target as part of the build's normal 'deploy' phase -->
-                            <execution>
-                                <goals>
-                                    <goal>site</goal>
-                                </goals>
-                                <phase>deploy</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-    </profiles>
 
 </project>
