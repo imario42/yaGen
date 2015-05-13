@@ -17,11 +17,43 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>org.sonatype.oss</groupId>
+        <artifactId>oss-parent</artifactId>
+        <version>9</version>
+    </parent>
+
     <groupId>com.github.gekoh.yagen</groupId>
     <artifactId>yagen-master</artifactId>
-    <version>1.22-SNAPSHOT</version>
+    <version>2.0.0-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>yaGen - yet another Generator</name>
+    <description>
+        This Generator is not a complete new DDL generator but enhances hbm2ddl on top of hibernate
+        to prettify and extend the created DDL.
+    </description>
+    <url>https://github.com/gekoh/yaGen</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Georg Kohlweiss</name>
+            <email>kohlweiss@gmail.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git@github.com:gekoh/yaGen.git</connection>
+        <developerConnection>scm:git:git@github.com:gekoh/yaGen.git</developerConnection>
+        <url>git@github.com:gekoh/yaGen.git</url>
+      <tag>HEAD</tag>
+  </scm>
 
     <modules>
         <module>lib/yagen-api</module>
@@ -130,6 +162,26 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>1.5</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>2.4.2</version>
+                </plugin>
+                <plugin>
+                    <groupId>com.github.github</groupId>
+                    <artifactId>site-maven-plugin</artifactId>
+                    <version>0.11</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+
         <extensions>
             <extension>
                 <groupId>org.apache.maven.wagon</groupId>
@@ -141,64 +193,34 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
                 <version>2.5</version>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>git-deploy</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-
-            <distributionManagement>
-                <repository>
-                    <id>internal.repo</id>
-                    <name>Temporary Staging Repository</name>
-                    <url>file://${user.dir}/target/mvn-repo</url>
-                </repository>
-            </distributionManagement>
-
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-deploy-plugin</artifactId>
-                        <version>2.8.1</version>
-                        <configuration>
-                            <altDeploymentRepository>internal.repo::default::file://${user.dir}/target/mvn-repo</altDeploymentRepository>
-                        </configuration>
-                    </plugin>
-
-                    <plugin>
-                        <groupId>com.github.github</groupId>
-                        <artifactId>site-maven-plugin</artifactId>
-                        <version>0.8</version>
-                        <configuration>
-                            <message>Maven artifacts for ${project.version}</message>  <!-- git commit message -->
-                            <noJekyll>true</noJekyll>                                  <!-- disable webpage processing -->
-                            <outputDirectory>${user.dir}/target/mvn-repo</outputDirectory> <!-- matches distribution management repository url above -->
-                            <branch>refs/heads/mvn-repo</branch>                       <!-- remote branch name -->
-                            <includes><include>**/*</include></includes>
-                            <repositoryName>yaGen</repositoryName>      <!-- github repo name -->
-                            <repositoryOwner>gekoh</repositoryOwner>    <!-- github username  -->
-                        </configuration>
-                        <executions>
-                            <!-- run site-maven-plugin's 'site' target as part of the build's normal 'deploy' phase -->
-                            <execution>
-                                <goals>
-                                    <goal>site</goal>
-                                </goals>
-                                <phase>deploy</phase>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-
-    </profiles>
 
 </project>
