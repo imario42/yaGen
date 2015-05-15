@@ -72,29 +72,6 @@
                     </execution>
                 </executions>
             </plugin>
-<!--
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <version>2.6</version>
-                <configuration>
-                    <archive>
-                        <index>true</index>
-                        <manifest>
-                            <addClasspath>true</addClasspath>
-                        </manifest>
-                        <manifestEntries>
-                            <Premain-Class>com.github.gekoh.yagen.InitAgent</Premain-Class>
-                            <Can-Redefine-Classes>true</Can-Redefine-Classes>
-                            <Boot-Class-Path>/home/f477448/.m2/repository/javassist/javassist/3.12.0.GA/javassist-3.12.0.GA.jar</Boot-Class-Path>
-                            &lt;!&ndash;
-                                                        <Main-Class></Main-Class>
-                            &ndash;&gt;
-                        </manifestEntries>
-                    </archive>
-                </configuration>
-            </plugin>
--->
         </plugins>
     </build>
 
