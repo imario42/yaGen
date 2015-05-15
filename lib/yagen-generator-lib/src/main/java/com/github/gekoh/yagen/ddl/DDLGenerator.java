@@ -120,7 +120,6 @@ public class DDLGenerator {
                 Class persistenceProviderClass = Class.forName("org.hibernate.jpa.HibernatePersistenceProvider");
 
                 PatchGlue.addConfigurationInterceptor(new PatchGlue.ConfigurationInterceptor() {
-                    @Override
                     public void use(Configuration configuration) {
                         cfg = configuration;
                     }

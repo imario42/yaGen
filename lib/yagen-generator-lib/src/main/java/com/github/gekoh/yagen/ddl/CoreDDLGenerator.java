@@ -15,7 +15,7 @@
 */
 package com.github.gekoh.yagen.ddl;
 
-import com.github.gekoh.yagen.hibernate.PatchGlue;
+import com.github.gekoh.yagen.hibernate.YagenInit;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
@@ -29,7 +29,7 @@ public class CoreDDLGenerator {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CoreDDLGenerator.class);
 
     private static final String PARAM_PROFILE_NAME = "profile-name";
-    private static final String PARAM_PROFILE_PROVIDER_CLASS = "profile-provider-class";
+    public static final String PARAM_PROFILE_PROVIDER_CLASS = "profile-provider-class";
     private static final String PARAM_PERSISTENCE_UNIT_NAME = "persistence-unit-name";
     private static final String PARAM_PERSISTENCE_XML_LIST = "persistence-xml-list";
     private static final String PARAM_OUTPUT_FILENAME = "output-file";
@@ -66,7 +66,7 @@ public class CoreDDLGenerator {
 
     public static void generateFrom(DDLGenerator.Profile profile) {
         try {
-            PatchGlue.init(profile);
+            YagenInit.init(profile);
         } catch (Exception e) {
             throw new IllegalStateException("cannot init patches for ddl generator", e);
         }

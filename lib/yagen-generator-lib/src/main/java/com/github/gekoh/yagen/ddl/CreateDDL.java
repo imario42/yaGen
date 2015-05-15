@@ -68,6 +68,8 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static com.github.gekoh.yagen.hibernate.PatchGlue.STATEMENT_SEPARATOR;
+
 /**
  * @author Georg Kohlweiss
  */
@@ -130,8 +132,6 @@ public class CreateDDL {
 
     private static final String I18N_COLUMN_COMPOSITE_ID = "composite_id";
     private static final String I18N_COLUMN_IS_PERSISTENT = "is_persistent";
-
-    public static final String STATEMENT_SEPARATOR = "\n------- " + CreateDDL.class.getSimpleName() + " statement separator -------\n";
 
     private static final List<String> AUDIT_COLUMNS = Arrays.asList(AuditInfo.CREATED_AT, AuditInfo.CREATED_BY, AuditInfo.LAST_MODIFIED_AT, AuditInfo.LAST_MODIFIED_BY);
     private static final Map<String, String> AUDIT_COLUMN_DEFINITION = new HashMap<String, String>();

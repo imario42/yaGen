@@ -19,7 +19,7 @@ import com.github.gekoh.yagen.example.Aircraft;
 import com.github.gekoh.yagen.example.AircraftHst;
 import com.github.gekoh.yagen.example.EngineType;
 import com.github.gekoh.yagen.example.hst.Operation;
-import com.github.gekoh.yagen.hibernate.PatchGlue;
+import com.github.gekoh.yagen.hibernate.YagenInit;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -36,7 +36,7 @@ public class HistoryTest {
     private static final EntityManagerFactory emf;
     static {
         try {
-            PatchGlue.init();
+            YagenInit.init();
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -5,9 +5,6 @@
 
 #if( $is_hsql )
 ------- CreateDDL statement separator -------
-DROP SCHEMA PUBLIC CASCADE;
-
-------- CreateDDL statement separator -------
 CREATE FUNCTION sys_guid() RETURNS char(32)
 LANGUAGE JAVA DETERMINISTIC NO SQL
 EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.createUUID'

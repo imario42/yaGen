@@ -330,7 +330,7 @@ public class CreateEntities {
                 length = Constants.UUID_LEN;
             }
             else {
-                Column column = getUuidColumn(baseEntity);
+                Column column = FieldInfo.getIdColumn(baseEntity);
                 AccessibleObject idFieldOrMethod = FieldInfo.getIdFieldOrMethod(baseEntity);
                 name = MappingUtils.deriveColumnName(column, idFieldOrMethod);
                 length = column.length();
@@ -366,16 +366,6 @@ public class CreateEntities {
         }
     }
 
-
-    private Column getUuidColumn(Class entityClass) {
-        AccessibleObject idFieldOrMethod = FieldInfo.getIdFieldOrMethod(entityClass);
-
-        if (idFieldOrMethod == null) {
-            throw new IllegalStateException("cannot find field or method with @Id for entity class " + entityClass.getName());
-        }
-
-        return idFieldOrMethod.getAnnotation(Column.class);
-    }
 
     public void writeOrmFile (File ormOutFile, String baseClassPackageName, String ormVersion) {
         if (!ormOutFile.getParentFile().exists() && !ormOutFile.getParentFile().mkdirs()) {

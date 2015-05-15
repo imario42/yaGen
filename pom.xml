@@ -52,11 +52,12 @@
         <connection>scm:git:git@github.com:gekoh/yaGen.git</connection>
         <developerConnection>scm:git:git@github.com:gekoh/yaGen.git</developerConnection>
         <url>git@github.com:gekoh/yaGen.git</url>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
 
     <modules>
         <module>lib/yagen-api</module>
+        <module>lib/yagen-agent-jar</module>
         <module>lib/yagen-generator-lib</module>
 
         <module>lib/yagen-example-domain</module>
@@ -78,6 +79,12 @@
             <dependency>
                 <groupId>com.github.gekoh.yagen</groupId>
                 <artifactId>yagen-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.gekoh.yagen</groupId>
+                <artifactId>yagen-agent-jar</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

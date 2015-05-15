@@ -16,6 +16,7 @@ import javax.persistence.Basic;
 import javax.persistence.CollectionTable;
 import javax.persistence.Column;
 import javax.persistence.Embedded;
+import javax.persistence.EmbeddedId;
 import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
@@ -381,17 +382,39 @@ public class FieldInfo {
         return fields;
     }
 
-    public static FieldInfo getIdFieldInfo (Class type, String namePrefix, String columnName) {
-        AccessibleObject id = getIdFieldOrMethod(type);
+    public static Column getIdColumn (Class classType) {
+        AccessibleObject id = getIdFieldOrMethod(classType);
         Column column = id.getAnnotation(Column.class);
+        Class type;
+        if (id instanceof Field) {
+            type = ((Field) id).getType();
+        } else {
+            type = ((Method) id).getReturnType();
+        }
+        if (column == null && id.isAnnotationPresent(EmbeddedId.class)) {
+            for (Field field : type.getDeclaredFields()) {
+                if (field.isAnnotationPresent(Column.class)) {
+                    return field.getAnnotation(Column.class);
+                }
+            }
+        }
+        return column;
+    }
+
+    public static FieldInfo getIdFieldInfo (Class classType, String namePrefix, String columnName) {
+        AccessibleObject id = getIdFieldOrMethod(classType);
         String suffix;
+        Class type;
         if (id instanceof Field) {
             type = ((Field) id).getType();
             suffix = ((Field) id).getName().substring(0, 1).toUpperCase() + ((Field) id).getName().substring(1);
-        }
-        else {
+        } else {
             type = ((Method) id).getReturnType();
             suffix = ((Method) id).getName().replace("get", "").replace("set", "");
+        }
+        Column column = getIdColumn(classType);
+        if (column == null) {
+            throw new IllegalStateException("cannot find @Column on Id field for type " + classType);
         }
         String name = namePrefix + suffix;
         return new FieldInfo(type, name, columnName, column.length());
@@ -408,12 +431,12 @@ public class FieldInfo {
 
     public static AccessibleObject getIdFieldOrMethod(Class entityClass) {
         for (Field field : entityClass.getDeclaredFields()) {
-            if (field.isAnnotationPresent(Id.class)) {
+            if (field.isAnnotationPresent(Id.class) || field.isAnnotationPresent(EmbeddedId.class)) {
                 return field;
             }
         }
         for (Method method : entityClass.getDeclaredMethods()) {
-            if (method.isAnnotationPresent(Id.class)) {
+            if (method.isAnnotationPresent(Id.class) || method.isAnnotationPresent(EmbeddedId.class)) {
                 return method;
             }
         }
