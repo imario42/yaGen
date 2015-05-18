@@ -158,8 +158,11 @@ public class CreateDDL {
 
     private boolean historyInitSet = false;
 
-    public CreateDDL(DDLGenerator.Profile profile, Dialect dialect) {
-        init(profile);
+    public CreateDDL(Object profile, Dialect dialect) {
+        if (!(profile instanceof DDLGenerator.Profile)) {
+            throw new IllegalArgumentException("profile parameter needs to be an instance of " + DDLGenerator.Profile.class.getName());
+        }
+        init((DDLGenerator.Profile)profile);
         initViewsAndRegisterDDLs(dialect);
     }
 
@@ -688,16 +691,17 @@ public class CreateDDL {
             }
             else {
                 String fkIndexName = getProfile().getNamingStrategy().indexName(getEntityClassName(tableNameLC), tableNameLC, DefaultNamingStrategy.concatColumnNames(colList.toString()));
-                StringBuilder objDdl = new StringBuilder();
+                StringBuffer objDdl = new StringBuffer();
                 objDdl.append("create index ")
                         .append(fkIndexName)
                         .append(" on ").append(tableNameLC).append(" (").append(colList.toString()).append(")");
+                updateCreateIndex(dialect, objDdl, fkIndexName, table, constraint.getColumns());
 
                 if (constraint.getColumnSpan() == 1) {
                     tblColNameHasSingleColIndex.add(tableNameLC + "." + colList.toString());
                 }
 
-                buf.append(STATEMENT_SEPARATOR).append(objDdl);
+                buf.append(STATEMENT_SEPARATOR).append("-- auto create index on foreign key constraint\n").append(objDdl);
 
                 getProfile().duplex(ObjectType.INDEX, fkIndexName, objDdl.toString());
             }
