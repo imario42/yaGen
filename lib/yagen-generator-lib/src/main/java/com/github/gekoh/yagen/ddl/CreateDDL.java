@@ -1382,9 +1382,7 @@ public class CreateDDL {
                 }
 
                 addDdl.append(STATEMENT_SEPARATOR).append("-- creating local unique index instead of global primary key\n");
-                addDdl.append("create unique index ")
-                        .append(getProfile().getNamingStrategy().indexName(getEntityClassName(nameLC), nameLC, DefaultNamingStrategy.concatColumnNames(pkColList)));
-                addDdl.append(" on ").append(nameLC).append("(").append(pkColList).append(") local\n");
+                addLocalUniqueConstraintIndex(addDdl, nameLC, pkColList);
             }
 
             sb.append(sqlCreate.substring(0, matcher.start(TBL_PATTERN_IDX_AFTER_COL_DEF)));
@@ -1411,6 +1409,12 @@ public class CreateDDL {
         sb.append(" ROW MOVEMENT");
 
         return sb.toString();
+    }
+
+    private void addLocalUniqueConstraintIndex(StringBuffer ddl, String tableName, String columnList) {
+        ddl.append("create unique index ")
+                .append(getProfile().getNamingStrategy().constraintName(getEntityClassName(tableName), tableName, DefaultNamingStrategy.concatColumnNames(columnList), Constants._UK));
+        ddl.append(" on ").append(tableName).append("(").append(columnList).append(") local\n");
     }
 
     private String getI18NDetailTableName (String detailTableName) {
@@ -1674,6 +1678,7 @@ public class CreateDDL {
         Matcher matchUnique = UNIQUE_PATTERN.matcher(sqlCreateString);
 
         StringBuilder sql = new StringBuilder();
+        StringBuffer additionalObjects = new StringBuffer();
 
         // try matching create table sql with PK definition
         if (!matcher.matches()) {
@@ -1722,12 +1727,21 @@ public class CreateDDL {
             }
 
             sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_PK_CLAUSE), matcher.start(TBL_PATTERN_IDX_PK_COLLIST)));
-            sql.append(HIST_TABLE_PK_COLUMN_NAME).append("), ");
-            sql.append("unique (");
-            sql.append(matcher.group(TBL_PATTERN_IDX_PK_COLLIST));
-            sql.append(", ");
-            sql.append(histColName);
-            sql.append(")");
+            sql.append(HIST_TABLE_PK_COLUMN_NAME).append(")");
+            String constraintColumns = matcher.group(TBL_PATTERN_IDX_PK_COLLIST) + ", " + histColName;
+
+            if (livePartitioning != null && livePartitioning.useLocalPK()) {
+                if (!histColName.equals(livePartitioning.columnName().toLowerCase())) {
+                    constraintColumns += ", " + livePartitioning.columnName();
+                }
+                additionalObjects.append(STATEMENT_SEPARATOR);
+                addLocalUniqueConstraintIndex(additionalObjects, histTableName.toLowerCase(), constraintColumns);
+            }
+            else {
+                sql.append(", unique (");
+                sql.append(constraintColumns);
+                sql.append(")");
+            }
 
             int restIdx = matcher.end(TBL_PATTERN_IDX_PK_CLAUSE);
             while (matchUnique.find(restIdx)) {
@@ -1765,8 +1779,6 @@ public class CreateDDL {
                 colIdx = uniqueColMatcher.end();
             }
         }
-
-        StringBuffer additionalObjects = new StringBuffer();
 
         if (supportsPartitioning(dialect) && livePartitioning != null) {
             sqlCreateString = addPartitioning(additionalObjects, livePartitioning, histTableName, sql.toString(), columns, pkCols);
