@@ -135,7 +135,7 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
 
     @Override
     public String indexName(String entityClass, String tableName, String colName) {
-        return findName(entityClass, tableName, colName, "_IX");
+        return indexName(findName(entityClass, tableName, colName, "_IX"));
     }
 
     @Override

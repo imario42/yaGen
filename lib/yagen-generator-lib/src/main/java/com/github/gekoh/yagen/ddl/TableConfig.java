@@ -21,6 +21,7 @@ import com.github.gekoh.yagen.api.CascadeNullable;
 import com.github.gekoh.yagen.api.Default;
 import com.github.gekoh.yagen.api.Deferrable;
 import com.github.gekoh.yagen.api.I18NDetailEntityRelation;
+import com.github.gekoh.yagen.api.Index;
 import com.github.gekoh.yagen.api.IntervalPartitioning;
 import com.github.gekoh.yagen.api.NoForeignKeyConstraint;
 import com.github.gekoh.yagen.api.Profile;
@@ -50,6 +51,7 @@ import javax.persistence.MappedSuperclass;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.PrimaryKeyJoinColumn;
+import javax.persistence.Table;
 import javax.persistence.Transient;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -89,6 +91,7 @@ public class TableConfig {
     private List<String> pkColnames = new ArrayList<String>();
     private Set<Annotation> annotations = new HashSet<Annotation>();
     private List<Sequence> sequences = new ArrayList<Sequence>();
+    private List<Index> indexes = new ArrayList<Index>();
 
     private Map<String, String> columnNameToEnumCheckConstraints = new HashMap<String, String>();
     private Map<String, Deferrable> columnNameToDeferrable = new HashMap<String, Deferrable>();
@@ -135,6 +138,7 @@ public class TableConfig {
         gatherEnumCheckConstraints(entityClass);
         gatherCascade(entityClass);
         gatherDeferrable(entityClass);
+        gatherIndexes(entityClass);
     }
 
     public boolean isTableToBeRendered() {
@@ -189,6 +193,10 @@ public class TableConfig {
 
     public List<Sequence> getSequences() {
         return sequences;
+    }
+
+    public List<Index> getIndexes() {
+        return indexes;
     }
 
     public Map<String, String> getColumnNameToEnumCheckConstraints() {
@@ -347,21 +355,18 @@ public class TableConfig {
                         fkCols.add(getIdentifierForReference(joinTable.inverseJoinColumns()[0].name()));
                     }
                     fkTableName = joinTable.name();
-                }
-                else if (fOm.isAnnotationPresent(CollectionTable.class)) {
+                } else if (fOm.isAnnotationPresent(CollectionTable.class)) {
                     CollectionTable annotation = fOm.getAnnotation(CollectionTable.class);
                     fkTableName = annotation.name();
                     fkCols.add(getIdentifierForReference(annotation.joinColumns()[0].name()));
-                }
-                else if (fOm.isAnnotationPresent(OneToMany.class)) {
+                } else if (fOm.isAnnotationPresent(OneToMany.class)) {
                     JoinColumn joinColumn = getJoinColumn(fOm);
                     if (joinColumn != null) {
                         Class<?> targetEntityClass = MappingUtils.determineTargetEntity(fOm, fOm.getAnnotation(OneToMany.class).targetEntity());
                         fkTableName = getTableAnnotation(targetEntityClass).name();
                         fkCols.add(getIdentifierForReference(joinColumn.name()));
                     }
-                }
-                else if (fOm.isAnnotationPresent(ManyToOne.class) || fOm.isAnnotationPresent(OneToOne.class)) {
+                } else if (fOm.isAnnotationPresent(ManyToOne.class) || fOm.isAnnotationPresent(OneToOne.class)) {
                     JoinColumn joinColumn = getJoinColumn(fOm);
                     if (joinColumn != null) {
                         fkTableName = tableName;
@@ -411,6 +416,24 @@ public class TableConfig {
                 }
             }
         });
+    }
+
+    private void gatherIndexes(Class type) {
+        while (type != null) {
+            traverseFieldsAndMethods(type, true, true, new GatherFieldOrMethodInfoAction() {
+                public void gatherInfo(AccessibleObject fOm) {
+
+                    if (fOm.isAnnotationPresent(Index.class)) {
+                        indexes.add(fOm.getAnnotation(Index.class));
+                    }
+                }
+            });
+
+            if (type.isAnnotationPresent(Table.class)) {
+                break;
+            }
+            type = type.getSuperclass();
+        }
     }
 
     private static void traverseFieldsAndMethods (Class type, boolean fields, boolean methods, GatherFieldOrMethodInfoAction action) {

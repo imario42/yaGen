@@ -565,27 +565,34 @@ public class CreateDDL {
                 buf.append(STATEMENT_SEPARATOR).append(objDdl.toString());
             }
             for (Index index : annotation.indexes()) {
-                if (StringUtils.isEmpty(index.declaration())) {
-                    continue;
-                }
-                String indexName = getProfile().getNamingStrategy().indexName(index);
-                if (StringUtils.isEmpty(indexName)) {
-                    throw new IllegalArgumentException("please specify an index name in annotation Index for table " + tableConfig.getTableName());
-                }
-                checkObjectName(dialect, indexName);
-                StringBuilder objDdl = new StringBuilder();
-                objDdl.append("create index ").append(indexName);
-                objDdl.append(" on ").append(tableConfig.getTableName()).append(" (").append(index.declaration()).append(")");
-
-                if (index.usingLocalIndex() && supportsPartitioning(dialect)) {
-                    objDdl.append(" local");
-                }
-
-                getProfile().duplex(ObjectType.INDEX, indexName, objDdl.toString());
-                
-                buf.append(STATEMENT_SEPARATOR).append(objDdl.toString());
+                addIndex(buf, index, dialect, tableConfig);
             }
         }
+        for (Index index : tableConfig.getIndexes()) {
+            addIndex(buf, index, dialect, tableConfig);
+        }
+    }
+
+    private void addIndex(StringBuffer buf, Index index, Dialect dialect, TableConfig tableConfig) {
+        if (StringUtils.isEmpty(index.declaration())) {
+            return;
+        }
+        String indexName = getProfile().getNamingStrategy().indexName(index);
+        if (StringUtils.isEmpty(indexName)) {
+            throw new IllegalArgumentException("please specify an index name in annotation Index for table " + tableConfig.getTableName());
+        }
+        checkObjectName(dialect, indexName);
+        StringBuilder objDdl = new StringBuilder();
+        objDdl.append("create index ").append(indexName);
+        objDdl.append(" on ").append(tableConfig.getTableName()).append(" (").append(index.declaration()).append(")");
+
+        if (index.usingLocalIndex() && supportsPartitioning(dialect)) {
+            objDdl.append(" local");
+        }
+
+        getProfile().duplex(ObjectType.INDEX, indexName, objDdl.toString());
+
+        buf.append(STATEMENT_SEPARATOR).append(objDdl.toString());
     }
 
     public String updateCreateConstraint(Dialect dialect, StringBuffer buf, String name, Table table, Constraint constraint) {
