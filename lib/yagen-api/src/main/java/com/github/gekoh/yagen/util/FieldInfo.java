@@ -69,6 +69,11 @@ public class FieldInfo {
         this.name = name;
     }
 
+    public FieldInfo(Class type, String name, String columnAnnotation) {
+        this(type, name);
+        this.columnAnnotation = columnAnnotation;
+    }
+
     public FieldInfo(Class type, String name, AttributeOverrides overrides) {
         this.type = type;
         this.name = name;
@@ -426,6 +431,16 @@ public class FieldInfo {
             throw new IllegalStateException("cannot find @Column on Id field for type " + classType);
         }
         String name = namePrefix + suffix;
+        if (id.isAnnotationPresent(EmbeddedId.class)) {
+            for (Field field : type.getDeclaredFields()) {
+                if (field.isAnnotationPresent(Column.class)) {
+                    FieldInfo fieldInfo = new FieldInfo(type, name, "@" + AttributeOverride.class.getName() + "(name=\"" + field.getName() + "\", column=" +
+                            "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + column.length() + "))");
+                    fieldInfo.isEmbedded = true;
+                    return fieldInfo;
+                }
+            }
+        }
         return new FieldInfo(type, name, columnName, column.length());
     }
 
