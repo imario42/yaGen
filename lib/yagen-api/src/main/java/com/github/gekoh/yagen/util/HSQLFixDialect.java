@@ -15,17 +15,22 @@
 */
 package com.github.gekoh.yagen.util;
 
+import org.hibernate.dialect.function.StandardSQLFunction;
+import org.hibernate.type.StandardBasicTypes;
+
 import java.sql.Types;
 
 /**
  * @author Georg Kohlweiss
  */
-public class HSQLFixLobDialect extends org.hibernate.dialect.HSQLDialect {
+public class HSQLFixDialect extends org.hibernate.dialect.HSQLDialect {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(HSQLDialect.class);
 
 
-    public HSQLFixLobDialect() {
+    public HSQLFixDialect() {
         registerColumnType( Types.BLOB, "blob" );
         registerColumnType( Types.CLOB, "clob" );
+
+        this.registerFunction("to_char", new StandardSQLFunction("to_char", StandardBasicTypes.STRING));
     }
 }
