@@ -31,6 +31,7 @@ import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Transient;
 import java.lang.annotation.Annotation;
@@ -381,7 +382,8 @@ public class FieldInfo {
                 fi = getIdFieldInfo(type, name, columnName);
             } else if (!field.isAnnotationPresent(Transient.class) &&
                     (Collection.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type)) &&
-                    (field.isAnnotationPresent(JoinColumn.class) || field.isAnnotationPresent(JoinTable.class) || field.isAnnotationPresent(CollectionTable.class))) {
+                    (field.isAnnotationPresent(JoinColumn.class) || field.isAnnotationPresent(JoinTable.class) || field.isAnnotationPresent(CollectionTable.class) ||
+                            (field.isAnnotationPresent(OneToMany.class) && StringUtils.isNotEmpty(field.getAnnotation(OneToMany.class).mappedBy())))) {
                 fi = new FieldInfo(type, name);
             } else {
                 continue;
