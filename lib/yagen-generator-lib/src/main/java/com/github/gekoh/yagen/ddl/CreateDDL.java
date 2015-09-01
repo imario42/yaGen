@@ -52,11 +52,8 @@ import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.sql.Types;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Calendar;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -1343,13 +1340,6 @@ public class CreateDDL {
         return currIdx;
     }
 
-    private static final String FIRST_OF_NEXT_MONTH;
-    static {
-        GregorianCalendar calendar = new GregorianCalendar();
-        calendar.add(Calendar.MONTH, 1);
-        FIRST_OF_NEXT_MONTH = "01." + new SimpleDateFormat("MM.yyyy").format(calendar.getTime());
-    }
-
     private String addPartitioning(StringBuffer addDdl, IntervalPartitioning partitioning, String nameLC, String sqlCreate, Set<String> columns, List<String> pkCols) {
         String shortName = getShortName(nameLC);
 
@@ -1404,7 +1394,8 @@ public class CreateDDL {
         sb.append("( partition ").append(shortName).append("_P1 values less than (");
 
         if (StringUtils.isEmpty(partitioning.startPartitionLessThanValue())) {
-            sb.append("to_date('").append(FIRST_OF_NEXT_MONTH).append("', 'dd.MM.yyyy')");
+            // using limit 01-JAN-2000 as root partition as recommended by damorgan (https://community.oracle.com/message/4524016#4524016)
+            sb.append("to_date('01.01.2000', 'dd.MM.yyyy')");
         }
         else {
             sb.append(partitioning.startPartitionLessThanValue());
