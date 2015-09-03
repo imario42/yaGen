@@ -341,9 +341,14 @@ public class CreateDDL {
             return "-- skipped creation statement for table '" + tableName + "' as the mapped entity was not chosen to be processed";
         }
 
+        checkTableName(dialect, tableName);
+
         TableConfig tableConfig = tblNameToConfig.get(nameLC);
 
-        checkTableName(dialect, tableName);
+        if (tableConfig == null) {
+            LOG.warn("unable to locate table config for table {}, cannot enhance DDL", nameLC);
+            return buf.toString();
+        }
 
         if (externalViews.contains(nameLC)) {
             return "-- skipped creation statement for table '" + tableName + "' since there will be a view in place";
