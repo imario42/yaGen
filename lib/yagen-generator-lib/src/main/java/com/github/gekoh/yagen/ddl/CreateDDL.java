@@ -1498,7 +1498,7 @@ public class CreateDDL {
 
         StringWriter wr = new StringWriter();
         if (isOracle(dialect)) {
-            String objectName = triggerBaseName + "_TRG";
+            String objectName = getProfile().getNamingStrategy().triggerName(triggerBaseName + "_TRG");
             context.put("objectName", objectName);
 
             setNewOldVar(dialect, context);
@@ -1510,7 +1510,7 @@ public class CreateDDL {
             buf.append(STATEMENT_SEPARATOR).append(wr.toString()).append("\n/\n");
         }
         else if (isPostgreSql(dialect)) {
-            String triggerName = triggerBaseName + "_TRG";
+            String triggerName = getProfile().getNamingStrategy().triggerName(triggerBaseName + "_TRG");
             String objectName = triggerName + "_function";
             context.put("objectName", objectName);
 
