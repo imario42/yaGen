@@ -77,6 +77,8 @@ public class CoreDDLGenerator {
                 "-- when using entity declarations like &amp; in varchar values\n" +
                 "-- this works in sqlplus, SqlDeveloper and TOAD (execute as script)\n" +
                 "set define off;\n" +
+                "-- this stops execution on first error to sort out the problem and then continue manually\n" +
+                "WHENEVER SQLERROR EXIT FAILURE;\n" +
                 "#end"));
 
 /*
