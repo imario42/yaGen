@@ -16,11 +16,14 @@
 package com.github.gekoh.yagen.hibernate;
 
 import org.hibernate.dialect.Dialect;
+import org.hibernate.mapping.PersistentClass;
+
+import java.util.Collection;
 
 /**
  * @author Georg Kohlweiss 
  */
 public interface DDLEnhancer {
-    void initDDLEnhancer(Object profile, Dialect dialect);
+    void initDDLEnhancer(Object profile, Dialect dialect, Collection<PersistentClass> persistentClasses);
     Object getDDLEnhancer();
 }

@@ -71,26 +71,32 @@ public class PatchGlue {
 
     private static Method schemaExportPerform;
 
-    public static Object newDDLEnhancer(Object profile, Dialect dialect) {
+    public static Object newDDLEnhancer(Object profile, Dialect dialect, Collection<PersistentClass> persistentClasses) {
         try {
+            for (PersistentClass persistentClass : persistentClasses) {
+                addClass(profile, persistentClass);
+            }
             return ReflectExecutor.i_createDdl.get().newInstance(profile, dialect);
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
-    public static void initDialect(Dialect dialect, org.hibernate.cfg.NamingStrategy namingStrategy, Properties cfgProperties) {
+    public static void initDialect(Dialect dialect, org.hibernate.cfg.NamingStrategy namingStrategy, Properties cfgProperties, Collection persistentClasses) {
         if (dialect != null && ReflectExecutor.c_enhancer.get().isAssignableFrom(dialect.getClass())) {
             try {
                 if (profile == null) {
                     profile = ReflectExecutor.i_profile.get().newInstance("runtime");
                 }
+
+                Object clonedProfile = ReflectExecutor.m_clone.get().invoke(profile);
                 Object ddlEnhancer = dialect;
+
                 if (namingStrategy instanceof DefaultNamingStrategy) {
-                    ReflectExecutor.m_setNamingStrategy.get().invoke(profile, namingStrategy);
+                    ReflectExecutor.m_setNamingStrategy.get().invoke(clonedProfile, namingStrategy);
                 }
                 if (ReflectExecutor.m_getDDLEnhancer.get().invoke(ddlEnhancer) == null) {
-                    ReflectExecutor.m_initDDLEnhancer.get().invoke(ddlEnhancer, profile, dialect);
+                    ReflectExecutor.m_initDDLEnhancer.get().invoke(ddlEnhancer, clonedProfile, dialect, persistentClasses);
                 }
             } catch (Exception e) {
                 LOG.error("error initializing Dialect", e);
@@ -101,7 +107,7 @@ public class PatchGlue {
         }
     }
 
-    public static void addClass (PersistentClass clazz) {
+    public static void addClass (Object profile, PersistentClass clazz) {
         if (profile != null) {
             try {
                 ReflectExecutor.m_addPersistenceClass.get().invoke(profile, clazz.getMappedClass());

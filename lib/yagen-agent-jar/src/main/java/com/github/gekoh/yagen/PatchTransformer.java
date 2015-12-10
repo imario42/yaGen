@@ -92,10 +92,6 @@ public class PatchTransformer implements ClassFileTransformer {
             patchConfiguration(clazz);
             return true;
         }
-        if("org.hibernate.cfg.Configuration$MappingsImpl".equals(className)) {
-            patchConfigurationMappings(clazz);
-            return true;
-        }
         if("org.hibernate.mapping.Table".equals(className)) {
             patchTable(clazz);
             return true;
@@ -125,7 +121,7 @@ public class PatchTransformer implements ClassFileTransformer {
 
     private static void patchConfiguration(CtClass clazz) throws CannotCompileException, NotFoundException {
 
-        String initDialectSrc = "com.github.gekoh.yagen.hibernate.PatchGlue.initDialect($1, getNamingStrategy(), getProperties());";
+        String initDialectSrc = "com.github.gekoh.yagen.hibernate.PatchGlue.initDialect($1, getNamingStrategy(), getProperties(), classes.values());";
 
         clazz.getDeclaredMethod("generateDropSchemaScript").insertBefore(initDialectSrc);
         clazz.getDeclaredMethod("generateSchemaCreationScript").insertBefore(initDialectSrc);
@@ -154,14 +150,6 @@ public class PatchTransformer implements ClassFileTransformer {
                         "        ((com.github.gekoh.yagen.hibernate.PatchGlue.ConfigurationInterceptor)it.next()).use(this);\n" +
                         "    }\n" +
                         "}"
-        );
-    }
-
-    private static void patchConfigurationMappings(CtClass clazz) throws NotFoundException, CannotCompileException {
-        CtMethod method = clazz.getDeclaredMethod("addClass");
-
-        method.insertBefore(
-                "com.github.gekoh.yagen.hibernate.PatchGlue.addClass($1);"
         );
     }
 
@@ -250,8 +238,8 @@ public class PatchTransformer implements ClassFileTransformer {
         clazz.addField(CtField.make("private Object ddlEnhancer;", clazz));
 
         clazz.addMethod(CtMethod.make(
-                "public void initDDLEnhancer(Object profile, org.hibernate.dialect.Dialect dialect) {\n" +
-                        "        ddlEnhancer = com.github.gekoh.yagen.hibernate.PatchGlue.newDDLEnhancer(profile, dialect);\n" +
+                "public void initDDLEnhancer(Object profile, org.hibernate.dialect.Dialect dialect, java.util.Collection persistentClasses) {\n" +
+                        "        ddlEnhancer = com.github.gekoh.yagen.hibernate.PatchGlue.newDDLEnhancer(profile, dialect, persistentClasses);\n" +
                         "    }",
                 clazz
         ));

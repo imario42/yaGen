@@ -44,6 +44,7 @@ public class ReflectExecutor {
     static final Initializer<Method> m_setNamingStrategy   = getMethod(PROFILE_CLASS_NAME + ".setNamingStrategy");
     static final Initializer<Method> m_getHeaderDdls       = getMethod(PROFILE_CLASS_NAME + ".getHeaderDdls");
     static final Initializer<Method> m_getAddDdls          = getMethod(PROFILE_CLASS_NAME + ".getAddDdls");
+    static final Initializer<Method> m_clone               = getMethod(PROFILE_CLASS_NAME + ".clone");
 
     static final Initializer<Method> m_getDDLEnhancer  = getMethod(DDLENHANCER_CLASS_NAME + ".getDDLEnhancer");
     static final Initializer<Method> m_initDDLEnhancer = getMethod(DDLENHANCER_CLASS_NAME + ".initDDLEnhancer");
