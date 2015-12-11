@@ -22,12 +22,15 @@ import org.hibernate.mapping.ForeignKey;
 import org.hibernate.mapping.UniqueKey;
 
 import java.lang.reflect.Field;
+import java.util.regex.Pattern;
 
 /**
  * @author Georg Kohlweiss 
  */
 public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingStrategy {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DefaultNamingStrategy.class);
+
+    private static final Pattern NONAME_KEY_PATTERN = Pattern.compile("key[0-9]*");
 
     @Override
     public String classToTableName(String className) {
@@ -154,7 +157,7 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
     }
 
     protected String beautifyConstraintName(String name, String entityClass, String tableName, String colList) {
-        if (name.startsWith("FK") || name.startsWith("UK")) {
+        if (name.startsWith("FK") || name.startsWith("UK") || NONAME_KEY_PATTERN.matcher(name).matches()) {
             String newName = findName(entityClass, tableName, colList, "_" + name.substring(0, 2));
             LOG.debug("no constraint name specified for {}({}), using {}", new Object[]{tableName, colList, newName});
             return newName;

@@ -33,4 +33,8 @@ public class HSQLFixDialect extends org.hibernate.dialect.HSQLDialect {
 
         this.registerFunction("to_char", new StandardSQLFunction("to_char", StandardBasicTypes.STRING));
     }
+
+    public boolean supportsUniqueConstraintInCreateAlterTable() {
+        return false;
+    }
 }

@@ -114,7 +114,7 @@ public class CreateDDL {
     private static final int COL_PATTERN_IDX_UNIQUE  = 24;
 
     private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
-    private static final Pattern CONSTRAINT_PATTERN = Pattern.compile("constraint[\\s]*([a-zA-Z]+[0-9a-zA-Z_]*)");
+    private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*([a-zA-Z]+[0-9a-zA-Z_]*)");
 
     private static final Pattern VIEW_NAME_PATTERN = Pattern.compile("create( or replace)?[\\s]+view[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
     private static final Pattern DROP_TABLE_PATTERN = Pattern.compile("drop table( if exists)?[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)( if exists)?");
@@ -603,12 +603,12 @@ public class CreateDDL {
 
         if (!name.equals(newName)) {
             String sqlCreate = buf.toString();
-            Matcher matcher = CONSTRAINT_PATTERN.matcher(sqlCreate);
+            Matcher matcher = CONSTRAINT_OR_INDEX_PATTERN.matcher(sqlCreate);
             if (matcher.find()) {
                 buf = new StringBuffer();
-                buf.append(sqlCreate.substring(0, matcher.start(1)));
+                buf.append(sqlCreate.substring(0, matcher.start(3)));
                 buf.append(newName);
-                buf.append(sqlCreate.substring(matcher.end(1)));
+                buf.append(sqlCreate.substring(matcher.end(3)));
             }
             name = newName;
         }
