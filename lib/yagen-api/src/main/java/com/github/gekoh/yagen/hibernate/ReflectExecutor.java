@@ -42,14 +42,12 @@ public class ReflectExecutor {
 
     static final Initializer<Method> m_addPersistenceClass = getMethod(PROFILE_CLASS_NAME + ".addPersistenceClass");
     static final Initializer<Method> m_setNamingStrategy   = getMethod(PROFILE_CLASS_NAME + ".setNamingStrategy");
-    static final Initializer<Method> m_getHeaderDdls       = getMethod(PROFILE_CLASS_NAME + ".getHeaderDdls");
-    static final Initializer<Method> m_getAddDdls          = getMethod(PROFILE_CLASS_NAME + ".getAddDdls");
     static final Initializer<Method> m_clone               = getMethod(PROFILE_CLASS_NAME + ".clone");
+    static final Initializer<Method> m_addDdls             = getMethod(PROFILE_CLASS_NAME + ".addDdls");
 
     static final Initializer<Method> m_getDDLEnhancer  = getMethod(DDLENHANCER_CLASS_NAME + ".getDDLEnhancer");
     static final Initializer<Method> m_initDDLEnhancer = getMethod(DDLENHANCER_CLASS_NAME + ".initDDLEnhancer");
 
-    static final Initializer<Method> m_applyPatch   = getMethod(PATCH_HIBERNATE_CLASS_NAME + ".applyPatch");
     static final Initializer<Method> m_patchCollectionsAlwaysLazy = getMethod(PATCH_HIBERNATE_CLASS_NAME + ".patchCollectionsAlwaysLazy");
     static final Initializer<Method> m_patchIgnoreVersion   = getMethod(PATCH_HIBERNATE_CLASS_NAME + ".patchIgnoreVersion");
 
