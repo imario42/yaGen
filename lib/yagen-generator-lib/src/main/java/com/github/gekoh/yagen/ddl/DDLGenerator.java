@@ -19,6 +19,7 @@ import com.github.gekoh.yagen.api.DefaultNamingStrategy;
 import com.github.gekoh.yagen.api.NamingStrategy;
 import com.github.gekoh.yagen.hibernate.PatchGlue;
 import com.github.gekoh.yagen.hibernate.PatchHibernateMappingClasses;
+import com.github.gekoh.yagen.util.DBHelper;
 import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
@@ -544,9 +545,27 @@ public class DDLGenerator {
         @Override
         public String getDdlText(Dialect dialect) {
             if (text == null) {
+                String dialectClassLC = dialect.getClass().getSimpleName().toLowerCase();
+                String classNameLC;
+
                 String template = super.getDdlText(dialect);
                 VelocityContext ctx = new VelocityContext();
                 ctx.put("dialect", dialect);
+
+                ctx.put("is_oracleXE", dialectClassLC.contains("oraclexe"));
+
+                String driverClassName = DBHelper.getDriverClassName(dialect);
+                if (driverClassName != null) {
+                    ctx.put("driverClassName", driverClassName);
+                    classNameLC = driverClassName.toLowerCase();
+                }
+                else {
+                    classNameLC = dialectClassLC;
+                }
+
+                ctx.put("is_postgres", classNameLC.contains("postgres"));
+                ctx.put("is_oracle", classNameLC.contains("oracle"));
+                ctx.put("is_hsql", classNameLC.contains("hsql"));
 
                 StringWriter wr = new StringWriter();
                 Velocity.evaluate(ctx, wr, url != null ? url.toString() : ddlText, template);

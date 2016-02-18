@@ -23,6 +23,7 @@ import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Constraint;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
+import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
 import org.hibernate.type.Type;
 
@@ -80,7 +81,7 @@ public class PatchGlue {
         }
     }
 
-    public static void initDialect(Dialect dialect, org.hibernate.cfg.NamingStrategy namingStrategy, Properties cfgProperties, Collection persistentClasses) {
+    public static void initDialect(Dialect dialect, org.hibernate.cfg.NamingStrategy namingStrategy, Properties cfgProperties, ServiceRegistry serviceRegistry, Collection persistentClasses) {
         if (dialect != null && ReflectExecutor.c_enhancer.get().isAssignableFrom(dialect.getClass())) {
             try {
                 if (profile == null) {
@@ -94,7 +95,7 @@ public class PatchGlue {
                     ReflectExecutor.m_setNamingStrategy.get().invoke(clonedProfile, namingStrategy);
                 }
                 if (ReflectExecutor.m_getDDLEnhancer.get().invoke(ddlEnhancer) == null) {
-                    ReflectExecutor.m_initDDLEnhancer.get().invoke(ddlEnhancer, clonedProfile, dialect, persistentClasses);
+                    ReflectExecutor.m_initDDLEnhancer.get().invoke(ddlEnhancer, clonedProfile, dialect, serviceRegistry, persistentClasses);
                 }
             } catch (Exception e) {
                 LOG.error("error initializing Dialect", e);

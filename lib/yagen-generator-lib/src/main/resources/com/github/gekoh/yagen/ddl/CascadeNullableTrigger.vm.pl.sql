@@ -1,4 +1,3 @@
-#set( $is_postgres = ${dialect.getClass().getSimpleName().toLowerCase().contains('postgres')} )
 #if( $is_postgres )
 create or replace function ${triggerName}()
   returns trigger AS $$

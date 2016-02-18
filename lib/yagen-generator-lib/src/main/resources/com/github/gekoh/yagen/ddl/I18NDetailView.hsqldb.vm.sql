@@ -1,4 +1,3 @@
-#set( $is_postgres = ${dialect.getClass().getSimpleName().toLowerCase().contains('postgres')} )
 -- view which always delivers a row for each language, when a description for a specific language
 -- is not present, a description of another language will be delivered
 create or replace view $i18nDetailTblName as

@@ -1,8 +1,3 @@
-#set( $is_postgres = ${dialect.getClass().getSimpleName().toLowerCase().contains('postgres')} )
-#set( $is_oracle = ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )
-#set( $is_oracleXE = ${dialect.getClass().getSimpleName().toLowerCase().contains('oraclexe')} )
-#set( $is_hsql = ${dialect.getClass().getSimpleName().toLowerCase().contains('hsql')} )
-
 #if( $is_hsql )
 ------- CreateDDL statement separator -------
 CREATE FUNCTION sys_guid() RETURNS char(32)
