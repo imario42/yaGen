@@ -1305,14 +1305,11 @@ public class CreateDDL {
         NamingStrategy namingStrategy = getProfile().getNamingStrategy();
         TableConfig tableConfig = tblNameToConfig.get(tableName);
         Class entityBaseClass = tableConfig != null ? tableConfig.getEntityBaseClass() : null;
-        String shortName;
         if (entityBaseClass == null) {
-            shortName = namingStrategy.tableShortNameFromTableName(tableName);
+            return namingStrategy.tableShortNameFromTableName(tableName);
         }
-        else {
-            shortName = namingStrategy.classToTableShortName(entityBaseClass.getName());
-        }
-        return namingStrategy.tableShortName(shortName);
+
+        return namingStrategy.classToTableShortName(entityBaseClass.getName());
     }
 
     private String getLanguageDetailTableNameFromLiveTableName(String liveTableName) {

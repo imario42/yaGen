@@ -83,7 +83,7 @@ public class DefaultNamingStrategy extends EJB3NamingStrategy implements NamingS
 
     @Override
     public String tableShortNameFromTableName(String tableName) {
-        return generateShortName(tableName, null, null);
+        return tableShortName(generateShortName(tableName, null, null));
     }
 
     @Override
