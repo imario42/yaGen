@@ -98,7 +98,7 @@ public class PatchGlue {
                     ReflectExecutor.m_initDDLEnhancer.get().invoke(ddlEnhancer, clonedProfile, dialect, serviceRegistry, persistentClasses);
                 }
             } catch (Exception e) {
-                LOG.error("error initializing Dialect", e);
+                throw new IllegalStateException(e);
             }
         }
         else {
