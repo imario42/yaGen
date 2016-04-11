@@ -122,10 +122,10 @@ public class PatchTransformer implements ClassFileTransformer {
 
     private static void patchConfiguration(CtClass clazz) throws CannotCompileException, NotFoundException {
 
-        CtClass serviceRegistryClass = clazz.getClassPool().get("org.hibernate.service.ServiceRegistry");
+        CtClass serviceRegistryClass = clazz.getClassPool().get("java.lang.Object");
         clazz.addField(new CtField(serviceRegistryClass, "serviceRegistry", clazz));
 
-        clazz.addMethod(CtMethod.make("public void setServiceRegistry(org.hibernate.service.ServiceRegistry serviceRegistry) {\n" +
+        clazz.addMethod(CtMethod.make("public void setServiceRegistry(Object serviceRegistry) {\n" +
                 "this.serviceRegistry = serviceRegistry;\n" +
                 "}", clazz));
 
@@ -202,8 +202,14 @@ public class PatchTransformer implements ClassFileTransformer {
     private static void patchSchemaExport(CtClass clazz) throws CannotCompileException, NotFoundException {
         ClassPool cp = clazz.getClassPool();
 
-        CtConstructor constructor = clazz.getDeclaredConstructor(new CtClass[]{cp.get("org.hibernate.service.ServiceRegistry"), cp.get("org.hibernate.cfg.Configuration")});
-        constructor.insertBefore("$2.setServiceRegistry($1);");
+        CtClass ctClassServiceReg = null;
+        try {
+            ctClassServiceReg = cp.get("org.hibernate.service.ServiceRegistry");
+            CtConstructor constructor = clazz.getDeclaredConstructor(new CtClass[]{ctClassServiceReg, cp.get("org.hibernate.cfg.Configuration")});
+            constructor.insertBefore("$2.setServiceRegistry($1);");
+        } catch (NotFoundException ignore) {
+            // will not be able to set service registry since it is not available in hibernate prior ver 4
+        }
 
         try {
             // Hibernate 4.3.5
@@ -248,10 +254,10 @@ public class PatchTransformer implements ClassFileTransformer {
 
     private static void patchDialect(CtClass clazz) throws CannotCompileException, NotFoundException {
         clazz.addField(CtField.make("private Object ddlEnhancer;", clazz));
-        clazz.addField(CtField.make("private org.hibernate.service.ServiceRegistry serviceRegistry;", clazz));
+        clazz.addField(CtField.make("private Object serviceRegistry;", clazz));
 
         clazz.addMethod(CtMethod.make(
-                "public void initDDLEnhancer(Object profile, org.hibernate.dialect.Dialect dialect, org.hibernate.service.ServiceRegistry serviceRegistry, java.util.Collection persistentClasses) {\n" +
+                "public void initDDLEnhancer(Object profile, org.hibernate.dialect.Dialect dialect, Object serviceRegistry, java.util.Collection persistentClasses) {\n" +
                         "        this.serviceRegistry = serviceRegistry;\n" +
                         "        ddlEnhancer = com.github.gekoh.yagen.hibernate.PatchGlue.newDDLEnhancer(profile, dialect, persistentClasses);\n" +
                         "    }",
@@ -266,7 +272,7 @@ public class PatchTransformer implements ClassFileTransformer {
         ));
 
         clazz.addMethod(CtMethod.make(
-                "public org.hibernate.service.ServiceRegistry getServiceRegistry() {\n" +
+                "public Object getServiceRegistry() {\n" +
                         "        return serviceRegistry;\n" +
                         "    }",
                 clazz

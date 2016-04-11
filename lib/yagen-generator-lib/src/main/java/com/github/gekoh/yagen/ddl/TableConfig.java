@@ -18,6 +18,7 @@ package com.github.gekoh.yagen.ddl;
 import com.github.gekoh.yagen.api.Auditable;
 import com.github.gekoh.yagen.api.CascadeDelete;
 import com.github.gekoh.yagen.api.CascadeNullable;
+import com.github.gekoh.yagen.api.Changelog;
 import com.github.gekoh.yagen.api.Default;
 import com.github.gekoh.yagen.api.Deferrable;
 import com.github.gekoh.yagen.api.I18NDetailEntityRelation;
@@ -75,6 +76,7 @@ public class TableConfig {
     private static final Set<Class<? extends Annotation>> COLLECT_ANNOTATIONS = new HashSet(Arrays.asList(
             Profile.class,
             TemporalEntity.class,
+            Changelog.class,
             com.github.gekoh.yagen.api.Table.class,
             IntervalPartitioning.class,
             Auditable.class,
@@ -85,14 +87,17 @@ public class TableConfig {
 
     private String tableName;
     private Class baseClass;
+    private AccessibleObject definedAtFieldOrMethod;
     private CreateDDL ddlEnhancer;
     private boolean tableToBeRendered = true;
+    private TableConfig superClassConfig;
 
     private List<String> pkColnames = new ArrayList<String>();
     private Set<Annotation> annotations = new HashSet<Annotation>();
     private List<Sequence> sequences = new ArrayList<Sequence>();
     private List<Index> indexes = new ArrayList<Index>();
 
+    private Map<String, AccessibleObject> columnNameToAccessibleObject = new HashMap<String, AccessibleObject>();
     private Map<String, String> columnNameToEnumCheckConstraints = new HashMap<String, String>();
     private Map<String, Deferrable> columnNameToDeferrable = new HashMap<String, Deferrable>();
     private Set<String> columnNamesIsCascadeDelete = new HashSet<String>();
@@ -106,6 +111,21 @@ public class TableConfig {
         this.ddlEnhancer = ddlEnhancer;
         this.baseClass = baseClass;
         this.tableName = getIdentifierForReference(tableName);
+        Class superclass = baseClass != null ? baseClass.getSuperclass() : null;
+        if (superclass != null && superclass.isAnnotationPresent(MappedSuperclass.class)) {
+            this.superClassConfig = new TableConfig(ddlEnhancer, superclass, ddlEnhancer.getProfile().getNamingStrategy().classToTableName(superclass.getName()));
+        }
+    }
+
+    public TableConfig(CreateDDL ddlEnhancer, AccessibleObject definedAtFieldOrMethod, String tableName) {
+        this.ddlEnhancer = ddlEnhancer;
+        this.definedAtFieldOrMethod = definedAtFieldOrMethod;
+        this.tableName = getIdentifierForReference(tableName);
+        for (Annotation annotation : definedAtFieldOrMethod.getAnnotations()) {
+            if (COLLECT_ANNOTATIONS.contains(annotation.annotationType()) && !annotations.contains(annotation)) {
+                putTableAnnotation(annotation);
+            }
+        }
     }
 
     public void scanEntityClass(Class entityClass, boolean selectiveRendering) {
@@ -139,6 +159,11 @@ public class TableConfig {
         gatherCascade(entityClass);
         gatherDeferrable(entityClass);
         gatherIndexes(entityClass);
+        gatherAccessibleObjects(entityClass);
+
+        if (superClassConfig != null) {
+            superClassConfig.scanEntityClass(superClassConfig.getEntityBaseClass(), selectiveRendering);
+        }
     }
 
     public boolean isTableToBeRendered() {
@@ -155,6 +180,10 @@ public class TableConfig {
 
     public Class getEntityBaseClass() {
         return baseClass;
+    }
+
+    public TableConfig getSuperClassConfig() {
+        return superClassConfig;
     }
 
     private void putTableAnnotation (Annotation annotation) {
@@ -197,6 +226,10 @@ public class TableConfig {
 
     public List<Index> getIndexes() {
         return indexes;
+    }
+
+    public Map<String, AccessibleObject> getColumnNameToAccessibleObject() {
+        return columnNameToAccessibleObject;
     }
 
     public Map<String, String> getColumnNameToEnumCheckConstraints() {
@@ -418,6 +451,41 @@ public class TableConfig {
         });
     }
 
+    private void gatherAccessibleObjects(Class entityClass) {
+        gatherAccessibleObjects(new HashMap<String, String>(), "", entityClass);
+    }
+
+    private void gatherAccessibleObjects(final Map<String, String> attr2colName, final String attrPath, Class type) {
+        traverseFieldsAndMethods(type, true, true, new GatherFieldOrMethodInfoAction() {
+            @Override
+            public void gatherInfo(AccessibleObject fOm) {
+                String attributeName = getAttributeName(fOm);
+                String attrPathField = attrPath + "." + attributeName;
+                Class attributeType = getAttributeType(fOm);
+
+                if (fOm.isAnnotationPresent(Embedded.class)) {
+                    addAttributeOverrides(attr2colName, attrPathField, fOm);
+                    gatherAccessibleObjects(attr2colName, attrPathField, attributeType);
+                } else {
+                    String colName = attr2colName.get(attrPathField);
+                    if (colName == null) {
+                        if (fOm.isAnnotationPresent(Column.class)) {
+                            colName = getIdentifierForReference(fOm.getAnnotation(Column.class).name());
+                        }
+                        else if (fOm.isAnnotationPresent(JoinColumn.class)) {
+                            colName = getIdentifierForReference(fOm.getAnnotation(JoinColumn.class).name());
+                        }
+
+                        if (StringUtils.isEmpty(colName)) {
+                            colName = getIdentifierForReference(attributeName);
+                        }
+                    }
+                    columnNameToAccessibleObject.put(colName, fOm);
+                }
+            }
+        });
+    }
+
     private void gatherIndexes(Class type) {
         while (type != null) {
             traverseFieldsAndMethods(type, true, true, new GatherFieldOrMethodInfoAction() {
@@ -556,7 +624,7 @@ public class TableConfig {
             TableConfig joinTableConfig = joinTableName != null ? ddlEnhancer.getConfigForTableName(getIdentifierForReference(joinTableName)) : null;
 
             if (joinTableName != null && joinTableConfig == null) {
-                joinTableConfig = new TableConfig(ddlEnhancer, null, ddlEnhancer.getProfile().getNamingStrategy().tableName(joinTableName));
+                joinTableConfig = new TableConfig(ddlEnhancer, fieldOrMethod, ddlEnhancer.getProfile().getNamingStrategy().tableName(joinTableName));
                 ddlEnhancer.addTableConfig(joinTableConfig);
             }
 
@@ -614,7 +682,7 @@ public class TableConfig {
             else if (fieldOrMethod.isAnnotationPresent(ManyToMany.class)) {
                 if (joinTable == null) {
                     String propName = fieldOrMethod instanceof Field ? ((Field) fieldOrMethod).getName() : ((Method) fieldOrMethod).getName().substring(3);
-                    joinTableConfig = new TableConfig(ddlEnhancer, null, ddlEnhancer.getProfile().getNamingStrategy().collectionTableName(null, getTableName(), null, null, propName));
+                    joinTableConfig = new TableConfig(ddlEnhancer, fieldOrMethod, ddlEnhancer.getProfile().getNamingStrategy().collectionTableName(null, getTableName(), null, null, propName));
                     ddlEnhancer.addTableConfig(joinTableConfig);
                 }
                 joinTableConfig.setTableToBeRendered(true);

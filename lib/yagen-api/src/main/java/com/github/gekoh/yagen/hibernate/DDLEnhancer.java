@@ -17,7 +17,6 @@ package com.github.gekoh.yagen.hibernate;
 
 import org.hibernate.dialect.Dialect;
 import org.hibernate.mapping.PersistentClass;
-import org.hibernate.service.ServiceRegistry;
 
 import java.util.Collection;
 
@@ -25,7 +24,7 @@ import java.util.Collection;
  * @author Georg Kohlweiss 
  */
 public interface DDLEnhancer {
-    void initDDLEnhancer(Object profile, Dialect dialect, ServiceRegistry serviceRegistry, Collection<PersistentClass> persistentClasses);
+    void initDDLEnhancer(Object profile, Dialect dialect, Object serviceRegistry, Collection<PersistentClass> persistentClasses);
     Object getDDLEnhancer();
-    ServiceRegistry getServiceRegistry();
+    Object getServiceRegistry();
 }

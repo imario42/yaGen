@@ -17,6 +17,7 @@ package com.github.gekoh.yagen.ddl;
 
 import com.github.gekoh.yagen.api.AuditInfo;
 import com.github.gekoh.yagen.api.Auditable;
+import com.github.gekoh.yagen.api.Changelog;
 import com.github.gekoh.yagen.api.CheckConstraint;
 import com.github.gekoh.yagen.api.Constants;
 import com.github.gekoh.yagen.api.DefaultNamingStrategy;
@@ -31,26 +32,32 @@ import com.github.gekoh.yagen.api.Sequence;
 import com.github.gekoh.yagen.api.TemporalEntity;
 import com.github.gekoh.yagen.api.UniqueConstraint;
 import com.github.gekoh.yagen.hst.CreateEntities;
+import com.github.gekoh.yagen.util.FieldInfo;
 import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
+import org.hibernate.annotations.Type;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.mapping.Constraint;
 import org.hibernate.mapping.ForeignKey;
 import org.hibernate.mapping.PrimaryKey;
 import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
-import org.hibernate.type.Type;
 
 import javax.persistence.CollectionTable;
 import javax.persistence.JoinTable;
+import javax.persistence.Lob;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.SequenceInputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -528,6 +535,12 @@ public class CreateDDL {
         sqlCreate = addDefaultValues(sqlCreate, nameLC);
         addIndexes(buf, dialect, tableConfig);
 
+        Changelog changelog = tableConfig.getTableAnnotationOfType(Changelog.class);
+        if (changelog != null && StringUtils.isNotEmpty(changelog.timelineViewName())) {
+            deferredDdl.append(STATEMENT_SEPARATOR);
+            deferredDdl.append(getTimelineView(changelog, tableConfig, dialect, sqlCreate, changelog.timelineViewName(), tableName, columns, pkCols));
+        }
+
         if (buf.length() == 0) {
             return sqlCreate;
         }
@@ -791,7 +804,7 @@ public class CreateDDL {
         return buf.toString();
     }
 
-    public String updateCreateSequence(Dialect dialect, String sqlCreate, Type type) {
+    public String updateCreateSequence(Dialect dialect, String sqlCreate, org.hibernate.type.Type type) {
         Matcher matcher = SEQ_CREATE_PATTERN.matcher(sqlCreate);
 
         if (matcher.find()) {
@@ -939,6 +952,74 @@ public class CreateDDL {
         StringWriter wr = new StringWriter();
         Velocity.evaluate(context, wr, CreateDDL.class.getName() + "#formatColumn", colTemplate);
         return wr.toString();
+    }
+
+    private String getTimelineView(Changelog changelog, TableConfig tableConfig, Dialect dialect, String sqlCreate, String viewName, String tableName, Set<String> columns, List<String> pkCols) {
+        StringWriter objWr = new StringWriter();
+
+        columns = new HashSet<String>(columns);
+
+        Class entityBaseClass = tableConfig.getEntityBaseClass();
+        if (entityBaseClass != null) {
+            columns.remove(FieldInfo.getIdColumn(entityBaseClass).name());
+        }
+        columns.removeAll(AUDIT_COLUMNS);
+        columns.remove(VERSION_COLUMN_NAME);
+
+        checkObjectName(dialect, viewName);
+
+        VelocityContext context = new VelocityContext();
+        context.put("changelogQueryString", changelog.changelogQueryString());
+        context.put("dialect", dialect);
+        context.put("viewName", viewName);
+        context.put("tableName", tableName);
+        context.put("columns", columns);
+        context.put("pkColumns", pkCols);
+        context.put("numericColumns", findNumericColumns(tableConfig, columns));
+        context.put("clobColumns", findLobColumns(tableConfig, columns));
+
+        mergeTemplateFromResource("TimelineView.vm.sql", objWr, context);
+
+        return objWr.toString();
+    }
+
+    private Object findLobColumns(TableConfig tableConfig, Set<String> columns) {
+        Set<String> lobColumns = new HashSet<String>();
+        while (tableConfig != null) {
+            Map<String, AccessibleObject> accessibleObjects = tableConfig.getColumnNameToAccessibleObject();
+            for (String column : columns) {
+                AccessibleObject fOm = accessibleObjects.get(column);
+                if (fOm != null && fOm.isAnnotationPresent(Lob.class)) {
+                    lobColumns.add(column);
+                }
+            }
+            tableConfig = tableConfig.getSuperClassConfig();
+        }
+        return lobColumns;
+    }
+
+    private Set<String> findNumericColumns(TableConfig tableConfig, Set<String> columns) {
+        Set<String> numColumns = new HashSet<String>();
+        while (tableConfig != null) {
+            Map<String, AccessibleObject> accessibleObjects = tableConfig.getColumnNameToAccessibleObject();
+            for (String column : columns) {
+                AccessibleObject fOm = accessibleObjects.get(column);
+                Class type = null;
+                if (fOm instanceof Method) {
+                    type = ((Method) fOm).getReturnType();
+                } else if (fOm instanceof Field) {
+                    type = ((Field) fOm).getType();
+                }
+
+                if (type != null &&
+                        (Number.class.isAssignableFrom(type) || type == int.class || type == long.class ||
+                                (fOm.isAnnotationPresent(Type.class) && fOm.getAnnotation(Type.class).type().equals("org.hibernate.type.NumericBooleanType")))) {
+                    numColumns.add(column);
+                }
+            }
+            tableConfig = tableConfig.getSuperClassConfig();
+        }
+        return numColumns;
     }
 
     private void addAuditTrigger(Dialect dialect, StringBuffer buf, String nameLC, Set<String> columns) {
@@ -1799,7 +1880,7 @@ public class CreateDDL {
     private static void mergeTemplateFromResource(String resource, Writer wr, VelocityContext context) {
         try {
             Velocity.evaluate(context, wr, CreateDDL.class.getName()+"#"+resource,
-                    new InputStreamReader(CreateDDL.class.getResourceAsStream(resource), "UTF-8"));
+                    new InputStreamReader(new SequenceInputStream(CreateDDL.class.getResourceAsStream("setVars.vm"), CreateDDL.class.getResourceAsStream(resource)), "UTF-8"));
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }

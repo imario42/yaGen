@@ -17,12 +17,10 @@ package com.github.gekoh.yagen.util;
 
 import com.github.gekoh.yagen.hibernate.DDLEnhancer;
 import org.hibernate.dialect.Dialect;
-import org.hibernate.engine.jdbc.connections.spi.ConnectionProvider;
-import org.hibernate.service.Service;
-import org.hibernate.service.ServiceRegistry;
 
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.UUID;
 
 /**
@@ -61,14 +59,26 @@ public class DBHelper {
         return dialect instanceof DDLEnhancer ? getDriverClassName(((DDLEnhancer) dialect).getServiceRegistry()) : null;
     }
 
-    public static String getDriverClassName(ServiceRegistry serviceRegistry) {
+    public static String getDriverClassName(Object serviceRegistry) {
         String driverClassName = null;
 
+        if (serviceRegistry == null) {
+            return null;
+        }
+
+        Method getService = null;
         try {
+            getService = Class.forName("org.hibernate.service.ServiceRegistry").getDeclaredMethod("getService", Class.class);
+        } catch (Exception e) {
+            LOG.warn("cannot detect jdbc driver name");
+            return null;
+        }
+        try {
+
             Class providerClass = Class.forName("org.hibernate.service.jdbc.connections.internal.DatasourceConnectionProviderImpl");
             Field dataSourceField = providerClass.getDeclaredField("dataSource");
             dataSourceField.setAccessible(true);
-            DataSource dataSource = (DataSource) dataSourceField.get(serviceRegistry.getService((Class<? extends Service>) Class.forName("org.hibernate.service.jdbc.connections.spi.ConnectionProvider")));
+            DataSource dataSource = (DataSource) dataSourceField.get(getService.invoke(serviceRegistry, Class.forName("org.hibernate.service.jdbc.connections.spi.ConnectionProvider")));
             Field driverClassNameField = dataSource.getClass().getDeclaredField("driverClassName");
             driverClassNameField.setAccessible(true);
 
@@ -81,7 +91,7 @@ public class DBHelper {
                 Field driverField = Class.forName("org.hibernate.engine.jdbc.connections.internal.DriverConnectionCreator").getDeclaredField("driver");
                 driverField.setAccessible(true);
 
-                driverClassName = driverField.get(creatorField.get(serviceRegistry.getService(ConnectionProvider.class))).getClass().getName();
+                driverClassName = driverField.get(creatorField.get(getService.invoke(serviceRegistry, Class.forName("org.hibernate.engine.jdbc.connections.spi.ConnectionProvider")))).getClass().getName();
             } catch (Exception e1) {
                 LOG.warn("cannot detect jdbc driver name");
             }
