@@ -18,8 +18,8 @@ package com.github.gekoh.yagen.example.test;
 import com.github.gekoh.yagen.example.Aircraft;
 import com.github.gekoh.yagen.example.AircraftHst;
 import com.github.gekoh.yagen.example.EngineType;
-import com.github.gekoh.yagen.example.hst.Operation;
 import com.github.gekoh.yagen.hibernate.YagenInit;
+import com.github.gekoh.yagen.hst.Operation;
 import org.junit.Assert;
 import org.junit.Test;
 

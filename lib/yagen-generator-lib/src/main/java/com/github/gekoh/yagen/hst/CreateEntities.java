@@ -349,7 +349,6 @@ public class CreateEntities {
         context.put("baseClassPackageName", baseClassPackageName);
 
         evaluate2JavaFile(baseClassPackageName+".BaseEntity", new StringReader(readClasspathResource("BaseEntity.java.vm")), context);
-        evaluate2JavaFile(baseClassPackageName+".Operation", new StringReader(readClasspathResource("Operation.java.vm")), context);
     }
 
     private void evaluate2JavaFile(String entityClassName, Reader template, VelocityContext context) {

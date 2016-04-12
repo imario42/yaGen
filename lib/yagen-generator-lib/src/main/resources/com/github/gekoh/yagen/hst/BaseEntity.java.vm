@@ -24,6 +24,7 @@ package ${baseClassPackageName};
 
 import com.github.gekoh.yagen.api.Constants;
 import com.github.gekoh.yagen.api.Generated;
+import com.github.gekoh.yagen.hst.Operation;
 import org.hibernate.annotations.Type;
 import org.joda.time.DateTime;
 
