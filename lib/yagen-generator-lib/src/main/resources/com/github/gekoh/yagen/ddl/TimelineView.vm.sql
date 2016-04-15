@@ -21,7 +21,7 @@ mut as (
 #foreach( $selColumn in $columns )
 #if( $selColumn == $column )
 #if( $numericColumns.contains($selColumn) )
-  , cast(l.new_value as number(38,0)) ${selColumn}
+  , cast(l.new_value as $numericColumnDefinitions[$selColumn]) ${selColumn}
 #elseif( $clobColumns.contains($selColumn) )
   , nvl(l.new_long_value, empty_clob()) ${selColumn}
 #else
@@ -48,11 +48,11 @@ select
   UUID,
 #foreach( $column in $columns )
 #if( $numericColumns.contains($column) )
-  decode(${column}, chr(0), null, ${column}) ${column},
+  ${column},
 #elseif( $clobColumns.contains($column) )
   case when dbms_lob.compare(${column}, empty_clob()) = 0 then null else ${column} end ${column},
 #else
-  ${column},
+  decode(${column}, chr(0), null, ${column}) ${column},
 #end
 #end
   EFFECTIVE_TIMESTAMP_FROM,
@@ -173,7 +173,7 @@ with mut as (
 #foreach( $selColumn in $columns )
 #if( $selColumn == $column )
 #if( $numericColumns.contains($selColumn) )
-  , cast(l.new_value as number(38,0)) ${selColumn}
+  , cast(l.new_value as $numericColumnDefinitions[$selColumn]) ${selColumn}
 #elseif( $clobColumns.contains($selColumn) )
 	, coalesce(l.new_long_value,'') ${selColumn}
 #else

@@ -36,7 +36,6 @@ import com.github.gekoh.yagen.util.FieldInfo;
 import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
-import org.hibernate.annotations.Type;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.mapping.Constraint;
 import org.hibernate.mapping.ForeignKey;
@@ -46,7 +45,6 @@ import org.hibernate.mapping.UniqueKey;
 
 import javax.persistence.CollectionTable;
 import javax.persistence.JoinTable;
-import javax.persistence.Lob;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -55,9 +53,6 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -968,6 +963,8 @@ public class CreateDDL {
 
         checkObjectName(dialect, viewName);
 
+        Map<String, String> numericColumnDefinitions = findNumericColumnDefinitions(sqlCreate);
+
         VelocityContext context = new VelocityContext();
         context.put("changelogQueryString", changelog.changelogQueryString());
         context.put("dialect", dialect);
@@ -975,51 +972,45 @@ public class CreateDDL {
         context.put("tableName", tableName);
         context.put("columns", columns);
         context.put("pkColumns", pkCols);
-        context.put("numericColumns", findNumericColumns(tableConfig, columns));
-        context.put("clobColumns", findLobColumns(tableConfig, columns));
+        context.put("numericColumns", numericColumnDefinitions.keySet());
+        context.put("numericColumnDefinitions", numericColumnDefinitions);
+        context.put("clobColumns", findClobColumns(sqlCreate));
 
         mergeTemplateFromResource("TimelineView.vm.sql", objWr, context);
 
         return objWr.toString();
     }
 
-    private Object findLobColumns(TableConfig tableConfig, Set<String> columns) {
+    private Object findClobColumns(String sqlCreate) {
         Set<String> lobColumns = new HashSet<String>();
-        while (tableConfig != null) {
-            Map<String, AccessibleObject> accessibleObjects = tableConfig.getColumnNameToAccessibleObject();
-            for (String column : columns) {
-                AccessibleObject fOm = accessibleObjects.get(column);
-                if (fOm != null && fOm.isAnnotationPresent(Lob.class)) {
-                    lobColumns.add(column);
-                }
+        Matcher colMatcher = COL_PATTERN.matcher(sqlCreate);
+        int idx = 0;
+
+        while (colMatcher.find(idx)) {
+            String type = colMatcher.group(COL_PATTERN_IDX_TYPE);
+            if (type.toLowerCase().contains("clob")) {
+                lobColumns.add(colMatcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase());
             }
-            tableConfig = tableConfig.getSuperClassConfig();
+            idx = colMatcher.end();
         }
         return lobColumns;
     }
 
-    private Set<String> findNumericColumns(TableConfig tableConfig, Set<String> columns) {
-        Set<String> numColumns = new HashSet<String>();
-        while (tableConfig != null) {
-            Map<String, AccessibleObject> accessibleObjects = tableConfig.getColumnNameToAccessibleObject();
-            for (String column : columns) {
-                AccessibleObject fOm = accessibleObjects.get(column);
-                Class type = null;
-                if (fOm instanceof Method) {
-                    type = ((Method) fOm).getReturnType();
-                } else if (fOm instanceof Field) {
-                    type = ((Field) fOm).getType();
-                }
+    private Map<String, String> findNumericColumnDefinitions(String sqlCreate) {
+        Map<String, String> numColumnDef = new HashMap<String, String>();
 
-                if (type != null &&
-                        (Number.class.isAssignableFrom(type) || type == int.class || type == long.class ||
-                                (fOm.isAnnotationPresent(Type.class) && fOm.getAnnotation(Type.class).type().equals("org.hibernate.type.NumericBooleanType")))) {
-                    numColumns.add(column);
-                }
+        Matcher colMatcher = COL_PATTERN.matcher(sqlCreate);
+        int idx = 0;
+
+        while (colMatcher.find(idx)) {
+            String type = colMatcher.group(COL_PATTERN_IDX_TYPE);
+            if (type.toLowerCase().contains("num")) {
+                numColumnDef.put(colMatcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase(), type);
             }
-            tableConfig = tableConfig.getSuperClassConfig();
+            idx = colMatcher.end();
         }
-        return numColumns;
+
+        return numColumnDef;
     }
 
     private void addAuditTrigger(Dialect dialect, StringBuffer buf, String nameLC, Set<String> columns) {
