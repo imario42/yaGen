@@ -1003,8 +1003,8 @@ public class CreateDDL {
         int idx = 0;
 
         while (colMatcher.find(idx)) {
-            String type = colMatcher.group(COL_PATTERN_IDX_TYPE);
-            if (type.toLowerCase().contains("num")) {
+            String type = colMatcher.group(COL_PATTERN_IDX_TYPE).toLowerCase();
+            if (type.contains("num") || type.contains("int") || type.contains("long") || type.contains("double") || type.contains("float")) {
                 numColumnDef.put(colMatcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase(), type);
             }
             idx = colMatcher.end();
