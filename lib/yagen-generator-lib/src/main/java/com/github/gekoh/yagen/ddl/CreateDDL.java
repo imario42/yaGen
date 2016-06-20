@@ -1026,6 +1026,10 @@ public class CreateDDL {
                 return;
             }
         }
+        else if (tableConfig != null && tableConfig.getTableAnnotationOfType(Auditable.class) == null) {
+            // no audit trigger if no Auditable annotation added
+            return;
+        }
 
         if (isPostgreSql(dialect)) {
             writePostgreSqlAuditTrigger(dialect, buf, nameLC);

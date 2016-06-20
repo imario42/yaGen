@@ -57,6 +57,7 @@ import javax.persistence.Transient;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -93,7 +94,7 @@ public class TableConfig {
     private TableConfig superClassConfig;
 
     private List<String> pkColnames = new ArrayList<String>();
-    private Set<Annotation> annotations = new HashSet<Annotation>();
+    private Map<Annotation, Class> annotations2annClassMap = new HashMap<Annotation, Class>();
     private List<Sequence> sequences = new ArrayList<Sequence>();
     private List<Index> indexes = new ArrayList<Index>();
 
@@ -122,8 +123,8 @@ public class TableConfig {
         this.definedAtFieldOrMethod = definedAtFieldOrMethod;
         this.tableName = getIdentifierForReference(tableName);
         for (Annotation annotation : definedAtFieldOrMethod.getAnnotations()) {
-            if (COLLECT_ANNOTATIONS.contains(annotation.annotationType()) && !annotations.contains(annotation)) {
-                putTableAnnotation(annotation);
+            if (COLLECT_ANNOTATIONS.contains(annotation.annotationType()) && !annotations2annClassMap.containsKey(annotation)) {
+                putTableAnnotation(definedAtFieldOrMethod, annotation);
             }
         }
     }
@@ -132,16 +133,11 @@ public class TableConfig {
         Class annClass = entityClass;
         while (annClass != null) {
             for (Annotation annotation : annClass.getAnnotations()) {
-                if (COLLECT_ANNOTATIONS.contains(annotation.annotationType()) && !annotations.contains(annotation)) {
-                    putTableAnnotation(annotation);
+                if (COLLECT_ANNOTATIONS.contains(annotation.annotationType()) && !annotations2annClassMap.containsKey(annotation)) {
+                    putTableAnnotation(annClass, annotation);
                 }
             }
-            if (baseClass.equals(getClassOfTableAnnotation(annClass))) {
-                annClass = annClass.getSuperclass();
-            }
-            else {
-                break;
-            }
+            annClass = annClass.getSuperclass();
         }
 
         com.github.gekoh.yagen.api.Table addTblInfo = (com.github.gekoh.yagen.api.Table) entityClass.getAnnotation(com.github.gekoh.yagen.api.Table.class);
@@ -186,16 +182,20 @@ public class TableConfig {
         return superClassConfig;
     }
 
-    private void putTableAnnotation (Annotation annotation) {
+    private void putTableAnnotation(AccessibleObject fieldOrMethod, Annotation annotation) {
+        putTableAnnotation(fieldOrMethod instanceof Member ? ((Member)fieldOrMethod).getDeclaringClass() : null, annotation);
+    }
+
+    private void putTableAnnotation(Class annClass, Annotation annotation) {
         if (!COLLECT_ANNOTATIONS.contains(annotation.annotationType())) {
             throw new IllegalArgumentException("not chosen to collect annotations of type " + annotation.getClass());
         }
 
-        annotations.add(annotation);
+        annotations2annClassMap.put(annotation, annClass);
     }
 
     public <T extends Annotation> T getTableAnnotationOfType (Class<T> annotationType) {
-        for (Annotation annotation: annotations) {
+        for (Annotation annotation: annotations2annClassMap.keySet()) {
             if (annotationType.isAssignableFrom(annotation.getClass())) {
                 return (T) annotation;
             }
@@ -217,7 +217,7 @@ public class TableConfig {
     }
 
     public Set<Annotation> getAnnotations() {
-        return annotations;
+        return annotations2annClassMap.keySet();
     }
 
     public List<Sequence> getSequences() {
@@ -629,13 +629,13 @@ public class TableConfig {
             }
 
             if (joinTableConfig != null) {
-                joinTableConfig.putTableAnnotation(joinTable != null ? joinTable : collectionTable);
+                joinTableConfig.putTableAnnotation(fieldOrMethod, joinTable != null ? joinTable : collectionTable);
 
                 if (fieldOrMethod.isAnnotationPresent(IntervalPartitioning.class)) {
-                    joinTableConfig.putTableAnnotation(fieldOrMethod.getAnnotation(IntervalPartitioning.class));
+                    joinTableConfig.putTableAnnotation(fieldOrMethod, fieldOrMethod.getAnnotation(IntervalPartitioning.class));
                 }
                 if (fieldOrMethod.isAnnotationPresent(Auditable.class)) {
-                    joinTableConfig.putTableAnnotation(fieldOrMethod.getAnnotation(Auditable.class));
+                    joinTableConfig.putTableAnnotation(fieldOrMethod, fieldOrMethod.getAnnotation(Auditable.class));
                 }
             }
 
@@ -656,7 +656,7 @@ public class TableConfig {
                 TemporalEntity annotation = fieldOrMethod.getAnnotation(TemporalEntity.class);
 
                 if (annotation != null) {
-                    joinTableConfig.putTableAnnotation(annotation);
+                    joinTableConfig.putTableAnnotation(fieldOrMethod, annotation);
                 }
             }
             if (fieldOrMethod.getAnnotation(Sequence.class) != null) {
