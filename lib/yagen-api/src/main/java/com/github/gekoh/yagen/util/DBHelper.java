@@ -22,6 +22,7 @@ import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 /**
  * @author Georg Kohlweiss
@@ -53,6 +54,34 @@ public class DBHelper {
         }
 
         return null;
+    }
+
+    public static boolean regexpLike(String value, String regexp) {
+        if (value == null) {
+            return false;
+        }
+        return Pattern.compile(regexp).matcher(value).find();
+    }
+
+    public static boolean regexpLikeFlags(String value, String regexp, String flags) {
+        if (value == null || flags == null) {
+            return false;
+        }
+        String f = flags.toLowerCase();
+        int opts = 0;
+        if (f.contains("i")) {
+            opts = opts | Pattern.CASE_INSENSITIVE;
+        }
+        if (f.contains("c")) {
+            opts = opts | Pattern.CANON_EQ;
+        }
+        if (f.contains("n")) {
+            opts = opts | Pattern.DOTALL;
+        }
+        if (f.contains("m")) {
+            opts = opts | Pattern.MULTILINE;
+        }
+        return Pattern.compile(regexp, opts).matcher(value).find();
     }
 
     public static String getDriverClassName(Dialect dialect) {

@@ -11,6 +11,20 @@ LANGUAGE JAVA DETERMINISTIC NO SQL
 EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.getSysContext'
 ;
 
+------- CreateDDL statement separator -------
+CREATE FUNCTION regexp_like(s VARCHAR(4000), regexp VARCHAR(500))
+  RETURNS BOOLEAN
+  LANGUAGE JAVA DETERMINISTIC NO SQL
+  EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.regexpLike'
+;
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION regexp_like(s VARCHAR(4000), regexp VARCHAR(500), flags VARCHAR(10))
+  RETURNS BOOLEAN
+  LANGUAGE JAVA DETERMINISTIC NO SQL
+  EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.regexpLikeFlags'
+;
+
 #end
 
 #if( $is_postgres )
