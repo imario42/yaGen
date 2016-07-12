@@ -75,7 +75,7 @@ public class ${entityClassSimpleName} extends
 #if( ${fieldInfo.getColumnAnnotation()} )
     ${fieldInfo.getColumnAnnotation()}
 #end
-    private ${fieldInfo.getType().getName()} ${fieldInfo.getName()};
+    private ${fieldInfo.getType().getCanonicalName()} ${fieldInfo.getName()};
 #end
 #end
     /*
@@ -130,11 +130,11 @@ public class ${entityClassSimpleName} extends
 ## building the camel case method name for setter and getter
 #set( $nameCC = "${fieldInfo.getName().substring(0, 1).toUpperCase()}${fieldInfo.getName().substring(1)}")
 
-    public void set${nameCC}(${fieldInfo.getType().getName()} ${fieldInfo.getName()}) {
+    public void set${nameCC}(${fieldInfo.getType().getCanonicalName()} ${fieldInfo.getName()}) {
         this.${fieldInfo.getName()} = ${fieldInfo.getName()};
     }
 
-    public ${fieldInfo.getType().getName()} get${nameCC}() {
+    public ${fieldInfo.getType().getCanonicalName()} get${nameCC}() {
         return ${fieldInfo.getName()};
     }
 #end
