@@ -15,6 +15,7 @@
 */
 package com.github.gekoh.yagen.api;
 
+import com.github.gekoh.yagen.hibernate.DateTimeType;
 import org.hibernate.annotations.Type;
 import org.joda.time.DateTime;
 
@@ -36,7 +37,7 @@ public abstract class AuditInfo implements Serializable {
     /**
      * Entity was created at.
      */
-    @Type(type = "org.jadira.usertype.dateandtime.joda.PersistentDateTime")
+    @Type(type = DateTimeType.TYPE)
     @Column(name = CREATED_AT, nullable = false)
     private DateTime createdAt;
 
@@ -49,7 +50,7 @@ public abstract class AuditInfo implements Serializable {
     /**
      * Entity was last modified at.
      */
-    @Type(type = "org.jadira.usertype.dateandtime.joda.PersistentDateTime")
+    @Type(type = DateTimeType.TYPE)
     @Column(name = LAST_MODIFIED_AT)
     private DateTime lastModifiedAt;
 
@@ -76,7 +77,7 @@ public abstract class AuditInfo implements Serializable {
     public void prePersist() {
         this.createdAt = getCurrentTime();
 
-        if (this.createdBy == null || this.createdBy.trim().isEmpty()) {
+        if (this.createdBy == null || this.createdBy.trim().length()<1) {
             this.createdBy = getUserName();
         }
     }

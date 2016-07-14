@@ -15,8 +15,8 @@
 */
 package com.github.gekoh.yagen.example;
 
-import com.github.gekoh.yagen.api.Default;
 import com.github.gekoh.yagen.api.TemporalEntity;
+import com.github.gekoh.yagen.hibernate.DateTimeType;
 import org.hibernate.annotations.Type;
 import org.joda.time.DateTime;
 
@@ -59,7 +59,7 @@ public class PilotLogEntry extends BaseEntity {
      */
     @Basic(optional = false)
     @Column(name = "BLOCK_OFF")
-    @Type(type="org.jadira.usertype.dateandtime.joda.PersistentDateTime")
+    @Type(type = DateTimeType.TYPE)
     private DateTime blockOff;
 
     /**
@@ -67,7 +67,7 @@ public class PilotLogEntry extends BaseEntity {
      */
     @Basic(optional = false)
     @Column(name = "BLOCK_ON")
-    @Type(type="org.jadira.usertype.dateandtime.joda.PersistentDateTime")
+    @Type(type = DateTimeType.TYPE)
     private DateTime blockOn;
 
     PilotLogEntry() {

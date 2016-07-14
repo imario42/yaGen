@@ -54,13 +54,6 @@
             <optional>true</optional>
         </dependency>
 
-        <dependency>
-            <groupId>org.jadira.usertype</groupId>
-            <artifactId>usertype.core</artifactId>
-            <optional>true</optional>
-            <scope>runtime</scope>
-        </dependency>
-
     </dependencies>
 
 </project>
