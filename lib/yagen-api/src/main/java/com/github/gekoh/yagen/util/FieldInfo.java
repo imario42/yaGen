@@ -53,7 +53,7 @@ public class FieldInfo {
 
     private static Pattern NULLABLE_PATTERN = Pattern.compile("nullable=((true)|(false))");
     private static Pattern UNIQUE_PATTERN = Pattern.compile("unique=((true)|(false))");
-    private static Pattern STRING_ATTR_PATTERN = Pattern.compile("[\\(|\\s*](name|columnDefinition|type)=([^)\\s*]*)[,\\)]");
+    private static Pattern STRING_ATTR_PATTERN = Pattern.compile("[\\(|\\s*](name|columnDefinition|type)=([^\\s]*)[,\\)]");
 
     private Class type;
     private String name;
@@ -178,6 +178,10 @@ public class FieldInfo {
         String a = annotation.toString();
         StringBuilder result = new StringBuilder();
 
+        if (a.endsWith("=)")) {
+            a = a.substring(0, a.length() - 2) + "= )";
+        }
+
         // wrap string value of attribute "name" into double quotes as needed for java code
         Matcher m = STRING_ATTR_PATTERN.matcher(a);
         int idx = 0;
@@ -190,6 +194,11 @@ public class FieldInfo {
         result.append(a.substring(idx));
 
         a = result.toString();
+
+        if (a.endsWith(" )")) {
+            a = a.substring(0, a.length() - 2) + ")";
+        }
+
         result = new StringBuilder();
 
         // remove empty attributes like (columnDefinition=)

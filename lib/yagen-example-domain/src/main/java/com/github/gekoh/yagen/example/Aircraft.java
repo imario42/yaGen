@@ -62,6 +62,18 @@ public class Aircraft extends BaseEntity {
     @Column(name = "CALL_SIGN", length = 7, unique = true, nullable = false)
     private String callSign;
 
+    /**
+     * horizontal dimension of aircraft from left wing tip to right wing tip
+     */
+    @Column(name = "WING_SPAN", precision = 2, scale = 1, nullable = false)
+    private float wingSpan;
+
+    /**
+     * horizontal dimension of aircraft from front to tail
+     */
+    @Column(name = "LENGTH", columnDefinition = "numeric(2,1)", nullable = false)
+    private float length;
+
 
     @OneToMany(cascade = CascadeType.ALL)
     @JoinColumn(name = "AIRCRAFT_UUID", nullable = false)
