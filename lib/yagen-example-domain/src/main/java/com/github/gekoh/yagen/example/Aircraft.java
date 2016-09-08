@@ -65,13 +65,13 @@ public class Aircraft extends BaseEntity {
     /**
      * horizontal dimension of aircraft from left wing tip to right wing tip
      */
-    @Column(name = "WING_SPAN", precision = 2, scale = 1, nullable = false)
+    @Column(name = "WING_SPAN", precision = 5, scale = 2, nullable = false)
     private float wingSpan;
 
     /**
      * horizontal dimension of aircraft from front to tail
      */
-    @Column(name = "LENGTH", columnDefinition = "numeric(2,1)", nullable = false)
+    @Column(name = "LENGTH", columnDefinition = "numeric(5,2)", nullable = false)
     private float length;
 
 
@@ -83,10 +83,12 @@ public class Aircraft extends BaseEntity {
     Aircraft() {
     }
 
-    public Aircraft(EngineType engineType, String type, String callSign) {
+    public Aircraft(EngineType engineType, String type, String callSign, float wingSpan, float length) {
         this.engineType = engineType;
         this.type = type;
         this.callSign = callSign;
+        this.wingSpan = wingSpan;
+        this.length = length;
         this.boardBookEntries = new ArrayList<BoardBookEntry>();
     }
 
@@ -100,6 +102,14 @@ public class Aircraft extends BaseEntity {
 
     public String getCallSign() {
         return callSign;
+    }
+
+    public float getWingSpan() {
+        return wingSpan;
+    }
+
+    public float getLength() {
+        return length;
     }
 
     public List<BoardBookEntry> getBoardBookEntries() {

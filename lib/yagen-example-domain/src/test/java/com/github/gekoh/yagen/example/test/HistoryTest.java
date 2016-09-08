@@ -50,7 +50,7 @@ public class HistoryTest {
             em = emf.createEntityManager();
             em.getTransaction().begin();
 
-            Aircraft ac = new Aircraft(EngineType.piston, "C172", "OE-DVK");
+            Aircraft ac = new Aircraft(EngineType.piston, "C172", "OE-DVK", 10.92f, 8.2f);
             em.persist(ac);
 
             em.flush();
