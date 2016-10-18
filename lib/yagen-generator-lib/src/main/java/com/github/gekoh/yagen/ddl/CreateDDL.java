@@ -45,6 +45,7 @@ import org.hibernate.mapping.UniqueKey;
 
 import javax.persistence.CollectionTable;
 import javax.persistence.JoinTable;
+import javax.persistence.MappedSuperclass;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -107,13 +108,13 @@ public class CreateDDL {
     private static final Pattern SEQ_CREATE_PATTERN = Pattern.compile("create sequence[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final Pattern PKG_CREATE_PATTERN = Pattern.compile("create( or replace)?[\\s]+package[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|((number)|(numeric)\\([^\\)]+\\))|(timestamp)|(date)|(clob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(float)|(double)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+not)?[\\s]+null)?([\\s]+unique)?[^\\(,]*(,|\\))");
+    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(numeric\\([^\\)]+\\))|(timestamp)|(date)|(clob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(double)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+not)?[\\s]+null)?([\\s]+unique)?[^\\(,]*(,|\\))");
     private static final int COL_PATTERN_IDX_COLNAME = 2;
     private static final int COL_PATTERN_IDX_TYPE    = 4;
-    private static final int COL_PATTERN_IDX_DEFAULT = 23;
-    private static final int COL_PATTERN_IDX_NOTNULL = 25;
-    private static final int COL_PATTERN_IDX_NOT     = 26;
-    private static final int COL_PATTERN_IDX_UNIQUE  = 27;
+    private static final int COL_PATTERN_IDX_DEFAULT = 21;
+    private static final int COL_PATTERN_IDX_NOTNULL = 23;
+    private static final int COL_PATTERN_IDX_NOT     = 24;
+    private static final int COL_PATTERN_IDX_UNIQUE  = 25;
 
     private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
     private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*([a-zA-Z]+[0-9a-zA-Z_]*)");
@@ -358,14 +359,9 @@ public class CreateDDL {
 
         String sqlCreate = buf.toString();
         buf = new StringBuffer();
-        Map<String, String> comments = getProfile().getComments() != null ? getProfile().getComments().get(nameLC) : null;
         String liveTableName = nameLC;
         Set<String> columnNames = columns;
         List<String> pkCols = getPkColumnNamesFrom(sqlCreate);
-
-        if (comments != null && comments.size() < 1) {
-            comments = null;
-        }
 
         Auditable auditable = tableConfig.getTableAnnotationOfType(Auditable.class);
         if (auditable != null && auditable.createNonExistingColumns()) {
@@ -394,15 +390,13 @@ public class CreateDDL {
             }
 
             deferredDdl.append(STATEMENT_SEPARATOR).append(getI18NDetailViewCreateString(dialect, nameLC, baseEntityTableName, i18nTblName, i18nFK, columnNames));
-            if (comments != null && isOracle) {
-                addComments(deferredDdl, nameLC, comments);
-                comments = null;
+            if (isOracle) {
+                addComments(deferredDdl, nameLC, entityClassName, columns);
             }
             writeI18NDetailViewTriggerCreateString(dialect, deferredDdl, nameLC, i18nTblName, i18nFK, columnNames);
         }
-
-        if (comments != null && isOracle) {
-            addComments(buf, nameLC, comments);
+        else if (isOracle) {
+            addComments(buf, nameLC, entityClassName, columns);
         }
 
         addAuditTrigger(dialect, buf, liveTableName, columns);
@@ -1180,25 +1174,56 @@ public class CreateDDL {
         return column.isUnique();
     }
 
-    private void addComments(StringBuffer buf, String tableName, Map<String, String> comments) {
+    private void addComments(StringBuffer buf, String tableName, String entityClassName, Set<String> columns) {
+        Class entityClass = null;
+        try {
+            entityClass = entityClassName != null ? Class.forName(entityClassName) : null;
+        } catch (ClassNotFoundException e) {
+            LOG.warn("unable to find class {}, cannot write all table/column comments", entityClassName);
+        }
+
         StringBuilder ddl = new StringBuilder();
         ddl.append("begin\n");
-        for (Map.Entry<String, String> columnComment : comments.entrySet()) {
-            String encoded = encodeComment(columnComment.getValue());
-            ddl.append("execute immediate 'comment on ");
-            if (columnComment.getKey() == null) {
-                ddl.append("table ").append(tableName);
+
+        boolean commentFound = false;
+
+        do {
+            Map<String, String> comments;
+            if (entityClass != null) {
+                entityClassName = entityClass.getName();
             }
-            else {
-                ddl.append("column ").append(tableName).append(".").append(columnComment.getKey());
+            if (getProfile().getComments() != null && (comments = getProfile().getComments().get(entityClassName)) != null) {
+                for (Map.Entry<String, String> columnComment : comments.entrySet()) {
+                    String columnName = columnComment.getKey();
+                    if (columnName == null || columns.contains(columnName)) {
+                        commentFound = true;
+                        addComment(ddl, tableName, columnName, columnComment.getValue());
+                    }
+                }
             }
-            ddl.append(" is ''").append(encoded).append("''';\n");
-        }
+        } while (entityClass != null && (entityClass = entityClass.getSuperclass()) != null && entityClass.isAnnotationPresent(MappedSuperclass.class));
+
         ddl.append("end;");
+
+        if (!commentFound) {
+            return;
+        }
 
         getProfile().duplex(ObjectType.COMMENT, null, ddl.toString());
 
         buf.append(STATEMENT_SEPARATOR).append(ddl.toString()).append("\n/");
+    }
+
+    private void addComment(StringBuilder ddl, String tableName, String columnName, String comment) {
+        String encoded = encodeComment(comment);
+        ddl.append("execute immediate 'comment on ");
+        if (columnName == null) {
+            ddl.append("table ").append(tableName);
+        }
+        else {
+            ddl.append("column ").append(tableName).append(".").append(columnName);
+        }
+        ddl.append(" is ''").append(encoded).append("''';\n");
     }
 
     private static String encodeComment(String comment) {

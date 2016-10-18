@@ -83,7 +83,7 @@ public class CommentsDDLGenerator extends Doclet {
     public static final Class<?>[] inheritanceAnnotation = new Class<?>[]{Inheritance.class};
     public static final Class<?>[] tableAnnotation = new Class<?>[]{com.github.gekoh.yagen.api.Table.class};
 
-    // maps table name to map of column name to comment
+    // maps entity class name to map of column name to comment
     // table comment specified as comment of a "null" column name
     private static Map<String, Map<String, String>> OUTPUT_COMMENTS;
 
@@ -166,11 +166,10 @@ public class CommentsDDLGenerator extends Doclet {
         return LanguageVersion.JAVA_1_5;
     }
 
-    public static Map<String, String> getColumnComments (String tableName) {
-        tableName = tableName.toLowerCase();
-        Map<String, String> columnComments = OUTPUT_COMMENTS.get(tableName);
+    public static Map<String, String> getColumnComments (String entityClassName) {
+        Map<String, String> columnComments = OUTPUT_COMMENTS.get(entityClassName);
         if (columnComments == null) {
-            OUTPUT_COMMENTS.put(tableName, columnComments = new LinkedHashMap<String, String>());
+            OUTPUT_COMMENTS.put(entityClassName, columnComments = new LinkedHashMap<String, String>());
         }
         return columnComments;
     }
@@ -193,14 +192,14 @@ public class CommentsDDLGenerator extends Doclet {
                     return;
                 }
 
-                Map<String, String> columnComments = getColumnComments(tableName);
+                Map<String, String> columnComments = getColumnComments(klass.qualifiedName());
                 if (DocletUtils.findAnnotatedClass(klass, discriminatorAnnotation) == null) {
                     // no table comment for derived classes of a single table inheritance super class
                     putTableComment(columnComments, klass, tableName, shortTableName);
                 }
             }
 
-            Map<String, String> columnComments = getColumnComments(tableName);
+            Map<String, String> columnComments = getColumnComments(klass.qualifiedName());
             writeColumns(columnComments, root, klass, tableName);
 
             ClassDoc superClass = klass.superclass();
@@ -336,7 +335,7 @@ public class CommentsDDLGenerator extends Doclet {
             FieldDoc mappedByField = getMappedBy(fieldDoc);
             String columnName = getFullFieldNameFromAnnotation(mappedByField != null ? mappedByField : fieldDoc, targetTableName, true, joinColumnAnnotation);
 
-            putColumnComment(getColumnComments(targetTableName), columnName, comment);
+            putColumnComment(getColumnComments(getAnnotationTargetEntity(fieldDoc, oneToManyAnnotaions).qualifiedName()), columnName, comment);
         }
     }
 
