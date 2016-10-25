@@ -33,6 +33,7 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Transient;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
@@ -54,6 +55,8 @@ public class FieldInfo {
     private static Pattern NULLABLE_PATTERN = Pattern.compile("nullable=((true)|(false))");
     private static Pattern UNIQUE_PATTERN = Pattern.compile("unique=((true)|(false))");
     private static Pattern STRING_ATTR_PATTERN = Pattern.compile("[\\(|\\s*](name|columnDefinition|type)=([^\\s]*)[,\\)]");
+    private static Pattern INSERTABLE_PATTERN = Pattern.compile("[\\(,]\\s*(insertable\\s*=\\s*(true|false))\\s*[,\\)]");
+    private static Pattern UPDATABLE_PATTERN = Pattern.compile("[\\(,]\\s*(updatable\\s*=\\s*(true|false))\\s*[,\\)]");
 
     private Class type;
     private String name;
@@ -172,6 +175,36 @@ public class FieldInfo {
 
     public void setField(Field field) {
         this.field = field;
+    }
+
+    public void setReadOnly(boolean readOnly) {
+        if (columnAnnotation == null) {
+            return;
+        }
+        Matcher matcher = INSERTABLE_PATTERN.matcher(columnAnnotation);
+        if (matcher.find()) {
+            columnAnnotation = columnAnnotation.substring(0, matcher.start(2)) + !readOnly + columnAnnotation.substring(matcher.end(2));
+        }
+        else {
+            int index = columnAnnotation.lastIndexOf(')');
+            columnAnnotation = columnAnnotation.substring(0, index) + ", insertable = " + !readOnly + columnAnnotation.substring(index);
+        }
+        matcher = UPDATABLE_PATTERN.matcher(columnAnnotation);
+        if (matcher.find()) {
+            columnAnnotation = columnAnnotation.substring(0, matcher.start(2)) + !readOnly + columnAnnotation.substring(matcher.end(2));
+        }
+        else {
+            int index = columnAnnotation.lastIndexOf(')');
+            columnAnnotation = columnAnnotation.substring(0, index) + ", updatable = " + !readOnly + columnAnnotation.substring(index);
+        }
+    }
+
+    public boolean isReadOnly() {
+        if (columnAnnotation == null) {
+            return false;
+        }
+        Matcher matcher = UPDATABLE_PATTERN.matcher(columnAnnotation);
+        return matcher.find() && matcher.group(2).equals("" + false);
     }
 
     private static String formatAnnotation (Annotation annotation) {
@@ -387,8 +420,10 @@ public class FieldInfo {
                 fi = new FieldInfo(type, name, false, column);
             } else if ((field.isAnnotationPresent(ManyToOne.class) && !field.isAnnotationPresent(JoinTable.class)) ||
                     (field.isAnnotationPresent(OneToOne.class) && StringUtils.isEmpty(field.getAnnotation(OneToOne.class).mappedBy()))) {
-                String columnName = field.isAnnotationPresent(JoinColumn.class) ? field.getAnnotation(JoinColumn.class).name() : field.getName();
-                fi = getIdFieldInfo(type, name, columnName);
+                fi = getIdFieldInfo(type, name, MappingUtils.deriveColumnName(field));
+                if (field.isAnnotationPresent(PrimaryKeyJoinColumn.class)) {
+                    fi.setReadOnly(true);
+                }
             } else if (!field.isAnnotationPresent(Transient.class) &&
                     (Collection.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type)) &&
                     (field.isAnnotationPresent(JoinColumn.class) || field.isAnnotationPresent(JoinTable.class) || field.isAnnotationPresent(CollectionTable.class) ||

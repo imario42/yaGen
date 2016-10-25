@@ -130,10 +130,12 @@ public class ${entityClassSimpleName} extends
 ## building the camel case method name for setter and getter
 #set( $nameCC = "${fieldInfo.getName().substring(0, 1).toUpperCase()}${fieldInfo.getName().substring(1)}")
 
+#if( !${fieldInfo.isReadOnly()} )
     public void set${nameCC}(${fieldInfo.getType().getCanonicalName()} ${fieldInfo.getName()}) {
         this.${fieldInfo.getName()} = ${fieldInfo.getName()};
     }
 
+#end
     public ${fieldInfo.getType().getCanonicalName()} get${nameCC}() {
         return ${fieldInfo.getName()};
     }

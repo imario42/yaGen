@@ -28,6 +28,7 @@ import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
+import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
 import javax.persistence.metamodel.Attribute;
 import javax.persistence.metamodel.EmbeddableType;
@@ -37,6 +38,7 @@ import javax.persistence.metamodel.SingularAttribute;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
@@ -243,6 +245,22 @@ public class MappingUtils {
             }
         }
         return true;
+    }
+
+    public static String deriveColumnName(AccessibleObject fieldOrMethod) {
+        if (fieldOrMethod.isAnnotationPresent(JoinColumn.class)) {
+            return fieldOrMethod.getAnnotation(JoinColumn.class).name();
+        }
+        else if (fieldOrMethod.isAnnotationPresent(PrimaryKeyJoinColumn.class)) {
+            PrimaryKeyJoinColumn primaryKeyJoinColumn = fieldOrMethod.getAnnotation(PrimaryKeyJoinColumn.class);
+            if (StringUtils.isNotEmpty(primaryKeyJoinColumn.name())) {
+                return primaryKeyJoinColumn.name();
+            }
+            else if (fieldOrMethod instanceof Member) {
+                return FieldInfo.getIdColumn(((Member) fieldOrMethod).getDeclaringClass()).name();
+            }
+        }
+        return deriveColumnName(null, fieldOrMethod);
     }
 
     public static String deriveColumnName(Column column, AccessibleObject fieldOrMethod) {
