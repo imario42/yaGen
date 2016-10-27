@@ -44,6 +44,7 @@ import org.hibernate.mapping.Table;
 import org.hibernate.mapping.UniqueKey;
 
 import javax.persistence.CollectionTable;
+import javax.persistence.DiscriminatorValue;
 import javax.persistence.JoinTable;
 import javax.persistence.MappedSuperclass;
 import java.io.IOException;
@@ -134,6 +135,7 @@ public class CreateDDL {
     private static final String I18N_COLUMN_IS_PERSISTENT = "is_persistent";
 
     private static final List<String> AUDIT_COLUMNS = Arrays.asList(AuditInfo.CREATED_AT, AuditInfo.CREATED_BY, AuditInfo.LAST_MODIFIED_AT, AuditInfo.LAST_MODIFIED_BY);
+    private static final List<String> JOINED_TABLE_AUDIT_COLUMNS = Arrays.asList(AuditInfo.LAST_MODIFIED_AT, AuditInfo.LAST_MODIFIED_BY);
     private static final Map<String, String> AUDIT_COLUMN_DEFINITION = new HashMap<String, String>();
     static {
         AUDIT_COLUMN_DEFINITION.put(AuditInfo.CREATED_AT, AuditInfo.CREATED_AT + " ${timestampType} not null");
@@ -365,7 +367,9 @@ public class CreateDDL {
 
         Auditable auditable = tableConfig.getTableAnnotationOfType(Auditable.class);
         if (auditable != null && auditable.createNonExistingColumns()) {
-            sqlCreate = addAuditColumns(dialect, sqlCreate, columns, auditable.userNameLength());
+            List<String> auditColumns = entityClassName != null && isNoCreationColumnsNeeded(entityClassName) ? JOINED_TABLE_AUDIT_COLUMNS : AUDIT_COLUMNS;
+
+            sqlCreate = addAuditColumns(dialect, sqlCreate, columns, auditable.userNameLength(), auditColumns);
         }
 
         sqlCreate = processCascadeNullable(dialect, buf, nameLC, sqlCreate, tableConfig.getColumnNamesIsCascadeNullable());
@@ -540,6 +544,18 @@ public class CreateDDL {
         buf.insert(0, STATEMENT_SEPARATOR);
 
         return buf.toString();
+    }
+
+    private boolean isNoCreationColumnsNeeded(String entityClassName) {
+        try {
+            Class<?> entityClass = Class.forName(entityClassName);
+            if (entityClass.isAnnotationPresent(DiscriminatorValue.class) && !entityClass.isAnnotationPresent(Auditable.class)) {
+                return true;
+            }
+        } catch (ClassNotFoundException e) {
+            LOG.warn("unable to find entity class {}", entityClassName);
+        }
+        return false;
     }
 
     private void addIndexes(StringBuffer buf, Dialect dialect, TableConfig tableConfig) {
@@ -911,12 +927,12 @@ public class CreateDDL {
         return b.toString();
     }
 
-    private static String addAuditColumns(Dialect dialect, String sqlCreate, Set<String> columns, int userNameLength) {
+    private static String addAuditColumns(Dialect dialect, String sqlCreate, Set<String> columns, int userNameLength, List<String> auditColumns) {
         Matcher matcher = TBL_PATTERN.matcher(sqlCreate);
 
         if (matcher.find()) {
             StringBuilder sb = new StringBuilder(sqlCreate.substring(0, matcher.start(TBL_PATTERN_IDX_AFTER_COL_DEF)));
-            for (String auditColumn : AUDIT_COLUMNS) {
+            for (String auditColumn : auditColumns) {
                 if (!columns.contains(auditColumn)) {
                     sb.append(", ").append(formatColumn(dialect, AUDIT_COLUMN_DEFINITION.get(auditColumn), userNameLength, null, null));
                     columns.add(auditColumn);
@@ -1034,10 +1050,10 @@ public class CreateDDL {
 
         VelocityContext context = new VelocityContext();
         context.put("liveTableName", nameLC);
-        context.put("created_at", AuditInfo.CREATED_AT);
-        context.put("created_by", AuditInfo.CREATED_BY);
-        context.put("last_modified_at", AuditInfo.LAST_MODIFIED_AT);
-        context.put("last_modified_by", AuditInfo.LAST_MODIFIED_BY);
+        putIfExisting(context, "created_at", AuditInfo.CREATED_AT, columns);
+        putIfExisting(context, "created_by", AuditInfo.CREATED_BY, columns);
+        putIfExisting(context, "last_modified_at", AuditInfo.LAST_MODIFIED_AT, columns);
+        putIfExisting(context, "last_modified_by", AuditInfo.LAST_MODIFIED_BY, columns);
 
         if (isOracle(dialect)) {
             writeOracleAuditTrigger(dialect, buf, context, nameLC, templateName + ".vm.pl.sql");
@@ -1052,6 +1068,12 @@ public class CreateDDL {
             } catch (IOException e) {
                 LOG.error("error writing audit triggers", e);
             }
+        }
+    }
+
+    private void putIfExisting(VelocityContext context, String varName, String columnName, Set<String> columns) {
+        if (columns.contains(columnName)) {
+            context.put(varName, columnName);
         }
     }
 
