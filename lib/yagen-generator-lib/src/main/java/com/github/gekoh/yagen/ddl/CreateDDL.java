@@ -55,9 +55,11 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
+import java.lang.annotation.Annotation;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -367,9 +369,7 @@ public class CreateDDL {
 
         Auditable auditable = tableConfig.getTableAnnotationOfType(Auditable.class);
         if (auditable != null && auditable.createNonExistingColumns()) {
-            List<String> auditColumns = entityClassName != null && isNoCreationColumnsNeeded(entityClassName) ? JOINED_TABLE_AUDIT_COLUMNS : AUDIT_COLUMNS;
-
-            sqlCreate = addAuditColumns(dialect, sqlCreate, columns, auditable.userNameLength(), auditColumns);
+            sqlCreate = addAuditColumns(dialect, sqlCreate, columns, auditable.userNameLength(), getAuditColumnsNeeded(entityClassName));
         }
 
         sqlCreate = processCascadeNullable(dialect, buf, nameLC, sqlCreate, tableConfig.getColumnNamesIsCascadeNullable());
@@ -546,16 +546,28 @@ public class CreateDDL {
         return buf.toString();
     }
 
-    private boolean isNoCreationColumnsNeeded(String entityClassName) {
-        try {
-            Class<?> entityClass = Class.forName(entityClassName);
-            if (entityClass.isAnnotationPresent(DiscriminatorValue.class) && !entityClass.isAnnotationPresent(Auditable.class)) {
-                return true;
+    private List<String> getAuditColumnsNeeded(String entityClassName) {
+        if (StringUtils.isNotEmpty(entityClassName)) {
+            try {
+                Class<?> entityClass = Class.forName(entityClassName);
+                if (entityClass.isAnnotationPresent(DiscriminatorValue.class)) {
+                    if (entityClass.isAnnotationPresent(Auditable.class)) {
+                        return isAnnotationPresentInClasOrSuperclasses(Auditable.class, entityClass.getSuperclass()) ? JOINED_TABLE_AUDIT_COLUMNS : AUDIT_COLUMNS;
+                    }
+                    return Collections.emptyList();
+                }
+            } catch (ClassNotFoundException e) {
+                LOG.warn("unable to find entity class {}", entityClassName);
             }
-        } catch (ClassNotFoundException e) {
-            LOG.warn("unable to find entity class {}", entityClassName);
         }
-        return false;
+        return AUDIT_COLUMNS;
+    }
+
+    private boolean isAnnotationPresentInClasOrSuperclasses(Class<? extends Annotation> annotationClass, Class clazz) {
+        while (clazz != null && !clazz.isAnnotationPresent(annotationClass)) {
+            clazz = clazz.getSuperclass();
+        }
+        return clazz != null && clazz.isAnnotationPresent(annotationClass);
     }
 
     private void addIndexes(StringBuffer buf, Dialect dialect, TableConfig tableConfig) {
