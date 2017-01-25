@@ -150,6 +150,9 @@ public class CommentsDDLGenerator extends Doclet {
         OUTPUT_COMMENTS = new LinkedHashMap<String, Map<String, String>>();
 
         final ClassDoc[] classes = root.classes();
+        // sorting classes to get deterministic results, otherwise reference columns get added first occasionally
+        Arrays.sort(classes);
+        
         for (final ClassDoc klass : classes) {
             handleClass(root, klass, null, null);
         }
@@ -263,7 +266,16 @@ public class CommentsDDLGenerator extends Doclet {
         if (comment == null) {
             return;
         }
-        comments.put(null, comment);
+        // table comment always should be first one added (we have a LinkedHashMap here)
+        if (!comments.isEmpty()) {
+            Map<String, String> existing = new LinkedHashMap<String, String>(comments);
+            comments.clear();
+            comments.put(null, comment);
+            comments.putAll(existing);
+        }
+        else {
+            comments.put(null, comment);
+        }
     }
 
     private static void putColumnComment(Map<String, String> comments, String columnName, String comment) {
