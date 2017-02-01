@@ -28,12 +28,23 @@ public class YagenInit {
         init(null);
     }
 
+    /**
+     * Initialize yagen with specific profile instance.<br/>
+     * NOTE: We cannot strongly type the Profile here since it would already load hibernate classes as dependency
+     * but this would prevent us from being able to patch these classes with javassist.
+     *
+     * @param profile init with given profile configuration
+     * @throws Exception if we cannot patch the hibernate classes or if given profile object is not of type {@link com.github.gekoh.yagen.ddl.DDLGenerator.Profile}
+     */
     public static void init(Object profile) throws Exception {
         PatchHibernateMappingClasses.applyPatch();
 
         if (profile == null) {
             PatchGlue.setProfile(null);
             newProfileIfNull();
+        }
+        else if (!Class.forName(ReflectExecutor.PROFILE_CLASS_NAME).isAssignableFrom(profile.getClass())) {
+            throw new IllegalStateException("please provide an instance of " + ReflectExecutor.PROFILE_CLASS_NAME);
         }
         else {
             PatchGlue.setProfile(profile);
