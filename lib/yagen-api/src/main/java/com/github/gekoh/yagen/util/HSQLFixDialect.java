@@ -37,4 +37,27 @@ public class HSQLFixDialect extends org.hibernate.dialect.HSQLDialect {
     public boolean supportsUniqueConstraintInCreateAlterTable() {
         return false;
     }
+
+    @Override
+    public String getDropSequenceString(String sequenceName) {
+        return super.getDropSequenceString(sequenceName + " if exists");
+    }
+
+    @Override
+    public boolean supportsIfExistsAfterTableName() {
+        return true;
+    }
+
+    @Override
+    public String getDropTableString( String tableName ) {
+        // Append CASCADE to formatted DROP TABLE string
+        final String superDrop = super.getDropTableString( tableName );
+        return superDrop + " cascade";
+    }
+
+    @Override
+    public boolean dropConstraints() {
+        // Do not explicitly drop constraints, use DROP TABLE ... CASCADE
+        return false;
+    }
 }
