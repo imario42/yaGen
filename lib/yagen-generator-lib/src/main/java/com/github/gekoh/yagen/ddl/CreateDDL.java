@@ -941,19 +941,26 @@ public class CreateDDL {
 
     private static String addAuditColumns(Dialect dialect, String sqlCreate, Set<String> columns, int userNameLength, List<String> auditColumns) {
         Matcher matcher = TBL_PATTERN.matcher(sqlCreate);
+        int insertIdx = -1;
 
         if (matcher.find()) {
-            StringBuilder sb = new StringBuilder(sqlCreate.substring(0, matcher.start(TBL_PATTERN_IDX_AFTER_COL_DEF)));
+            insertIdx = matcher.start(TBL_PATTERN_IDX_AFTER_COL_DEF);
+        }
+        else if ((matcher = TBL_PATTERN_WO_PK.matcher(sqlCreate)).find()) {
+            insertIdx = matcher.start(TBL_PATTERN_WO_PK_IDX_AFTER_COL_DEF);
+        }
+
+        if (insertIdx >= 0) {
+            StringBuilder sb = new StringBuilder(sqlCreate.substring(0, insertIdx));
             for (String auditColumn : auditColumns) {
                 if (!columns.contains(auditColumn)) {
                     sb.append(", ").append(formatColumn(dialect, AUDIT_COLUMN_DEFINITION.get(auditColumn), userNameLength, null, null));
                     columns.add(auditColumn);
                 }
             }
-            sb.append(sqlCreate.substring(matcher.start(TBL_PATTERN_IDX_AFTER_COL_DEF)));
+            sb.append(sqlCreate.substring(insertIdx));
             sqlCreate = sb.toString();
         }
-
         return sqlCreate;
     }
 
