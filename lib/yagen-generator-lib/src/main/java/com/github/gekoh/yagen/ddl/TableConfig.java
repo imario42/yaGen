@@ -410,6 +410,7 @@ public class TableConfig {
                 if (fkTableName != null && (
                         onDeleteCascade || fOm.isAnnotationPresent(CascadeDelete.class
                         ))) {
+                    fkTableName = ddlEnhancer.getProfile().getNamingStrategy().tableName(fkTableName);
                     TableConfig fkConfig = ddlEnhancer.getConfigForTableName(getIdentifierForReference(fkTableName));
                     if (fkConfig != null) {
                         fkConfig.columnNamesIsCascadeDelete.addAll(fkCols);
@@ -745,6 +746,7 @@ public class TableConfig {
                     detailTableName = getTableName();
                 }
 
+                detailTableName = ddlEnhancer.getProfile().getNamingStrategy().tableName(detailTableName);
                 TableConfig detailTableConfig = ddlEnhancer.getConfigForTableName(getIdentifierForReference(detailTableName));
 
                 if (joinColumn != null && detailTableConfig != null) {
