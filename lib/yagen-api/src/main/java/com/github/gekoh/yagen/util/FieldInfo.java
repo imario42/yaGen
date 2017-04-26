@@ -85,12 +85,9 @@ public class FieldInfo {
         isEnum = false;
         isEmbedded = true;
 
-        StringBuilder columnAnnotation = new StringBuilder();
-        if (overrides != null) {
-            columnAnnotation.append(formatAnnotation(overrides));
-        }
+        this.columnAnnotation = overrides != null ? formatAnnotation(overrides) : "";
 
-        this.columnAnnotation = concatOverrides(columnAnnotation.toString(), getAttributeOverrides(type).values());
+        this.columnAnnotation = concatOverrides(this.columnAnnotation, getAttributeOverrides(type).values());
     }
 
     public FieldInfo(Class type, String name, AttributeOverride override) {
@@ -272,7 +269,20 @@ public class FieldInfo {
         return value.replace("\"", "\\\"");
     }
 
-    private static final Pattern ATTR_OVERR_NAME = Pattern.compile("AttributeOverride\\s*\\(\\s*name\\s*=\\s*\"([^\"]+)\"");
+    private static final Pattern ATTR_OVERR_NAME = Pattern.compile(AttributeOverride.class.getName() + "\\s*\\(\\s*name\\s*=\\s*\"([^\"]+)\"");
+
+    private static int findAttributeOverride(String annotations, String name) {
+        Matcher matcher = ATTR_OVERR_NAME.matcher(annotations);
+
+        int idx = 0;
+        while (matcher.find(idx)) {
+            if (name.equals(matcher.group(1))) {
+                return matcher.start();
+            }
+            idx = matcher.end();
+        }
+        return -1;
+    }
 
     private static String addNamePrefixToAttributeOverride (String annotation, String prefix) {
         Matcher matcher = ATTR_OVERR_NAME.matcher(annotation);
@@ -297,37 +307,40 @@ public class FieldInfo {
      * @param type embeddable class with non-nullable fields
      * @return collection of javax.persistence.AttributeOverride annotations needed to set columns to nullable=true
      */
-    private static Map<String, String> getAttributeOverrides(Class type) {
+    private Map<String, String> getAttributeOverrides(Class type) {
         Map<String, String> overrides = new LinkedHashMap<String, String>();
         addAttributeOverrides(overrides, "", type);
         return overrides;
     }
 
-    private static void addAttributeOverrides(Map<String, String> overrides, String path, Class type) {
+    private void addAttributeOverrides(Map<String, String> overrides, String path, Class type) {
         for (Field field : type.getDeclaredFields()) {
-            String curPath = path + field.getName() + ".";
-            Column column;
-            if (field.isAnnotationPresent(AttributeOverride.class)) {
-                addAttributeOverride(overrides, addNamePrefixToAttributeOverride(
-                        formatAnnotation(field.getAnnotation(AttributeOverride.class)),
-                        curPath));
-            }
-            else if (field.isAnnotationPresent(AttributeOverrides.class)) {
-                for (AttributeOverride attributeOverride : field.getAnnotation(AttributeOverrides.class).value()) {
+            String fieldPath = path + field.getName();
+            String curPath = fieldPath + ".";
+
+            if (findAttributeOverride(columnAnnotation, fieldPath) < 0) {
+
+                Column column;
+                if (field.isAnnotationPresent(AttributeOverride.class)) {
                     addAttributeOverride(overrides, addNamePrefixToAttributeOverride(
-                            formatAnnotation(attributeOverride),
+                            formatAnnotation(field.getAnnotation(AttributeOverride.class)),
                             curPath));
+                } else if (field.isAnnotationPresent(AttributeOverrides.class)) {
+                    for (AttributeOverride attributeOverride : field.getAnnotation(AttributeOverrides.class).value()) {
+                        addAttributeOverride(overrides, addNamePrefixToAttributeOverride(
+                                formatAnnotation(attributeOverride),
+                                curPath));
+                    }
+                } else if (((column = field.getAnnotation(Column.class)) != null && (!column.nullable() || column.unique())) ||
+                        (field.isAnnotationPresent(Basic.class) && !field.getAnnotation(Basic.class).optional())) {
+                    String columnName = column != null ? column.name() : field.getName();
+                    int length = column != null ? column.length() : 255;
+
+                    String override = "@javax.persistence.AttributeOverride(name=\"" + fieldPath + "\", column=" +
+                            "@javax.persistence.Column(name=\"" + columnName + "\", length=" + length + ", nullable=true, unique=false))";
+
+                    addAttributeOverride(overrides, override);
                 }
-            }
-            else if (((column = field.getAnnotation(Column.class)) != null && (!column.nullable() || column.unique())) ||
-                    (field.isAnnotationPresent(Basic.class) && !field.getAnnotation(Basic.class).optional())) {
-                String columnName = column != null ? column.name() : field.getName();
-                int length = column != null ? column.length() : 255;
-
-                String override = "@javax.persistence.AttributeOverride(name=\"" + path + field.getName() + "\", column=" +
-                        "@javax.persistence.Column(name=\"" + columnName + "\", length=" + length + ", nullable=true, unique=false))";
-
-                addAttributeOverride(overrides, override);
             }
 
             if (field.isAnnotationPresent(Embedded.class)) {
