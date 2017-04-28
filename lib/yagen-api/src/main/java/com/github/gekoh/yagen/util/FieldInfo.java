@@ -76,58 +76,33 @@ public class FieldInfo {
     public FieldInfo(Class type, String name, String columnAnnotation) {
         this(type, name);
         this.columnAnnotation = columnAnnotation;
-    }
-
-    public FieldInfo(Class type, String name, AttributeOverrides overrides) {
-        this.type = type;
-        this.name = name;
-        this.columnName = null;
-        isEnum = false;
-        isEmbedded = true;
-
-        this.columnAnnotation = overrides != null ? formatAnnotation(overrides) : "";
-
         this.columnAnnotation = concatOverrides(this.columnAnnotation, getAttributeOverrides(type).values());
     }
 
+    public FieldInfo(Class type, String name, AttributeOverrides overrides) {
+        this(type, name, overrides != null ? formatAnnotation(overrides) : "");
+        isEmbedded = true;
+    }
+
     public FieldInfo(Class type, String name, AttributeOverride override) {
-        this(type, name, (AttributeOverrides)null);
-
-        Map<String, String> overrides = new LinkedHashMap<String, String>();
-        if (override != null) {
-            addAttributeOverride(overrides, formatAnnotation(override));
-        }
-        addAttributeOverrides(overrides, "", type);
-
-        this.columnAnnotation = concatOverrides("", overrides.values());
+        this(type, name, override != null ? formatAnnotation(override) : "");
+        isEmbedded = true;
     }
 
     public FieldInfo(Class type, String name, boolean anEnum, Column column) {
-        this.type = type;
-        this.name = name;
+        this(type, name, formatAnnotation(column));
         this.columnName = MappingUtils.deriveColumnName(column, name).toLowerCase();
         isEnum = anEnum;
-        isEmbedded = false;
-        this.columnAnnotation = formatAnnotation(column);
     }
 
     public FieldInfo(Class type, String name, String columnName, int columnLength) {
-        this.type = type;
-        this.name = name;
+        this(type, name, !isCollection(type) ? "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + columnLength + ")" : null);
         this.columnName = columnName.toLowerCase();
-        columnAnnotation = !isCollection() ? "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", length = " + columnLength + ")" : null;
-        isEnum = false;
-        isEmbedded = false;
     }
 
     public FieldInfo(Class type, String name, String columnName, boolean nullable, String typeAnnotation) {
-        this.type = type;
-        this.name = name;
+        this(type, name, "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", nullable = " + nullable + ")" + (typeAnnotation != null ? " @" + Type.class.getName() + "(type = \"" + typeAnnotation + "\")" : ""));
         this.columnName = columnName.toLowerCase();
-        columnAnnotation =
-                "@" + Column.class.getName() + "(name = \"" + escapeAttributeValue(columnName) + "\", nullable = " + nullable + ")" + (typeAnnotation != null ? " @" + Type.class.getName() + "(type = \"" + typeAnnotation + "\")" : "");
-        isEnum = false;
-        isEmbedded = false;
     }
 
     public Class getType() {
@@ -159,6 +134,10 @@ public class FieldInfo {
     }
 
     public boolean isCollection() {
+        return isCollection(type);
+    }
+
+    public static boolean isCollection(Class type) {
         return Collection.class.isAssignableFrom(type) || Map.class.isAssignableFrom(type);
     }
 
@@ -356,6 +335,9 @@ public class FieldInfo {
         }
     }
 
+    private static final Pattern PATTERN_ATTR_OVERRIDES = Pattern.compile("@" + AttributeOverrides.class.getName() + "\\((value=)?\\{([^}]*)(\\})\\)");
+    private static final Pattern PATTERN_ATTR_OVERRIDE =  Pattern.compile("(@" + AttributeOverride.class.getName() + "\\([^)]*@" + Column.class.getName() + "\\([^)]*\\)[^)]*\\))(, )?");
+
     /**
      * merges given collection of javax.persistence.AttributeOverride elements into an optionally existing
      * javax.persistence.AttributeOverrides annotation with optionally pre-existing javax.persistence.AttributeOverride elements.
@@ -365,19 +347,42 @@ public class FieldInfo {
      * @return merged AttributeOverrides annotation
      */
     private static String concatOverrides(String annotation, Collection<String> attributeOverrides) {
-        StringBuilder columnAnnotation = new StringBuilder(annotation != null ? annotation : "");
-
-        for (String addOverride : attributeOverrides) {
-            if (columnAnnotation.length() < 1) {
-                columnAnnotation.append("@javax.persistence.AttributeOverrides({").append(addOverride).append("})");
-                continue;
+        if (attributeOverrides == null || attributeOverrides.size() < 1) {
+            return annotation;
+        }
+        if (annotation == null) {
+            annotation = "";
+        }
+        else {
+            Matcher overrideMatcher;
+            while ((overrideMatcher = PATTERN_ATTR_OVERRIDE.matcher(annotation)).find()) {
+                if (!(attributeOverrides instanceof ArrayList)) {
+                    attributeOverrides = new ArrayList<String>(attributeOverrides);
+                }
+                ((ArrayList) attributeOverrides).add(0, overrideMatcher.group(1));
+                annotation = annotation.substring(0, overrideMatcher.start()) + annotation.substring(overrideMatcher.end());
             }
-
-            columnAnnotation.insert(columnAnnotation.length()-2, ", ");
-            columnAnnotation.insert(columnAnnotation.length() - 2, addOverride);
         }
 
-        return columnAnnotation.toString();
+        Matcher overridesMatcher = PATTERN_ATTR_OVERRIDES.matcher(annotation);
+
+        if (!overridesMatcher.find()) {
+            annotation = (annotation.length() < 1 ? "" : annotation + "\n    ") + "@" + AttributeOverrides.class.getName() + "({})";
+        }
+
+        for (String addOverride : attributeOverrides) {
+            overridesMatcher = PATTERN_ATTR_OVERRIDES.matcher(annotation);
+            if (!overridesMatcher.find()) {
+                throw new IllegalStateException();
+            }
+            if (StringUtils.isNotEmpty(overridesMatcher.group(2))) {
+                addOverride = ", " + addOverride;
+            }
+            annotation = annotation.substring(0, overridesMatcher.start(3)) + addOverride +
+                    annotation.substring(overridesMatcher.start(3));
+        }
+
+        return annotation;
     }
 
 
