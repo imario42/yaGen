@@ -17,6 +17,7 @@ package com.github.gekoh.yagen.example;
 
 import com.github.gekoh.yagen.api.CascadeDelete;
 import com.github.gekoh.yagen.api.Constants;
+import com.github.gekoh.yagen.api.Default;
 import com.github.gekoh.yagen.api.TemporalEntity;
 
 import javax.persistence.CascadeType;
@@ -73,6 +74,13 @@ public class Aircraft extends BaseEntity {
      */
     @Column(name = "LENGTH", columnDefinition = "numeric(5,2)", nullable = false)
     private float length;
+
+    /**
+     * maximum fuel volume
+     */
+    @Default(sqlExpression = "null")
+    @Column(name = "MAX_FUEL_VOLUME")
+    private Double fuelMaxVolume;
 
 
     @OneToMany(cascade = CascadeType.ALL)

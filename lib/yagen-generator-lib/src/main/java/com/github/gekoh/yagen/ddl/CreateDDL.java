@@ -111,13 +111,13 @@ public class CreateDDL {
     private static final Pattern SEQ_CREATE_PATTERN = Pattern.compile("create sequence[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final Pattern PKG_CREATE_PATTERN = Pattern.compile("create( or replace)?[\\s]+package[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(numeric\\([^\\)]+\\))|(timestamp)|(date)|([cb]lob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(double)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+not)?[\\s]+null)?([\\s]+unique)?[^\\(,]*(,|\\))");
+    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(numeric\\([^\\)]+\\))|(timestamp)|(date)|([cb]lob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(((double)|(float))( precision)?)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+not)?[\\s]+null)?([\\s]+unique)?[^\\(,]*(,|\\))");
     private static final int COL_PATTERN_IDX_COLNAME = 2;
     private static final int COL_PATTERN_IDX_TYPE    = 4;
-    private static final int COL_PATTERN_IDX_DEFAULT = 21;
-    private static final int COL_PATTERN_IDX_NOTNULL = 23;
-    private static final int COL_PATTERN_IDX_NOT     = 24;
-    private static final int COL_PATTERN_IDX_UNIQUE  = 25;
+    private static final int COL_PATTERN_IDX_DEFAULT = 25;
+    private static final int COL_PATTERN_IDX_NOTNULL = 27;
+    private static final int COL_PATTERN_IDX_NOT     = 28;
+    private static final int COL_PATTERN_IDX_UNIQUE  = 29;
 
     private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
     private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*([a-zA-Z]+[0-9a-zA-Z_]*)");
