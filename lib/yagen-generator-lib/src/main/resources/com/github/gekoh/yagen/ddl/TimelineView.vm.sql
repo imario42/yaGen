@@ -144,7 +144,7 @@ from (
 )
 ;
 #else
-create or replace view DSM_CHANGELOG_ROW_V as
+create view if not exists DSM_CHANGELOG_ROW_V as
 	select l.*, rownum() row_nr
 	from
 		dsm_changelog l
