@@ -88,16 +88,18 @@ public class CreateDDL {
     private static final String REGEX_COLNAME = "[\"'`]?[a-zA-Z]+[0-9a-zA-Z_]*[\"'`]?";
 
     private static final Pattern TBL_PATTERN = Pattern.compile(".*"
-            + "create table[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]*\\("
-            + "(.*(,([\\s](primary key[\\s]*\\((" + REGEX_COLNAME +"([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\))))"
+            + "create (table)[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]*\\("
+            + "(.*(,([\\s](constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]+)?(primary key[\\s]*\\((" + REGEX_COLNAME +"([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\))))"
             + ".*)\\)\\s*(partition\\s+by.*)?");
-    private static final int TBL_PATTERN_IDX_TBLNAME = 1;
-    private static final int TBL_PATTERN_IDX_TBL_DEF = 2;
-    private static final int TBL_PATTERN_IDX_AFTER_COL_DEF = 3;
-    private static final int TBL_PATTERN_IDX_PK_START = 4;
-    private static final int TBL_PATTERN_IDX_PK_CLAUSE = 5;
-    private static final int TBL_PATTERN_IDX_PK_COLLIST = 6;
-    private static final int TBL_PATTERN_IDX_PART_CLAUSE = 8;
+    private static final int TBL_PATTERN_IDX_TBL_SYN = 1;
+    private static final int TBL_PATTERN_IDX_TBLNAME = 2;
+    private static final int TBL_PATTERN_IDX_TBL_DEF = 3;
+    private static final int TBL_PATTERN_IDX_AFTER_COL_DEF = 4;
+    private static final int TBL_PATTERN_IDX_PK_START = 5;
+    private static final int TBL_PATTERN_IDX_PK_NAME = 7;
+    private static final int TBL_PATTERN_IDX_PK_CLAUSE = 8;
+    private static final int TBL_PATTERN_IDX_PK_COLLIST = 9;
+    private static final int TBL_PATTERN_IDX_PART_CLAUSE = 10;
 
     private static final Pattern TBL_PATTERN_WO_PK = Pattern.compile(".*"
             + "create table[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)([\\s]*\\()"
@@ -532,6 +534,17 @@ public class CreateDDL {
         if (changelog != null && StringUtils.isNotEmpty(changelog.timelineViewName())) {
             deferredDdl.append(STATEMENT_SEPARATOR);
             deferredDdl.append(getTimelineView(changelog, tableConfig, dialect, sqlCreate, changelog.timelineViewName(), tableName, columns, pkCols));
+        }
+
+        com.github.gekoh.yagen.api.Table table = tableConfig.getTableAnnotationOfType(com.github.gekoh.yagen.api.Table.class);
+        if (table != null && table.isGlobalTemporary()) {
+            Matcher matcher = TBL_PATTERN.matcher(sqlCreate);
+
+            if (matcher.find()) {
+                sqlCreate = sqlCreate.substring(0, matcher.start(TBL_PATTERN_IDX_TBL_SYN)) + "global temporary " +
+                        sqlCreate.substring(matcher.start(TBL_PATTERN_IDX_TBL_SYN), matcher.end(TBL_PATTERN_IDX_TBL_DEF)+1) +
+                        " ON COMMIT " + table.globalTemporaryOnCommit() + sqlCreate.substring(matcher.end(TBL_PATTERN_IDX_TBL_DEF)+1);
+            }
         }
 
         if (buf.length() == 0) {

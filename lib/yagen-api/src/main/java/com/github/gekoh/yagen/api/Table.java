@@ -28,6 +28,8 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 public @interface Table {
     String shortName() default "";
+    boolean isGlobalTemporary() default false;
+    String globalTemporaryOnCommit() default "DELETE ROWS";
     Sequence[] additionalSequences() default {};
     CheckConstraint[] checkConstraints() default {};
     UniqueConstraint[] uniqueConstraints() default {};
