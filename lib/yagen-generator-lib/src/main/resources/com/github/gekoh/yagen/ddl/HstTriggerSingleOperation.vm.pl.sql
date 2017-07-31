@@ -18,7 +18,7 @@ begin atomic
         ||#if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#end
     #end
     ;
-  set hst_uuid_used=to_char(sys_guid());
+  set hst_uuid_used=sys_guid();
   set hst_table_name=upper('${liveTableName}');
 
 #if (${operation} == 'U')
