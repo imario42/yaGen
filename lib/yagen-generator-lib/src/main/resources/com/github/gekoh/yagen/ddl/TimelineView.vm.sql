@@ -144,7 +144,11 @@ from (
 )
 ;
 #else
-create view if not exists DSM_CHANGELOG_ROW_V as
+------- CreateDDL statement separator -------
+drop view CHANGELOG_ROW_V if exists;
+
+------- CreateDDL statement separator -------
+create view CHANGELOG_ROW_V as
 	select l.*, rownum() row_nr
 	from
 		dsm_changelog l
@@ -184,7 +188,7 @@ with mut as (
 #end
 #end
 	from
-	  DSM_CHANGELOG_ROW_V l
+	  CHANGELOG_ROW_V l
 	where
 	  l.TABLE_NAME='${tableName.toUpperCase()}'
 	  and l.COLUMN_NAME='${column.toUpperCase()}'
