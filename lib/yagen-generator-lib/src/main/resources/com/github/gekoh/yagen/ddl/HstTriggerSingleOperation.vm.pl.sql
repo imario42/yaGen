@@ -18,11 +18,13 @@ begin atomic
         ||#if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#end
     #end
     ;
-  set hst_uuid_used=sys_guid();
+-- when using oracle syntax in HSQLDB newer versions seem to override user function sys_guid() with built-in version
+-- which returns binary data and is incompatible with our triggers, thus we specifically use the self created sys_guid
+  set hst_uuid_used=public.sys_guid();
   set hst_table_name=upper('${liveTableName}');
 
 #if (${operation} == 'U')
-/* need to disable detection of changes, somehow this causes a NPE within HSQLDB, only god knows why
+--/* TRYING to reactivate detection of changes (WAS: need to disable detection of changes, somehow this causes a NPE within HSQLDB, only god knows why)
   if 1=0
 #foreach( $column in $histRelevantCols )
   or ((new.$column is null and old.$column is not null) or
@@ -30,7 +32,6 @@ begin atomic
       new.$column!=old.$column)
 #end
   then
-*/
 #end
     begin atomic
       declare exit handler for not found
@@ -80,6 +81,6 @@ begin atomic
     end if;
 
 #if (${operation} == 'U')
-/*  end if; */
+  end if;
 #end
 end;
