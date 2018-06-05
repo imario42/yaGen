@@ -4,7 +4,7 @@
  please do not edit
 -->
 <entity-mappings xmlns="http://java.sun.com/xml/ns/persistence/orm"
-                 version="${orm-version}">
+                 version="${ormVersion}">
 
     <mapped-superclass class="${baseClassPackageName}.BaseEntity"/>
 #foreach( $mappedSuperClassName in $mappedSuperClassNames )

@@ -376,7 +376,7 @@ public class CreateEntities {
         context.put("baseClassPackageName", baseClassPackageName);
         context.put("mappedSuperClassNames", createdMappedSuperClasses);
         context.put("entityClassNames", createdEntityClasses);
-        context.put("orm-version", ormVersion);
+        context.put("ormVersion", ormVersion);
 
         try {
             FileWriter wr = new FileWriter(ormOutFile);
