@@ -328,9 +328,9 @@ public class FieldInfo {
         }
     }
 
-    private static void addAttributeOverride(Map<String, String> overrides, String attributeOverride) {
+    private void addAttributeOverride(Map<String, String> overrides, String attributeOverride) {
         String name = getNameFromAttributeOverride(attributeOverride);
-        if (!overrides.containsKey(name)) {
+        if (!overrides.containsKey(name) && findAttributeOverride(columnAnnotation, name) < 0) {
             overrides.put(name, attributeOverride);
         }
     }
