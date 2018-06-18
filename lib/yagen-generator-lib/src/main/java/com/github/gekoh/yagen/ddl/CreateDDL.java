@@ -68,6 +68,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -1737,8 +1738,7 @@ public class CreateDDL {
             hstNoNullColumns.add(partitioning.columnName().toLowerCase());
         }
 
-        Set<String> nonPkColumns = new HashSet<String>(columns);
-        nonPkColumns.removeAll(pkColumns);
+        Set<String> nonPkColumns = getNonPkCols(columns, pkColumns);
 
         context.put("VERSION_COLUMN_NAME", VERSION_COLUMN_NAME);
         context.put("MODIFIER_COLUMN_NAME", AuditInfo.LAST_MODIFIED_BY);
@@ -1771,8 +1771,7 @@ public class CreateDDL {
                                             List<String> histRelevantCols) {
         VelocityContext context = new VelocityContext();
 
-        Set<String> nonPkColumns = new HashSet<String>(columns);
-        nonPkColumns.removeAll(pkColumns);
+        Set<String> nonPkColumns = getNonPkCols(columns, pkColumns);
 
         context.put("VERSION_COLUMN_NAME", VERSION_COLUMN_NAME);
         context.put("MODIFIER_COLUMN_NAME", AuditInfo.LAST_MODIFIED_BY);
@@ -1795,6 +1794,15 @@ public class CreateDDL {
         }
 
         return wr.toString();
+    }
+
+    private Set<String> getNonPkCols(Set<String> columns, List<String> pkColumns) {
+        Set<String> nonPkColumns = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+        Set<String> treePkCols = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
+        treePkCols.addAll(pkColumns);
+        nonPkColumns.addAll(columns);
+        nonPkColumns.removeAll(treePkCols);
+        return nonPkColumns;
     }
 
     private void writeTriggerSingleOperation(Dialect dialect, Writer wr, String resourceName, VelocityContext context, String tableName, String suffix, String operation)
