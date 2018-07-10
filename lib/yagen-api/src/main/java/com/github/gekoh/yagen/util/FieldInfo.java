@@ -462,6 +462,9 @@ public class FieldInfo {
 
     public static Column getIdColumn (Class classType) {
         AccessibleObject id = getIdFieldOrMethod(classType);
+        if (id == null) {
+            return null;
+        }
         Column column = id.getAnnotation(Column.class);
         Class type;
         if (id instanceof Field) {

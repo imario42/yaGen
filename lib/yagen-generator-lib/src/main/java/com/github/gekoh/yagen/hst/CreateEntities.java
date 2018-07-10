@@ -322,8 +322,8 @@ public class CreateEntities {
             context.put("entitySuperClassName", baseEntitySuperClass.getName() + "Hst");
         }
         else if (baseEntity != null) {
-            String name;
-            int length;
+            String name = null;
+            int length = -1;
             PrimaryKeyJoinColumn pkJC = (PrimaryKeyJoinColumn) baseEntity.getAnnotation(PrimaryKeyJoinColumn.class);
             if (pkJC != null) {
                 name = pkJC.name();
@@ -332,11 +332,15 @@ public class CreateEntities {
             else {
                 Column column = FieldInfo.getIdColumn(baseEntity);
                 AccessibleObject idFieldOrMethod = FieldInfo.getIdFieldOrMethod(baseEntity);
-                name = MappingUtils.deriveColumnName(column, idFieldOrMethod);
-                length = column.length();
+                if (idFieldOrMethod != null) {
+                    name = MappingUtils.deriveColumnName(column, idFieldOrMethod);
+                    length = column != null ? column.length() : 256;
+                }
             }
-            context.put("baseEntityUuidColumnName", name.toLowerCase());
-            context.put("baseEntityUuidColumnLength", length);
+            if (name != null) {
+                context.put("baseEntityUuidColumnName", name.toLowerCase());
+                context.put("baseEntityUuidColumnLength", length);
+            }
         }
 
         evaluate2JavaFile(hstEntityClassName, template, context);
