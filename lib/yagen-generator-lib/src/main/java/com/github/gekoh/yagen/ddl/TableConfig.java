@@ -24,6 +24,7 @@ import com.github.gekoh.yagen.api.Deferrable;
 import com.github.gekoh.yagen.api.I18NDetailEntityRelation;
 import com.github.gekoh.yagen.api.Index;
 import com.github.gekoh.yagen.api.IntervalPartitioning;
+import com.github.gekoh.yagen.api.LayeredTablesView;
 import com.github.gekoh.yagen.api.NoForeignKeyConstraint;
 import com.github.gekoh.yagen.api.Profile;
 import com.github.gekoh.yagen.api.Sequence;
@@ -82,7 +83,8 @@ public class TableConfig {
             IntervalPartitioning.class,
             Auditable.class,
             JoinTable.class,
-            CollectionTable.class
+            CollectionTable.class,
+            LayeredTablesView.class
     ));
 
 

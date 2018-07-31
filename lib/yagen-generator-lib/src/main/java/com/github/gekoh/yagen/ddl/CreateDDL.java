@@ -25,6 +25,7 @@ import com.github.gekoh.yagen.api.Deferrable;
 import com.github.gekoh.yagen.api.Generated;
 import com.github.gekoh.yagen.api.Index;
 import com.github.gekoh.yagen.api.IntervalPartitioning;
+import com.github.gekoh.yagen.api.LayeredTablesView;
 import com.github.gekoh.yagen.api.NamingStrategy;
 import com.github.gekoh.yagen.api.NoForeignKeyConstraint;
 import com.github.gekoh.yagen.api.Profile;
@@ -123,7 +124,9 @@ public class CreateDDL {
     private static final int COL_PATTERN_IDX_UNIQUE  = 29;
 
     private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
-    private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*([a-zA-Z]+[0-9a-zA-Z_]*)");
+    private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*(([a-zA-Z]+_)?[a-zA-Z]+[0-9a-zA-Z_]*)");
+    private static final int CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME = 3;
+    private static final int CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME = 4;
 
     private static final Pattern VIEW_NAME_PATTERN = Pattern.compile("create( or replace)?[\\s]+view[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
     private static final Pattern DROP_TABLE_PATTERN = Pattern.compile("drop table( if exists)?[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)( if exists)?");
@@ -548,6 +551,19 @@ public class CreateDDL {
             }
         }
 
+        LayeredTablesView layeredTablesView = tableConfig.getTableAnnotationOfType(LayeredTablesView.class);
+        if (layeredTablesView != null) {
+            if (layeredTablesView.tableNamesInOrder().length < 1) {
+                LOG.warn("no table names defined for layered table view requested for {}", nameLC);
+            }
+            else if (layeredTablesView.keyColumns().length < 1) {
+                LOG.warn("no key columns defined for layered table view requested for {}", nameLC);
+            }
+            else {
+                sqlCreate = handleLayeredTable(sqlCreate, layeredTablesView, dialect);
+            }
+        }
+
         if (buf.length() == 0) {
             return sqlCreate;
         }
@@ -558,6 +574,84 @@ public class CreateDDL {
         buf.insert(0, STATEMENT_SEPARATOR);
 
         return buf.toString();
+    }
+
+    private String handleLayeredTable(String sqlCreate, LayeredTablesView layeredTablesView, Dialect dialect) {
+        Matcher matcher = TBL_PATTERN.matcher(sqlCreate);
+        if (!matcher.find()) {
+            LOG.warn("found annotation {} but table pattern does not match", layeredTablesView);
+            return sqlCreate;
+        }
+
+        StringBuilder ddl = new StringBuilder();
+        String tblName = matcher.group(TBL_PATTERN_IDX_TBLNAME);
+        String tableNames = "";
+        StringBuilder viewSource = new StringBuilder();
+
+        ddl.append("-- not directly creating table '").append(tblName).append("', layered table structure requested");
+
+        viewSource.append("\ncreate or replace view ").append(tblName).append(" as \nwith full_data as (\n");
+
+        int priority = 0;
+        for (String tableName : layeredTablesView.tableNamesInOrder()) {
+            priority++;
+
+            checkObjectName(dialect, tableName);
+
+            String newCreate = sqlCreate.substring(0, matcher.start(TBL_PATTERN_IDX_TBLNAME)) + tableName + sqlCreate.substring(matcher.end(TBL_PATTERN_IDX_TBLNAME));
+            ddl.append(STATEMENT_SEPARATOR);
+            ddl.append("-- inserting table layer #").append(priority).append(" of view ").append(tblName).append("\n");
+            ddl.append(replaceShortName(newCreate, priority, dialect));
+
+            tableNames += ", " + tableName;
+
+            if (priority > 1) {
+                viewSource.append("  union all\n");
+            }
+            viewSource.append("  select t.*, ").append(priority).append(" priority\n").append("  from ").append(tableName).append(" t\n");
+        }
+
+        viewSource.append(
+                ")\n" +
+                        "select *\n" +
+                        "from full_data f\n" +
+                        "where not exists (\n" +
+                        "  select 1 from full_data \n" +
+                        "  where "
+        );
+
+        for (String keyColumn : layeredTablesView.keyColumns()) {
+            viewSource.append(keyColumn).append("=f.").append(keyColumn).append("\n    and ");
+        }
+
+        viewSource.append(
+                "priority<f.priority\n" +
+                        ");\n"
+        );
+
+        ddl.append(STATEMENT_SEPARATOR);
+        ddl.append("-- creating view spanning layered tables ").append(tableNames.substring(2)).append(viewSource.toString());
+
+        return ddl.toString();
+    }
+
+    private String replaceShortName(String sqlCreate, int priority, Dialect dialect) {
+        StringBuilder sb = new StringBuilder();
+        Matcher matcher = CONSTRAINT_OR_INDEX_PATTERN.matcher(sqlCreate);
+        int idx=0;
+        while (matcher.find(idx)) {
+
+            String newName = sqlCreate.substring(matcher.start(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME), matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME)-1)
+                    + priority + sqlCreate.substring(matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME)-1, matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME));
+
+            checkObjectName(dialect, newName);
+
+            sb.append(sqlCreate.substring(idx, matcher.start(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME)));
+            sb.append(newName);
+            idx = matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME);
+        }
+        sb.append(sqlCreate.substring(idx));
+        return sb.toString();
     }
 
     private List<String> getAuditColumnsNeeded(String entityClassName) {
@@ -650,9 +744,9 @@ public class CreateDDL {
             Matcher matcher = CONSTRAINT_OR_INDEX_PATTERN.matcher(sqlCreate);
             if (matcher.find()) {
                 buf = new StringBuffer();
-                buf.append(sqlCreate.substring(0, matcher.start(3)));
+                buf.append(sqlCreate.substring(0, matcher.start(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME)));
                 buf.append(newName);
-                buf.append(sqlCreate.substring(matcher.end(3)));
+                buf.append(sqlCreate.substring(matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME)));
             }
             name = newName;
         }
