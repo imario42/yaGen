@@ -112,6 +112,8 @@ public class CreateDDL {
 
     private static final Pattern TBL_ALTER_PATTERN = Pattern.compile("alter table[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]");
     private static final Pattern IDX_CREATE_PATTERN = Pattern.compile("create( unique)? index[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]+on[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)([\\s]*\\()");
+    private static final int IDX_CREATE_PATTERN_IDX_NAME = 2;
+    private static final int IDX_CREATE_PATTERN_TBL_NAME = 3;
     private static final Pattern SEQ_CREATE_PATTERN = Pattern.compile("create sequence[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final Pattern PKG_CREATE_PATTERN = Pattern.compile("create( or replace)?[\\s]+package[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
@@ -532,7 +534,6 @@ public class CreateDDL {
 
         sqlCreate = addConstraintsAndNames(dialect, buf, sqlCreate, nameLC, tableConfig.getColumnNameToEnumCheckConstraints());
         sqlCreate = addDefaultValues(sqlCreate, nameLC);
-        addIndexes(buf, dialect, tableConfig);
 
         Changelog changelog = tableConfig.getTableAnnotationOfType(Changelog.class);
         if (changelog != null && StringUtils.isNotEmpty(changelog.timelineViewName())) {
@@ -560,8 +561,16 @@ public class CreateDDL {
                 LOG.warn("no key columns defined for layered table view requested for {}", nameLC);
             }
             else {
-                sqlCreate = handleLayeredTable(sqlCreate, layeredTablesView, dialect);
+                sqlCreate = handleLayeredTable(sqlCreate, buf, layeredTablesView, dialect);
+
+                int idx=0;
+                for (String layeredTableName : layeredTablesView.tableNamesInOrder()) {
+                    addIndexes(buf, dialect, tableConfig, layeredTableName, ""+ (++idx));
+                }
             }
+        }
+        else {
+            addIndexes(buf, dialect, tableConfig, tableConfig.getTableName(), "");
         }
 
         if (buf.length() == 0) {
@@ -576,7 +585,7 @@ public class CreateDDL {
         return buf.toString();
     }
 
-    private String handleLayeredTable(String sqlCreate, LayeredTablesView layeredTablesView, Dialect dialect) {
+    private String handleLayeredTable(String sqlCreate, StringBuffer buf, LayeredTablesView layeredTablesView, Dialect dialect) {
         Matcher matcher = TBL_PATTERN.matcher(sqlCreate);
         if (!matcher.find()) {
             LOG.warn("found annotation {} but table pattern does not match", layeredTablesView);
@@ -601,7 +610,7 @@ public class CreateDDL {
             String newCreate = sqlCreate.substring(0, matcher.start(TBL_PATTERN_IDX_TBLNAME)) + tableName + sqlCreate.substring(matcher.end(TBL_PATTERN_IDX_TBLNAME));
             ddl.append(STATEMENT_SEPARATOR);
             ddl.append("-- inserting table layer #").append(priority).append(" of view ").append(tblName).append("\n");
-            ddl.append(replaceShortName(newCreate, priority, dialect));
+            ddl.append(modifyName(newCreate, ""+priority, dialect));
 
             tableNames += ", " + tableName;
 
@@ -626,7 +635,7 @@ public class CreateDDL {
 
         viewSource.append(
                 "priority<f.priority\n" +
-                        ");\n"
+                        ")\n"
         );
 
         ddl.append(STATEMENT_SEPARATOR);
@@ -635,14 +644,28 @@ public class CreateDDL {
         return ddl.toString();
     }
 
-    private String replaceShortName(String sqlCreate, int priority, Dialect dialect) {
+    private String modifyNames(String sqlCreate, String suffix, Dialect dialect, String tableName) {
+        sqlCreate = modifyName(sqlCreate, suffix, dialect);
+
+        if (StringUtils.isNotEmpty(tableName)) {
+            Matcher matcher = IDX_CREATE_PATTERN.matcher(sqlCreate);
+            if (matcher.find()) {
+                return sqlCreate.substring(0, matcher.start(IDX_CREATE_PATTERN_TBL_NAME)) + tableName +
+                        sqlCreate.substring(matcher.end(IDX_CREATE_PATTERN_TBL_NAME));
+            }
+        }
+        return sqlCreate;
+    }
+
+    private String modifyName(String sqlCreate, String suffix, Dialect dialect) {
         StringBuilder sb = new StringBuilder();
         Matcher matcher = CONSTRAINT_OR_INDEX_PATTERN.matcher(sqlCreate);
         int idx=0;
         while (matcher.find(idx)) {
 
-            String newName = sqlCreate.substring(matcher.start(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME), matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME)-1)
-                    + priority + sqlCreate.substring(matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME)-1, matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME));
+            int endIdx = StringUtils.isNotEmpty(matcher.group(CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME)) ? matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME)-1 : matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME);
+            String newName = sqlCreate.substring(matcher.start(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME), endIdx)
+                    + suffix + sqlCreate.substring(endIdx, matcher.end(CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME));
 
             checkObjectName(dialect, newName);
 
@@ -678,7 +701,7 @@ public class CreateDDL {
         return clazz != null && clazz.isAnnotationPresent(annotationClass);
     }
 
-    private void addIndexes(StringBuffer buf, Dialect dialect, TableConfig tableConfig) {
+    private void addIndexes(StringBuffer buf, Dialect dialect, TableConfig tableConfig, String tableName, String shortNameSuffix) {
         com.github.gekoh.yagen.api.Table annotation = tableConfig.getTableAnnotationOfType(com.github.gekoh.yagen.api.Table.class);
         if (annotation != null) {
             for (UniqueConstraint uniqueConstraint : annotation.uniqueConstraints()) {
@@ -689,31 +712,38 @@ public class CreateDDL {
                 }
                 String constraintName = getProfile().getNamingStrategy().constraintName(uniqueConstraint);
                 if (StringUtils.isEmpty(constraintName)) {
-                    throw new IllegalArgumentException("please specify an unique constraint name in annotation UniqueConstraint for table " + tableConfig.getTableName());
+                    throw new IllegalArgumentException("please specify an unique constraint name in annotation UniqueConstraint for table " + tableName);
                 }
-                checkObjectName(dialect, constraintName);
                 StringBuilder objDdl = new StringBuilder();
                 objDdl.append("create unique index ").append(constraintName);
-                objDdl.append(" on ").append(tableConfig.getTableName()).append(" (").append(uniqueConstraint.declaration()).append(")");
+                objDdl.append(" on ").append(tableName).append(" (").append(uniqueConstraint.declaration()).append(")");
 
                 if (uniqueConstraint.usingLocalIndex() && supportsPartitioning(dialect)) {
                     objDdl.append(" local");
                 }
 
-                getProfile().duplex(ObjectType.INDEX, constraintName, objDdl.toString());
+                String ddl = objDdl.toString();
+                if (StringUtils.isNotEmpty(shortNameSuffix)) {
+                    ddl = modifyNames(ddl, shortNameSuffix, dialect, tableName);
+                }
+                else {
+                    checkObjectName(dialect, constraintName);
+                }
 
-                buf.append(STATEMENT_SEPARATOR).append(objDdl.toString());
+                getProfile().duplex(ObjectType.INDEX, constraintName, ddl);
+
+                buf.append(STATEMENT_SEPARATOR).append(ddl);
             }
             for (Index index : annotation.indexes()) {
-                addIndex(buf, index, dialect, tableConfig);
+                addIndex(buf, index, dialect, tableConfig, tableName, shortNameSuffix);
             }
         }
         for (Index index : tableConfig.getIndexes()) {
-            addIndex(buf, index, dialect, tableConfig);
+            addIndex(buf, index, dialect, tableConfig, tableName, shortNameSuffix);
         }
     }
 
-    private void addIndex(StringBuffer buf, Index index, Dialect dialect, TableConfig tableConfig) {
+    private void addIndex(StringBuffer buf, Index index, Dialect dialect, TableConfig tableConfig, String tableName, String shortNameSuffix) {
         if (StringUtils.isEmpty(index.declaration())) {
             return;
         }
@@ -721,7 +751,6 @@ public class CreateDDL {
         if (StringUtils.isEmpty(indexName)) {
             throw new IllegalArgumentException("please specify an index name in annotation Index for table " + tableConfig.getTableName());
         }
-        checkObjectName(dialect, indexName);
         StringBuilder objDdl = new StringBuilder();
         objDdl.append("create index ").append(indexName);
         objDdl.append(" on ").append(tableConfig.getTableName()).append(" (").append(index.declaration()).append(")");
@@ -730,9 +759,17 @@ public class CreateDDL {
             objDdl.append(" local");
         }
 
-        getProfile().duplex(ObjectType.INDEX, indexName, objDdl.toString());
+        String ddl = objDdl.toString();
+        if (StringUtils.isNotEmpty(shortNameSuffix)) {
+            ddl = modifyNames(ddl, shortNameSuffix, dialect, tableName);
+        }
+        else {
+            checkObjectName(dialect, indexName);
+        }
 
-        buf.append(STATEMENT_SEPARATOR).append(objDdl.toString());
+        getProfile().duplex(ObjectType.INDEX, indexName, ddl);
+
+        buf.append(STATEMENT_SEPARATOR).append(ddl);
     }
 
     public String updateCreateConstraint(Dialect dialect, StringBuffer buf, String name, Table table, Constraint constraint) {
