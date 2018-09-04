@@ -126,7 +126,7 @@ public class CreateDDL {
     private static final int COL_PATTERN_IDX_UNIQUE  = 29;
 
     private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
-    private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*(([a-zA-Z]+_)?[a-zA-Z]+[0-9a-zA-Z_]*)");
+    private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*(([a-zA-Z][0-9a-zA-Z]*_)?[a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final int CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME = 3;
     private static final int CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME = 4;
 
@@ -561,7 +561,7 @@ public class CreateDDL {
                 LOG.warn("no key columns defined for layered table view requested for {}", nameLC);
             }
             else {
-                sqlCreate = handleLayeredTable(sqlCreate, buf, layeredTablesView, dialect);
+                sqlCreate = handleLayeredTable(sqlCreate, buf, layeredTablesView, dialect, columnNames);
 
                 int idx=0;
                 for (String layeredTableName : layeredTablesView.tableNamesInOrder()) {
@@ -585,7 +585,7 @@ public class CreateDDL {
         return buf.toString();
     }
 
-    private String handleLayeredTable(String sqlCreate, StringBuffer buf, LayeredTablesView layeredTablesView, Dialect dialect) {
+    private String handleLayeredTable(String sqlCreate, StringBuffer buf, LayeredTablesView layeredTablesView, Dialect dialect, Set<String> columnNames) {
         Matcher matcher = TBL_PATTERN.matcher(sqlCreate);
         if (!matcher.find()) {
             LOG.warn("found annotation {} but table pattern does not match", layeredTablesView);
@@ -595,11 +595,18 @@ public class CreateDDL {
         StringBuilder ddl = new StringBuilder();
         String tblName = matcher.group(TBL_PATTERN_IDX_TBLNAME);
         String tableNames = "";
+        String colList = "";
         StringBuilder viewSource = new StringBuilder();
+
+        for (String columnName : columnNames) {
+            colList += columnName + ", ";
+        }
+        colList += "priority";
 
         ddl.append("-- not directly creating table '").append(tblName).append("', layered table structure requested");
 
-        viewSource.append("\ncreate or replace view ").append(tblName).append(" as \nwith full_data as (\n");
+        viewSource.append("\ncreate or replace view ").append(tblName).append(" (").append(colList);
+        viewSource.append(") as \nwith full_data as (\n");
 
         int priority = 0;
         for (String tableName : layeredTablesView.tableNamesInOrder()) {
@@ -622,7 +629,7 @@ public class CreateDDL {
 
         viewSource.append(
                 ")\n" +
-                        "select *\n" +
+                        "select ").append(colList).append("\n" +
                         "from full_data f\n" +
                         "where not exists (\n" +
                         "  select 1 from full_data \n" +
