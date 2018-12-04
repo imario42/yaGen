@@ -60,10 +60,19 @@ begin
       -- invalidate latest entry in history table
       update ${hstTableName} h set invalidated_at=transaction_timestamp_found
         where
+          transaction_timestamp < transaction_timestamp_found and
 #foreach( $pkColumn in $pkColumns )
           ${pkColumn}=case when hst_operation<>'D' then ${new}.${pkColumn} else ${old}.${pkColumn} end and
 #end
           invalidated_at is null;
+
+      if sql%rowcount<>1 and hst_operation<>'I' then
+        raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
+#foreach( $pkColumn in $pkColumns )
+            ||' ${pkColumn}='''|| case when hst_operation<>'D' then ${new}.${pkColumn} else ${old}.${pkColumn} end ||''''
+#end
+          );
+      end if;
     exception when #if(!$is_postgres)dup_val_on_index#{else}unique_violation#end then
       declare
         prev_operation ${hstTableName}.operation%TYPE;

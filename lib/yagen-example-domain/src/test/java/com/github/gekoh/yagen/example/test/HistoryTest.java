@@ -28,6 +28,8 @@ import org.junit.Test;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import java.sql.SQLException;
+import java.sql.Timestamp;
 
 /**
  * @author Georg Kohlweiss
@@ -36,6 +38,7 @@ public class HistoryTest {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(HistoryTest.class);
 
     private static final EntityManagerFactory emf;
+
     static {
         try {
             YagenInit.init();
@@ -50,13 +53,19 @@ public class HistoryTest {
         EntityManager em = null;
         try {
             em = emf.createEntityManager();
-            em.getTransaction().begin();
 
-            Aircraft ac = new Aircraft(EngineType.piston, "C172", "OE-DVK", 10.92f, 8.2f);
-            em.persist(ac);
-
-            em.flush();
-            em.getTransaction().commit();
+            Aircraft ac;
+            try {
+                ac = em.createQuery("select ac from Aircraft ac where ac.callSign=:callSign", Aircraft.class)
+                        .setParameter("callSign", "OE-DVK")
+                        .getSingleResult();
+            } catch (Exception e) {
+                ac = new Aircraft(EngineType.piston, "C172", "OE-DVK", 10.92f, 8.2f);
+                em.getTransaction().begin();
+                em.persist(ac);
+                em.flush();
+                em.getTransaction().commit();
+            }
 
             AircraftHst ach = (AircraftHst) em.createQuery("from AircraftHst a where a.liveUuid=:uuid")
                     .setParameter("uuid", ac.getUuid()).getSingleResult();
@@ -138,6 +147,34 @@ public class HistoryTest {
                 em.close();
             }
             Assert.fail(e.getMessage());
+        }
+    }
+
+    @Test
+    public void testConsistentHistory() {
+        Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+
+        EntityManager em = emf.createEntityManager();
+
+        Aircraft ac = new Aircraft(EngineType.piston, "PA23", "DGGGG", 11.28f, 8.27f);
+        em.getTransaction().begin();
+        em.persist(ac);
+        em.flush();
+        em.getTransaction().commit();
+
+        em.getTransaction().begin();
+        em.createNativeQuery("call set_transaction_timestamp(:ts);").setParameter("ts", timestamp).executeUpdate();
+        try {
+            em.createNativeQuery("update AIRCRAFT set CALL_SIGN='D-GGGG' where CALL_SIGN='DGGGG'").executeUpdate();
+            em.flush();
+            em.getTransaction().commit();
+            Assert.fail();
+        } catch (Exception e) {
+            Assert.assertTrue(e.getCause().getCause() instanceof SQLException);
+            Assert.assertEquals("20100", ((SQLException) e.getCause().getCause()).getSQLState());
+        }
+        finally {
+            em.close();
         }
     }
 }

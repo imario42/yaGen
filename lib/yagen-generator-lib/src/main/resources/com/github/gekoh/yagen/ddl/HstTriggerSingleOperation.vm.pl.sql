@@ -11,8 +11,10 @@ begin atomic
   declare hst_modified_by varchar(35) default user;
   declare hst_table_name varchar(30);
   declare prev_operation char(1);
+  declare affected_rowcount integer;
+  declare msg varchar(255);
 
-  set transaction_id_used=TRANSACTION_ID();
+  set transaction_id_used=0;--txid_current();
   set live_rowid=''
     #foreach( $pkColumn in $pkColumns )
         ||#if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#end
@@ -55,10 +57,23 @@ begin atomic
           /* invalidate latest entry in history table */
           update ${hstTableName} h set invalidated_at=transaction_timestamp_found
             where
+              transaction_timestamp < transaction_timestamp_found and
 #foreach( $pkColumn in $pkColumns )
               ${pkColumn}=#if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#end and
 #end
               invalidated_at is null;
+
+#if (${operation} != 'I')
+          GET DIAGNOSTICS affected_rowcount = ROW_COUNT;
+          if affected_rowcount<>1 then
+            set msg='unable to invalidate history record for '||hst_table_name
+#foreach( $pkColumn in $pkColumns )
+                ||' ${pkColumn}='''|| #if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#{end} ||''''
+#end
+              ;
+            SIGNAL SQLSTATE '20100' SET MESSAGE_TEXT = msg;
+          end if;
+#end
         end;
 
       select operation, hst_uuid into prev_operation, hst_uuid_used

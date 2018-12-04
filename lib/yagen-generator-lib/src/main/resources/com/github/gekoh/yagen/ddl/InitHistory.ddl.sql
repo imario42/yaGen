@@ -42,10 +42,24 @@ create global temporary table HST_MODIFIED_ROW (
 );
 
 ------- CreateDDL statement separator -------
+create function txid_current() returns bigint
+begin atomic
+-- using always transaction id = 0 since internal id returned by
+-- TRANSACTION_ID() seems to be different for every statement
+-- always having the same value is no issue with our current usage
+-- NOTE! because of a weird deadlock in hsql we cannot use this function, so see procedure set_transaction_timestamp
+-- and history triggers where the value is directly used instead of this function
+  return 0;
+end;
+/
+
+------- CreateDDL statement separator -------
 create procedure set_transaction_timestamp(in timestamp_in timestamp)
 begin atomic
+  declare transaction_id_used bigint;
+  set transaction_id_used=0;--txid_current();
   insert into HST_CURRENT_TRANSACTION (TRANSACTION_ID, TRANSACTION_TIMESTAMP)
-    values (TRANSACTION_ID(), timestamp_in);
+    values (transaction_id_used, timestamp_in);
 end;
 /
 #end
