@@ -31,7 +31,11 @@ begin
 #foreach( $column in $histRelevantCols )
   or ((${new}.$column is null and ${old}.$column is not null) or
       (${new}.$column is not null and ${old}.$column is null) or
+#if( $is_oracle && $blobCols.contains($column) )
+      DBMS_LOB.COMPARE(${new}.$column, ${old}.$column) <> 0)
+#else
       ${new}.$column!=${old}.$column)
+#end
 #end
   then
 

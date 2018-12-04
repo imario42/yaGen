@@ -462,6 +462,7 @@ public class CreateDDL {
                     pkCols = Arrays.asList(uniqueConstraints[0].columnNames());
                 }
 
+                Set<String> blobCols = getBlobColumns(sqlCreate);
                 buf.append(STATEMENT_SEPARATOR).append("-- adding history table due to annotation ")
                         .append(temporalEntity.annotationType().getName())
                         .append(" on entity of table ")
@@ -472,11 +473,11 @@ public class CreateDDL {
                 if (isOracle) {
                     buf.append(STATEMENT_SEPARATOR);
                     buf.append("-- creating trigger for inserting history rows from table ").append(tableName).append("\n")
-                            .append(getOracleHistTriggerSql(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols)).append("\n/");
+                            .append(getOracleHistTriggerSql(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols, blobCols)).append("\n/");
                 }
                 else if (isPostgreSql(dialect)) {
                     buf.append(STATEMENT_SEPARATOR)
-                            .append(getPostgreSQLHistTriggerFunction(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols)).append("\n/");
+                            .append(getPostgreSQLHistTriggerFunction(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols, blobCols)).append("\n/");
 
                     buf.append(STATEMENT_SEPARATOR)
                             .append("create trigger ").append(liveTableName).append("_htU\n")
@@ -583,6 +584,23 @@ public class CreateDDL {
         buf.insert(0, STATEMENT_SEPARATOR);
 
         return buf.toString();
+    }
+
+    private Set<String> getBlobColumns(String sqlCreate) {
+        Set<String> blobCols = new HashSet<String>();
+
+        Matcher matcher = COL_PATTERN.matcher(sqlCreate);
+        int idx = 0;
+        while (matcher.find(idx)) {
+
+            if (matcher.group(COL_PATTERN_IDX_TYPE).compareToIgnoreCase("blob") == 0) {
+                blobCols.add(matcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase());
+            }
+
+            idx = matcher.end();
+        }
+
+        return blobCols;
     }
 
     private String handleLayeredTable(String sqlCreate, StringBuffer buf, LayeredTablesView layeredTablesView, Dialect dialect, Set<String> columnNames) {
@@ -1836,10 +1854,11 @@ public class CreateDDL {
                                             String histColName,
                                             Set<String> columns,
                                             List<String> pkColumns,
-                                            List<String> histRelevantCols) {
+                                            List<String> histRelevantCols,
+                                            Set<String> blobCols) {
         String objectName = tableName + "_htr";
 
-        String histTriggerSource = getHistTriggerSource(dialect, objectName, tableName, histTableName, histColName, columns, pkColumns, histRelevantCols);
+        String histTriggerSource = getHistTriggerSource(dialect, objectName, tableName, histTableName, histColName, columns, pkColumns, histRelevantCols, blobCols);
 
         getProfile().duplex(ObjectType.TRIGGER, objectName, histTriggerSource);
 
@@ -1852,8 +1871,9 @@ public class CreateDDL {
                                                      String histColName,
                                                      Set<String> columns,
                                                      List<String> pkColumns,
-                                                     List<String> histRelevantCols) {
-        return getHistTriggerSource(dialect, tableName + "_htr_function", tableName, histTableName, histColName, columns, pkColumns, histRelevantCols);
+                                                     List<String> histRelevantCols,
+                                                     Set<String> blobCols) {
+        return getHistTriggerSource(dialect, tableName + "_htr_function", tableName, histTableName, histColName, columns, pkColumns, histRelevantCols, blobCols);
     }
 
     private String getHistTriggerSource (Dialect dialect,
@@ -1863,7 +1883,8 @@ public class CreateDDL {
                                          String histColName,
                                          Set<String> columns,
                                          List<String> pkColumns,
-                                         List<String> histRelevantCols) {
+                                         List<String> histRelevantCols,
+                                         Set<String> blobCols) {
         checkObjectName(dialect, objectName);
 
         VelocityContext context = new VelocityContext();
@@ -1890,6 +1911,7 @@ public class CreateDDL {
         context.put("nonPkColumns", nonPkColumns);
         context.put("noNullColumns", hstNoNullColumns);
         context.put("histRelevantCols", histRelevantCols);
+        context.put("blobCols", blobCols);
         context.put("varcharType", dialect.getTypeName(Types.VARCHAR, 64, 0, 0));
 
         setNewOldVar(dialect, context);
