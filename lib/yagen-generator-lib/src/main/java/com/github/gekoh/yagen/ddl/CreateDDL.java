@@ -32,6 +32,7 @@ import com.github.gekoh.yagen.api.Profile;
 import com.github.gekoh.yagen.api.Sequence;
 import com.github.gekoh.yagen.api.TemporalEntity;
 import com.github.gekoh.yagen.api.UniqueConstraint;
+import com.github.gekoh.yagen.hibernate.PatchGlue;
 import com.github.gekoh.yagen.hst.CreateEntities;
 import com.github.gekoh.yagen.util.FieldInfo;
 import org.apache.commons.lang.StringUtils;
@@ -60,6 +61,7 @@ import java.lang.annotation.Annotation;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -341,6 +343,29 @@ public class CreateDDL {
         }
 
         return sql.toString();
+    }
+
+    public Collection<String> enhanceCreateTableDdl(Dialect dialect, String tableCreate) {
+        tableCreate = tableCreate.replaceFirst(";\\s*$", "").toLowerCase();
+
+        Matcher matcher = TBL_PATTERN.matcher(tableCreate);
+        if (matcher.find()) {
+            String tableName = matcher.group(TBL_PATTERN_IDX_TBLNAME);
+
+            Map columns = new HashMap();
+
+            Matcher colMatcher = COL_PATTERN.matcher(matcher.group(TBL_PATTERN_IDX_TBL_DEF));
+
+            int idx=0;
+            while ((colMatcher.find(idx))) {
+
+                columns.put(colMatcher.group(COL_PATTERN_IDX_COLNAME), null);
+
+                idx = colMatcher.end();
+            }
+            return PatchGlue.splitSQL(updateCreateTable(dialect, new StringBuffer(tableCreate), tableName, columns));
+        }
+        return Collections.singleton(tableCreate);
     }
 
     public String updateCreateTable(Dialect dialect, StringBuffer buf, String tableName, Map columnMap) {

@@ -110,6 +110,12 @@ public class TableConfig {
     private String i18nBaseEntityFkCol;
     private String i18nBaseEntityTblName;
 
+    public static TableConfig add(CreateDDL ddlEnhancer, String tableName) {
+        TableConfig tableConfig = new TableConfig(ddlEnhancer, (Class)null, tableName);
+        ddlEnhancer.addTableConfig(tableConfig);
+        return tableConfig;
+    }
+
     public TableConfig(CreateDDL ddlEnhancer, Class baseClass, String tableName) {
         this.ddlEnhancer = ddlEnhancer;
         this.baseClass = baseClass;
@@ -523,6 +529,85 @@ public class TableConfig {
 
             action.gatherInfo(fOm);
         }
+    }
+
+    public TableConfig withTemporalEntityAnnotation() {
+        return withTemporalEntityAnnotation(null, null);
+    }
+
+    public TableConfig withTemporalEntityAnnotation(final String historyTableName, final String historyTimestampColumnName, final String... ignoreChangeOfColumns) {
+        putTableAnnotation(baseClass, new TemporalEntity() {
+            public String historyTableName() {
+                return historyTableName != null ? historyTableName : "";
+            }
+
+            public String historyTimestampColumnName() {
+                return historyTimestampColumnName != null ? historyTimestampColumnName : "TRANSACTION_TIMESTAMP";
+            }
+
+            public String[] ignoreChangeOfColumns() {
+                return ignoreChangeOfColumns != null ? ignoreChangeOfColumns : new String[0];
+            }
+
+            public Class<? extends Annotation> annotationType() {
+                return TemporalEntity.class;
+            }
+        });
+        return this;
+    }
+
+    public TableConfig withAuditableAnnotation() {
+        return withAuditableAnnotation(null, null);
+    }
+
+    public TableConfig withAuditableAnnotation(final Boolean createNonExistingColumns, final Integer userNameLength) {
+        putTableAnnotation(baseClass, new Auditable() {
+            public boolean createNonExistingColumns() {
+                return createNonExistingColumns != null ? createNonExistingColumns : true;
+            }
+
+            public int userNameLength() {
+                return userNameLength != null ? userNameLength : 35;
+            }
+
+            public Class<? extends Annotation> annotationType() {
+                return Auditable.class;
+            }
+        });
+        return this;
+    }
+
+    public TableConfig withIntervalPartitioningAnnotation(String useExistingDateColumnNameAndPartitionMonthly) {
+        return withIntervalPartitioningAnnotation(useExistingDateColumnNameAndPartitionMonthly, null, null, null, null);
+    }
+
+    public TableConfig withIntervalPartitioningAnnotation(final String columnName, final String interval, final String startPartitionLessThanValue, final Boolean enableRowMovement, final Boolean useLocalPK) {
+        putTableAnnotation(baseClass, new IntervalPartitioning() {
+            public String columnName() {
+                return columnName != null ? columnName : "partition_date";
+            }
+
+            public String interval() {
+                return interval != null ? interval : "numtoyminterval(1, 'MONTH')";
+            }
+
+            public String startPartitionLessThanValue() {
+                return startPartitionLessThanValue != null ? startPartitionLessThanValue : "";
+            }
+
+            public boolean enableRowMovement() {
+                return enableRowMovement != null ? enableRowMovement : false;
+            }
+
+            public boolean useLocalPK() {
+                return useLocalPK != null ? useLocalPK : false;
+            }
+
+            public Class<? extends Annotation> annotationType() {
+                return IntervalPartitioning.class;
+            }
+        });
+        return this;
     }
 
     private static interface GatherFieldOrMethodInfoAction {
