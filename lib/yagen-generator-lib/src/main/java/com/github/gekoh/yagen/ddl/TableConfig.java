@@ -19,16 +19,21 @@ import com.github.gekoh.yagen.api.Auditable;
 import com.github.gekoh.yagen.api.CascadeDelete;
 import com.github.gekoh.yagen.api.CascadeNullable;
 import com.github.gekoh.yagen.api.Changelog;
+import com.github.gekoh.yagen.api.CheckConstraint;
+import com.github.gekoh.yagen.api.Constants;
 import com.github.gekoh.yagen.api.Default;
+import com.github.gekoh.yagen.api.DefaultNamingStrategy;
 import com.github.gekoh.yagen.api.Deferrable;
 import com.github.gekoh.yagen.api.I18NDetailEntityRelation;
 import com.github.gekoh.yagen.api.Index;
 import com.github.gekoh.yagen.api.IntervalPartitioning;
 import com.github.gekoh.yagen.api.LayeredTablesView;
+import com.github.gekoh.yagen.api.NamingStrategy;
 import com.github.gekoh.yagen.api.NoForeignKeyConstraint;
 import com.github.gekoh.yagen.api.Profile;
 import com.github.gekoh.yagen.api.Sequence;
 import com.github.gekoh.yagen.api.TemporalEntity;
+import com.github.gekoh.yagen.api.UniqueConstraint;
 import com.github.gekoh.yagen.util.MappingUtils;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.OnDelete;
@@ -89,7 +94,7 @@ public class TableConfig {
 
 
     private String tableName;
-    private Class baseClass;
+    private String baseClassName;
     private AccessibleObject definedAtFieldOrMethod;
     private CreateDDL ddlEnhancer;
     private boolean tableToBeRendered = true;
@@ -113,12 +118,17 @@ public class TableConfig {
     public static TableConfig add(CreateDDL ddlEnhancer, String tableName) {
         TableConfig tableConfig = new TableConfig(ddlEnhancer, (Class)null, tableName);
         ddlEnhancer.addTableConfig(tableConfig);
+        NamingStrategy namingStrategy = ddlEnhancer.getProfile().getNamingStrategy();
+        if (!(namingStrategy instanceof FakeClassNamingStrategy)) {
+            ddlEnhancer.getProfile().setNamingStrategy(namingStrategy = new FakeClassNamingStrategy());
+        }
+        tableConfig.baseClassName = ((FakeClassNamingStrategy) namingStrategy).forTableConfig(tableConfig);
         return tableConfig;
     }
 
     public TableConfig(CreateDDL ddlEnhancer, Class baseClass, String tableName) {
         this.ddlEnhancer = ddlEnhancer;
-        this.baseClass = baseClass;
+        this.baseClassName = baseClass != null ? baseClass.getName() : null;
         this.tableName = getIdentifierForReference(tableName);
         Class superclass = baseClass != null ? baseClass.getSuperclass() : null;
         if (superclass != null && superclass.isAnnotationPresent(MappedSuperclass.class)) {
@@ -183,7 +193,15 @@ public class TableConfig {
     }
 
     public Class getEntityBaseClass() {
-        return baseClass;
+        try {
+            return baseClassName != null ? Class.forName(baseClassName) : null;
+        } catch (ClassNotFoundException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public String getEntityBaseClassName() {
+        return baseClassName;
     }
 
     public TableConfig getSuperClassConfig() {
@@ -536,7 +554,7 @@ public class TableConfig {
     }
 
     public TableConfig withTemporalEntityAnnotation(final String historyTableName, final String historyTimestampColumnName, final String... ignoreChangeOfColumns) {
-        putTableAnnotation(baseClass, new TemporalEntity() {
+        putTableAnnotation((Class)null, new TemporalEntity() {
             public String historyTableName() {
                 return historyTableName != null ? historyTableName : "";
             }
@@ -553,6 +571,9 @@ public class TableConfig {
                 return TemporalEntity.class;
             }
         });
+        TableConfig hstTableConfig = TableConfig.add(ddlEnhancer, historyTableName != null ? historyTableName : tableName + Constants._HST);
+        ddlEnhancer.addTableConfig(hstTableConfig);
+        ((FakeClassNamingStrategy)ddlEnhancer.getProfile().getNamingStrategy()).registerHistoryTableMapping(hstTableConfig, this);
         return this;
     }
 
@@ -561,7 +582,7 @@ public class TableConfig {
     }
 
     public TableConfig withAuditableAnnotation(final Boolean createNonExistingColumns, final Integer userNameLength) {
-        putTableAnnotation(baseClass, new Auditable() {
+        putTableAnnotation((Class)null, new Auditable() {
             public boolean createNonExistingColumns() {
                 return createNonExistingColumns != null ? createNonExistingColumns : true;
             }
@@ -582,7 +603,7 @@ public class TableConfig {
     }
 
     public TableConfig withIntervalPartitioningAnnotation(final String columnName, final String interval, final String startPartitionLessThanValue, final Boolean enableRowMovement, final Boolean useLocalPK) {
-        putTableAnnotation(baseClass, new IntervalPartitioning() {
+        putTableAnnotation((Class)null, new IntervalPartitioning() {
             public String columnName() {
                 return columnName != null ? columnName : "partition_date";
             }
@@ -605,6 +626,49 @@ public class TableConfig {
 
             public Class<? extends Annotation> annotationType() {
                 return IntervalPartitioning.class;
+            }
+        });
+        return this;
+    }
+
+    public TableConfig withTableAnnotation(final String shortName) {
+        return withTableAnnotation(shortName, null, null);
+    }
+
+    public TableConfig withTableAnnotation(final String shortName,
+                                           final Boolean isGlobalTemporary,
+                                           final String globalTemporaryOnCommit) {
+        putTableAnnotation((Class)null, new com.github.gekoh.yagen.api.Table() {
+            public String shortName() {
+                return shortName != null ? shortName : "";
+            }
+
+            public boolean isGlobalTemporary() {
+                return isGlobalTemporary != null ? isGlobalTemporary : false;
+            }
+
+            public String globalTemporaryOnCommit() {
+                return globalTemporaryOnCommit != null ? globalTemporaryOnCommit : "DELETE ROWS";
+            }
+
+            public Sequence[] additionalSequences() {
+                return new Sequence[0];
+            }
+
+            public CheckConstraint[] checkConstraints() {
+                return new CheckConstraint[0];
+            }
+
+            public UniqueConstraint[] uniqueConstraints() {
+                return new UniqueConstraint[0];
+            }
+
+            public Index[] indexes() {
+                return new Index[0];
+            }
+
+            public Class<? extends Annotation> annotationType() {
+                return com.github.gekoh.yagen.api.Table.class;
             }
         });
         return this;
@@ -865,5 +929,48 @@ public class TableConfig {
 
     public static String getIdentifierForReference(String identifier) {
         return identifier.replaceAll("[\"'`]", "").toLowerCase();
+    }
+
+    private static class FakeClassNamingStrategy extends DefaultNamingStrategy {
+
+        private static final String PREFIX = FakeClassNamingStrategy.class.getSimpleName() + ".";
+
+        private Map<String, TableConfig> fakeClassNames2ConfigMap = new HashMap<String, TableConfig>();
+        private Map<TableConfig, TableConfig> history2liveMap = new HashMap<TableConfig, TableConfig>();
+
+        @Override
+        public String classToTableName(String className) {
+            return fakeClassNames2ConfigMap.containsKey(className) ? className.substring(PREFIX.length()) : super.classToTableName(className);
+        }
+
+        @Override
+        public String classToTableShortName(String className) {
+            if (!fakeClassNames2ConfigMap.containsKey(className)) {
+                super.classToTableShortName(className);
+            }
+
+            TableConfig tableConfig = fakeClassNames2ConfigMap.get(className);
+            com.github.gekoh.yagen.api.Table annotation = tableConfig.getTableAnnotationOfType(com.github.gekoh.yagen.api.Table.class);
+
+            if (annotation == null && history2liveMap.containsKey(tableConfig)) {
+                annotation = history2liveMap.get(tableConfig).getTableAnnotationOfType(com.github.gekoh.yagen.api.Table.class);
+
+                if (annotation != null && StringUtils.isNotEmpty(annotation.shortName())) {
+                    return CreateDDL.getHistTableShortNameFromLiveTableShortName(annotation.shortName());
+                }
+            }
+
+            return annotation != null && StringUtils.isNotEmpty(annotation.shortName()) ? annotation.shortName() : tableShortNameFromTableName(classToTableName(className));
+        }
+
+        public String forTableConfig(TableConfig tableConfig) {
+            String fakeClassName = PREFIX + tableConfig.getTableName();
+            fakeClassNames2ConfigMap.put(fakeClassName, tableConfig);
+            return fakeClassName;
+        }
+
+        public void registerHistoryTableMapping(TableConfig hstTableConfig, TableConfig tableConfig) {
+            history2liveMap.put(hstTableConfig, tableConfig);
+        }
     }
 }

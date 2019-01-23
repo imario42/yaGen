@@ -20,6 +20,7 @@ public class CreateDDLTest {
         CreateDDL createDDL = new CreateDDL(profile, dialect);
 
         TableConfig.add(createDDL, "AMP_JOB_CONFIGS")
+                .withTableAnnotation("AMPJC")
                 .withTemporalEntityAnnotation()
                 .withAuditableAnnotation();
 
@@ -29,6 +30,8 @@ public class CreateDDLTest {
         boolean historyTriggerCreated = false;
         boolean auditTriggerCreated = false;
         boolean auditColumnsCreated = true;
+        boolean primaryKeyNamed = false;
+        boolean hstConstraintNamed = false;
 
         for (String s : sql) {
 
@@ -53,12 +56,20 @@ public class CreateDDLTest {
                     auditColumnsCreated = false;
                 }
             }
+            if (lowerCase.contains("AMPJC_ID_PK".toLowerCase())) {
+                primaryKeyNamed = true;
+            }
+            if (lowerCase.contains("AMPJCH_operation_NN".toLowerCase())) {
+                hstConstraintNamed = true;
+            }
         }
 
         Assert.assertTrue(historyTableCreated);
         Assert.assertTrue(historyTriggerCreated);
         Assert.assertTrue(auditTriggerCreated);
         Assert.assertTrue(auditColumnsCreated);
+        Assert.assertTrue(primaryKeyNamed);
+        Assert.assertTrue(hstConstraintNamed);
 
     }
 }

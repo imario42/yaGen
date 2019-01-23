@@ -445,7 +445,7 @@ public class CreateDDL {
             try {
                 String histTableName;
 
-                if (entityClassName != null) {
+                if (entityClassName != null && isAccessible(entityClassName)) {
                     String hstEntityClassName = entityClassName + CreateEntities.HISTORY_ENTITY_SUFFIX;
                     histTableName = getProfile().getNamingStrategy().classToTableName(hstEntityClassName);
 
@@ -609,6 +609,15 @@ public class CreateDDL {
         buf.insert(0, STATEMENT_SEPARATOR);
 
         return buf.toString();
+    }
+
+    private boolean isAccessible(String entityClassName) {
+        try {
+            Class.forName(entityClassName);
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
+        return true;
     }
 
     private Set<String> getBlobColumns(String sqlCreate) {
@@ -1336,8 +1345,8 @@ public class CreateDDL {
         }
 
         TableConfig tableConfig = tblNameToConfig.get(entityTableName);
-        if (tableConfig != null && tableConfig.getEntityBaseClass() != null) {
-            return tableConfig.getEntityBaseClass().getName();
+        if (tableConfig != null) {
+            return tableConfig.getEntityBaseClassName();
         }
         return null;
     }
@@ -1641,12 +1650,17 @@ public class CreateDDL {
         }
         NamingStrategy namingStrategy = getProfile().getNamingStrategy();
         TableConfig tableConfig = tblNameToConfig.get(tableName);
-        Class entityBaseClass = tableConfig != null ? tableConfig.getEntityBaseClass() : null;
-        if (entityBaseClass == null) {
-            return namingStrategy.tableShortNameFromTableName(tableName);
+        String entityBaseClassName = tableConfig != null ? tableConfig.getEntityBaseClassName() : null;
+        if (entityBaseClassName != null) {
+            return namingStrategy.classToTableShortName(entityBaseClassName);
         }
 
-        return namingStrategy.classToTableShortName(entityBaseClass.getName());
+        com.github.gekoh.yagen.api.Table annotation = tableConfig.getTableAnnotationOfType(com.github.gekoh.yagen.api.Table.class);
+        if (annotation != null && StringUtils.isNotEmpty(annotation.shortName())) {
+            return annotation.shortName();
+        }
+
+        return namingStrategy.tableShortNameFromTableName(tableName);
     }
 
     private String getLanguageDetailTableNameFromLiveTableName(String liveTableName) {
