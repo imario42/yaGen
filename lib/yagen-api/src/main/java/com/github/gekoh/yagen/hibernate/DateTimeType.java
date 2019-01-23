@@ -1,9 +1,3 @@
-/*
- * DateTimeType
- * Copyright (c) 2012 CREDIT SUISSE Technology and Operations. All Rights Reserved.
- * This software is the proprietary information of CREDIT SUISSE Technology and Operations.
- * Use is subject to license and non-disclosure terms.
- */
 package com.github.gekoh.yagen.hibernate;
 
 import org.hibernate.HibernateException;
@@ -19,7 +13,7 @@ import java.util.Date;
 
 /**
  * @author Thomas Spiegl
- * @author Georg Kohlweiss (G477448)
+ * @author Georg Kohlweiss
  */
 @SuppressWarnings("deprecation")
 public class DateTimeType extends ImmutableType {

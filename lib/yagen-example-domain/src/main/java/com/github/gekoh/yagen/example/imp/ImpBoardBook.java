@@ -1,9 +1,3 @@
-/*
- * ImpBoardBook
- * Copyright (c) 2012 CREDIT SUISSE Technology and Operations. All Rights Reserved.
- * This software is the proprietary information of CREDIT SUISSE Technology and Operations.
- * Use is subject to license and non-disclosure terms.
- */
 package com.github.gekoh.yagen.example.imp;
 
 import com.github.gekoh.yagen.api.LayeredTablesView;
@@ -15,7 +9,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 /**
- * @author Georg Kohlweiss (G477448)
+ * @author Georg Kohlweiss
  */
 @Entity
 @Table(name = "IMP_BOARD_BOOK_V")

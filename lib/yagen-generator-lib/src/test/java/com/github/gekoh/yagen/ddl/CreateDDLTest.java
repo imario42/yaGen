@@ -1,9 +1,3 @@
-/*
- * CreateDDLTest
- * Copyright (c) 2012 CREDIT SUISSE Technology and Operations. All Rights Reserved.
- * This software is the proprietary information of CREDIT SUISSE Technology and Operations.
- * Use is subject to license and non-disclosure terms.
- */
 package com.github.gekoh.yagen.ddl;
 
 import com.github.gekoh.yagen.api.AuditInfo;
@@ -14,7 +8,7 @@ import org.junit.Test;
 import java.util.Collection;
 
 /**
- * @author Georg Kohlweiss (G477448)
+ * @author Georg Kohlweiss
  */
 public class CreateDDLTest {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CreateDDLTest.class);
