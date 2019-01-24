@@ -657,7 +657,11 @@ public class CreateDDL {
 
         ddl.append("-- not directly creating table '").append(tblName).append("', layered table structure requested");
 
-        viewSource.append("\ncreate or replace view ").append(tblName).append(" (").append(colList);
+        viewSource.append("\ncreate ");
+        if (isOracle(dialect) || isPostgreSql(dialect)) {
+            viewSource.append("or replace ");
+        }
+        viewSource.append("view ").append(tblName).append(" (").append(colList);
         viewSource.append(") as \nwith full_data as (\n");
 
         int priority = 0;
