@@ -1529,17 +1529,21 @@ public class CreateDDL {
         matcher = TBL_PATTERN.matcher(sqlCreate);
 
         if (matcher.find() && matcher.group(TBL_PATTERN_IDX_PK_CLAUSE) != null) {
-            b = new StringBuilder();
 
-            idx = matcher.start(TBL_PATTERN_IDX_PK_START);
-            b.append(sqlCreate.substring(0, idx));
+            // name not already present
+            if (matcher.group(TBL_PATTERN_IDX_PK_NAME) == null) {
+                b = new StringBuilder();
 
-            // name primary key constraint
-            idx = appendConstraint(b, sqlCreate, nameLC, DefaultNamingStrategy.concatColumnNames(matcher.group(TBL_PATTERN_IDX_PK_COLLIST)), idx, matcher, TBL_PATTERN_IDX_PK_START, Constants._PK);
+                idx = matcher.start(TBL_PATTERN_IDX_PK_START);
+                b.append(sqlCreate.substring(0, idx));
 
-            b.append(sqlCreate.substring(idx));
+                // name primary key constraint
+                idx = appendConstraint(b, sqlCreate, nameLC, DefaultNamingStrategy.concatColumnNames(matcher.group(TBL_PATTERN_IDX_PK_COLLIST)), idx, matcher, TBL_PATTERN_IDX_PK_START, Constants._PK);
 
-            sqlCreate = b.toString();
+                b.append(sqlCreate.substring(idx));
+
+                sqlCreate = b.toString();
+            }
         }
         else {
             LOG.info("no primary key found for table {}", nameLC);

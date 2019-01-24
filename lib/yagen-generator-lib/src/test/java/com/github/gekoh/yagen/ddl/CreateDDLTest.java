@@ -24,14 +24,15 @@ public class CreateDDLTest {
                 .withTemporalEntityAnnotation()
                 .withAuditableAnnotation();
 
-        Collection<String> sql = createDDL.enhanceCreateTableDdl(dialect, "CREATE TABLE AMP_JOB_CONFIGS ( ID varchar2(36) NOT NULL, PRIORITY number(10) NOT NULL, MEMORY_USAGE_MB number(10) NOT NULL, CPU_USAGE number(3,1) NOT NULL, RETRY_MAX_COUNT number(10) NOT NULL, RETRY_DELAY_SECONDS number(10) NOT NULL, TIMEOUT_SECONDS number(10) NOT NULL, AUTO_TRANSACTIONAL number(1) NOT NULL, JOBS_ID varchar2(36) NOT NULL, PRIMARY KEY (ID));");
+        Collection<String> sql = createDDL.enhanceCreateTableDdl(dialect, "CREATE TABLE AMP_JOB_CONFIGS ( ID varchar2(36) NOT NULL, PRIORITY number(10) NOT NULL, MEMORY_USAGE_MB number(10) NOT NULL, CPU_USAGE number(3,1) NOT NULL, RETRY_MAX_COUNT number(10) NOT NULL, RETRY_DELAY_SECONDS number(10) constraint AMJC_retry_delay_seconds_NN NOT NULL, TIMEOUT_SECONDS number(10) NOT NULL, AUTO_TRANSACTIONAL number(1) NOT NULL, JOBS_ID varchar2(36) NOT NULL, constraint AJC_PK PRIMARY KEY (ID));");
 
         boolean historyTableCreated = false;
         boolean historyTriggerCreated = false;
         boolean auditTriggerCreated = false;
         boolean auditColumnsCreated = true;
-        boolean primaryKeyNamed = false;
         boolean hstConstraintNamed = false;
+        boolean existingNnContraint = false;
+        boolean existingPkContraint = false;
 
         for (String s : sql) {
 
@@ -56,11 +57,14 @@ public class CreateDDLTest {
                     auditColumnsCreated = false;
                 }
             }
-            if (lowerCase.contains("AMPJC_ID_PK".toLowerCase())) {
-                primaryKeyNamed = true;
-            }
             if (lowerCase.contains("AMPJCH_operation_NN".toLowerCase())) {
                 hstConstraintNamed = true;
+            }
+            if (lowerCase.contains("amjc_retry_delay_seconds_nn".toLowerCase())) {
+                existingNnContraint = true;
+            }
+            if (lowerCase.contains("ajc_pk".toLowerCase())) {
+                existingPkContraint = true;
             }
         }
 
@@ -68,8 +72,9 @@ public class CreateDDLTest {
         Assert.assertTrue(historyTriggerCreated);
         Assert.assertTrue(auditTriggerCreated);
         Assert.assertTrue(auditColumnsCreated);
-        Assert.assertTrue(primaryKeyNamed);
         Assert.assertTrue(hstConstraintNamed);
+        Assert.assertTrue(existingNnContraint);
+        Assert.assertTrue(existingPkContraint);
 
     }
 }
