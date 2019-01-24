@@ -35,6 +35,7 @@ public class CreateDDLTest {
         boolean existingPkContraint = false;
 
         for (String s : sql) {
+            LOG.info(s);
 
             String lowerCase = s.toLowerCase();
             if (lowerCase.contains("AMP_JOB_CONFIGS_HST".toLowerCase())) {

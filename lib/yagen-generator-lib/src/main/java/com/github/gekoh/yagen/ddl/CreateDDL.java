@@ -93,8 +93,8 @@ public class CreateDDL {
 
     private static final Pattern TBL_PATTERN = Pattern.compile(".*"
             + "create (table)[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]*\\("
-            + "(.*(,([\\s](constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]+)?(primary key[\\s]*\\((" + REGEX_COLNAME +"([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\))))"
-            + ".*)\\)\\s*(partition\\s+by.*)?");
+            + "(.*(,([\\s]*(constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]+)?(primary key[\\s]*\\((" + REGEX_COLNAME +"([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\))))"
+            + ".*)[\\s]*\\)\\s*(partition\\s+by.*)?");
     private static final int TBL_PATTERN_IDX_TBL_SYN = 1;
     private static final int TBL_PATTERN_IDX_TBLNAME = 2;
     private static final int TBL_PATTERN_IDX_TBL_DEF = 3;
@@ -119,15 +119,22 @@ public class CreateDDL {
     private static final Pattern SEQ_CREATE_PATTERN = Pattern.compile("create sequence[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final Pattern PKG_CREATE_PATTERN = Pattern.compile("create( or replace)?[\\s]+package[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(numeric\\([^\\)]+\\))|(timestamp)|(date)|([cb]lob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(((double)|(float))( precision)?)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+not)?[\\s]+null)?([\\s]+unique)?[^\\(,]*(,|\\))");
+    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(numeric\\([^\\)]+\\))|(timestamp)|(date)|([cb]lob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(((double)|(float))( precision)?)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*))?([\\s]+not)?[\\s]+null)?(([\\s]+constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*))?[\\s]+unique)?[^\\(,]*(,|\\))");
     private static final int COL_PATTERN_IDX_COLNAME = 2;
     private static final int COL_PATTERN_IDX_TYPE    = 4;
     private static final int COL_PATTERN_IDX_DEFAULT = 25;
     private static final int COL_PATTERN_IDX_NOTNULL = 27;
-    private static final int COL_PATTERN_IDX_NOT     = 28;
-    private static final int COL_PATTERN_IDX_UNIQUE  = 29;
+    private static final int COL_PATTERN_IDX_NOTNULL_CONS = 28;
+    private static final int COL_PATTERN_IDX_NOTNULL_CONS_NAME = 29;
+    private static final int COL_PATTERN_IDX_NOT     = 30;
+    private static final int COL_PATTERN_IDX_UNIQUE  = 31;
+    private static final int COL_PATTERN_IDX_UNIQUE_CONS = 32;
+    private static final int COL_PATTERN_IDX_UNIQUE_CONS_NAME = 33;
 
-    private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,([\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
+    private static final Pattern UNIQUE_PATTERN = Pattern.compile("(,(([\\s]*constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*))?[\\s]*unique[\\s]*\\((" + REGEX_COLNAME + "([\\s]*,[\\s]*" + REGEX_COLNAME + ")*)\\)))");
+    private static final int UNIQUE_PATTERN_IDX_UNIQUE_FULL = 2;
+    private static final int UNIQUE_PATTERN_IDX_UNIQUE_NAME = 4;
+    private static final int UNIQUE_PATTERN_IDX_UNIQUE_COLS = 5;
     private static final Pattern CONSTRAINT_OR_INDEX_PATTERN = Pattern.compile("(unique[\\s]*)?(index|constraint)[\\s]*(([a-zA-Z][0-9a-zA-Z]*_)?[a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final int CONSTRAINT_OR_INDEX_PATTERN_IDX_NAME = 3;
     private static final int CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME = 4;
@@ -346,7 +353,7 @@ public class CreateDDL {
     }
 
     public Collection<String> enhanceCreateTableDdl(Dialect dialect, String tableCreate) {
-        tableCreate = tableCreate.replaceFirst(";\\s*$", "").toLowerCase();
+        tableCreate = tableCreate.replaceFirst(";\\s*$", "").toLowerCase().replace("\n", " ");
 
         Matcher matcher = TBL_PATTERN.matcher(tableCreate);
         if (matcher.find()) {
@@ -1501,10 +1508,10 @@ public class CreateDDL {
             }
 
             // name not null constraint
-            idx = appendConstraint(b, sqlCreate, nameLC, colName, idx, matcher, COL_PATTERN_IDX_NOTNULL, Constants._NN);
+            idx = appendConstraint(b, sqlCreate, nameLC, colName, idx, matcher, COL_PATTERN_IDX_NOTNULL, COL_PATTERN_IDX_NOTNULL_CONS_NAME, Constants._NN);
 
             // name unique constraint
-            idx = appendConstraint(b, sqlCreate, nameLC, colName, idx, matcher, COL_PATTERN_IDX_UNIQUE, Constants._UK);
+            idx = appendConstraint(b, sqlCreate, nameLC, colName, idx, matcher, COL_PATTERN_IDX_UNIQUE, COL_PATTERN_IDX_UNIQUE_CONS_NAME, Constants._UK);
 
             b.append(sqlCreate.substring(idx, matcher.end()));
             idx = matcher.end();
@@ -1520,7 +1527,7 @@ public class CreateDDL {
 
         while (matcher.find(idx)) {
             // name unique constraint
-            idx = appendConstraint(b, sqlCreate, nameLC, DefaultNamingStrategy.concatColumnNames(matcher.group(3)), idx, matcher, 2, Constants._UK);
+            idx = appendConstraint(b, sqlCreate, nameLC, DefaultNamingStrategy.concatColumnNames(matcher.group(UNIQUE_PATTERN_IDX_UNIQUE_COLS)), idx, matcher, UNIQUE_PATTERN_IDX_UNIQUE_FULL, UNIQUE_PATTERN_IDX_UNIQUE_NAME, Constants._UK);
 
             b.append(sqlCreate.substring(idx, matcher.end()));
             idx = matcher.end();
@@ -1542,7 +1549,7 @@ public class CreateDDL {
                 b.append(sqlCreate.substring(0, idx));
 
                 // name primary key constraint
-                idx = appendConstraint(b, sqlCreate, nameLC, DefaultNamingStrategy.concatColumnNames(matcher.group(TBL_PATTERN_IDX_PK_COLLIST)), idx, matcher, TBL_PATTERN_IDX_PK_START, Constants._PK);
+                idx = appendConstraint(b, sqlCreate, nameLC, DefaultNamingStrategy.concatColumnNames(matcher.group(TBL_PATTERN_IDX_PK_COLLIST)), idx, matcher, TBL_PATTERN_IDX_PK_START, TBL_PATTERN_IDX_PK_NAME, Constants._PK);
 
                 b.append(sqlCreate.substring(idx));
 
@@ -1663,7 +1670,7 @@ public class CreateDDL {
             return namingStrategy.classToTableShortName(entityBaseClassName);
         }
 
-        com.github.gekoh.yagen.api.Table annotation = tableConfig.getTableAnnotationOfType(com.github.gekoh.yagen.api.Table.class);
+        com.github.gekoh.yagen.api.Table annotation = tableConfig != null ? tableConfig.getTableAnnotationOfType(com.github.gekoh.yagen.api.Table.class) : null;
         if (annotation != null && StringUtils.isNotEmpty(annotation.shortName())) {
             return annotation.shortName();
         }
@@ -1682,14 +1689,15 @@ public class CreateDDL {
     }
 
     private int appendConstraint(StringBuilder b,
-                                        String sqlCreate,
-                                        String tableName,
-                                        String columnName,
-                                        int currIdx,
-                                        Matcher colMatcher,
-                                        int groupId,
-                                        String constraintSuffix) {
-        if (colMatcher.group(groupId) != null) {
+                                 String sqlCreate,
+                                 String tableName,
+                                 String columnName,
+                                 int currIdx,
+                                 Matcher colMatcher,
+                                 int groupId,
+                                 int existingNameGroupId,
+                                 String constraintSuffix) {
+        if (colMatcher.group(groupId) != null && colMatcher.group(existingNameGroupId) == null) {
             String constraintName = getProfile().getNamingStrategy().constraintName(getEntityClassName(tableName), tableName, columnName, constraintSuffix);
             b.append(sqlCreate.substring(currIdx, colMatcher.start(groupId)));
             currIdx = colMatcher.start(groupId);
@@ -2085,18 +2093,33 @@ public class CreateDDL {
             sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_WO_PK_IDX_AFTER_COL_DEF)));
         }
         else {
+            String liveTableName = matcher.group(TBL_PATTERN_IDX_TBLNAME).toLowerCase();
+
             sql.append(sqlCreateString.substring(0, matcher.start(TBL_PATTERN_IDX_TBLNAME))).append(histTableName);
             sql.append(sqlCreateString.substring(matcher.end(TBL_PATTERN_IDX_TBLNAME), matcher.start(TBL_PATTERN_IDX_TBL_DEF)));
             sql.append(formatColumn(dialect, HIST_TABLE_PK_COLUMN_NAME+" ${varcharType} not null", Constants.UUID_LEN, null, null)).append(", ");
             sql.append(formatColumn(dialect, HIST_OPERATION_COLUMN_NAME+" ${varcharType} not null", 1, null, null)).append(", ");
 
-            sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_TBL_DEF), matcher.start(TBL_PATTERN_IDX_PK_CLAUSE)));
+            sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_TBL_DEF), matcher.start(TBL_PATTERN_IDX_PK_START)));
 
             if (!columns.contains(histColName)) {
-                sql.append(formatColumn(dialect, histColName+" ${timestampType} not null", null, null, null)).append(", ");
+                sql.append(" ").append(formatColumn(dialect, histColName+" ${timestampType} not null", null, null, null)).append(",");
             }
 
-            sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_PK_CLAUSE), matcher.start(TBL_PATTERN_IDX_PK_COLLIST)));
+            String pkConstraintName = matcher.group(TBL_PATTERN_IDX_PK_NAME);
+            if (pkConstraintName != null) {
+                sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_PK_START), matcher.start(TBL_PATTERN_IDX_PK_NAME)));
+
+                int shortNameEndIdx = pkConstraintName.indexOf('_');
+                if (shortNameEndIdx < 0) {
+                    shortNameEndIdx = 0;
+                }
+                sql.append(getHistTableShortNameFromLiveTableShortName(pkConstraintName.substring(0, shortNameEndIdx))).append(pkConstraintName.substring(shortNameEndIdx));
+                sql.append(sqlCreateString.substring(matcher.end(TBL_PATTERN_IDX_PK_NAME), matcher.start(TBL_PATTERN_IDX_PK_COLLIST)));
+            }
+            else {
+                sql.append(sqlCreateString.substring(matcher.start(TBL_PATTERN_IDX_PK_START), matcher.start(TBL_PATTERN_IDX_PK_COLLIST)));
+            }
             sql.append(HIST_TABLE_PK_COLUMN_NAME).append(")");
             String constraintColumns = matcher.group(TBL_PATTERN_IDX_PK_COLLIST) + ", " + histColName;
 
