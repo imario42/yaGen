@@ -22,8 +22,8 @@ declare
   live_rowid rowid:=coalesce(${new}.rowid, ${old}.rowid);
 #end
   hst_uuid_used ${hstTableName}.hst_uuid%TYPE:=sys_guid();
-  hst_modified_by ${varcharType}:=coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
-  hst_table_name ${varcharType}:=upper('${liveTableName}');
+#if( $MODIFIER_COLUMN_NAME )  hst_modified_by ${MODIFIER_COLUMN_TYPE}:=substr(coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user), 1, ${MODIFIER_COLUMN_NAME_LENGTH});
+#end  hst_table_name ${varcharType}:=upper('${liveTableName}');
 begin
 
 #if( !$is_postgres )

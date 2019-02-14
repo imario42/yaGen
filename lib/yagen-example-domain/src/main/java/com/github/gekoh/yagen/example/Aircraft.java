@@ -15,6 +15,7 @@
 */
 package com.github.gekoh.yagen.example;
 
+import com.github.gekoh.yagen.api.Auditable;
 import com.github.gekoh.yagen.api.CascadeDelete;
 import com.github.gekoh.yagen.api.Constants;
 import com.github.gekoh.yagen.api.Default;
@@ -38,6 +39,7 @@ import java.util.List;
  * @author Georg Kohlweiss
  */
 @Entity
+@Auditable
 @Table(name = "AIRCRAFT")
 @com.github.gekoh.yagen.api.Table(shortName = "AC")
 @TemporalEntity(historyTableName = "AIRCRAFT_HST")

@@ -3,7 +3,7 @@ before #if(${operation} == 'I') insert #elseif (${operation} == 'U') update #els
 referencing #if( ${operation} != 'D' ) new as new #end #if( ${operation} != 'I' ) old as old #end
 for each row
 begin atomic
-  declare user_name varchar(35);
+  declare user_name varchar(${MODIFIER_COLUMN_NAME_LENGTH});
 
 #if( ${operation} == 'I' )
     set user_name = case when new.${created_at} is not null then new.${created_by} end;
@@ -22,7 +22,7 @@ begin atomic
       set user_name = substr(coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER')), 1, 20);
     end if;
 
-    set user_name = substr(user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end, 1, 35);
+    set user_name = substr(user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end, 1, ${MODIFIER_COLUMN_NAME_LENGTH});
 
 #if( ${operation} == 'I' )
     set new.${created_at} = current_timestamp;

@@ -8,13 +8,14 @@ begin atomic
   declare hst_operation char(1) default '${operation}';
   declare live_rowid varchar(64);
   declare hst_uuid_used varchar(32);
-  declare hst_modified_by varchar(35) default user;
   declare hst_table_name varchar(30);
   declare prev_operation char(1);
   declare affected_rowcount integer;
   declare msg varchar(255);
+#if( $MODIFIER_COLUMN_NAME )  declare hst_modified_by ${MODIFIER_COLUMN_TYPE};
 
-  set transaction_id_used=0;--txid_current();
+  set hst_modified_by=#if(${operation}!='U')substr(user, 1, ${MODIFIER_COLUMN_NAME_LENGTH})#{else}new.${MODIFIER_COLUMN_NAME}#end;
+#end  set transaction_id_used=0;--txid_current();
   set live_rowid=''
     #foreach( $pkColumn in $pkColumns )
         ||#if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#end
@@ -92,7 +93,7 @@ begin atomic
 
     if hst_operation is not null then
       insert into ${hstTableName} (#foreach( $pkColumn in $pkColumns ) ${pkColumn},#end #foreach( $column in $nonPkColumns ) #if( $column != $histColName ) ${column},#end #end hst_uuid, operation, ${histColName})
-      values (#foreach( $pkColumn in $pkColumns ) #if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#{end},#end#foreach( $column in $nonPkColumns )#if(${operation}=='D') null#{else} new.${column}#{end},#end hst_uuid_used, hst_operation, transaction_timestamp_found);
+      values (#foreach( $pkColumn in $pkColumns ) #if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#{end},#end#foreach( $column in $nonPkColumns )#if( $column == $MODIFIER_COLUMN_NAME ) hst_modified_by#{else}#if(${operation}=='D') null#{else} new.${column}#{end}#end,#end hst_uuid_used, hst_operation, transaction_timestamp_found);
     end if;
 
 #if (${operation} == 'U')

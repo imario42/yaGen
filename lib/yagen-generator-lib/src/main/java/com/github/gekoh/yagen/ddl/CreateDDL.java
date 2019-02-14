@@ -1288,6 +1288,7 @@ public class CreateDDL {
         putIfExisting(context, "created_by", AuditInfo.CREATED_BY, columns);
         putIfExisting(context, "last_modified_at", AuditInfo.LAST_MODIFIED_AT, columns);
         putIfExisting(context, "last_modified_by", AuditInfo.LAST_MODIFIED_BY, columns);
+        context.put("MODIFIER_COLUMN_NAME_LENGTH", Constants.USER_NAME_LEN);
 
         if (isOracle(dialect)) {
             writeOracleAuditTrigger(dialect, buf, context, nameLC, templateName + ".vm.pl.sql");
@@ -1955,7 +1956,11 @@ public class CreateDDL {
         Set<String> nonPkColumns = getNonPkCols(columns, pkColumns);
 
         context.put("VERSION_COLUMN_NAME", VERSION_COLUMN_NAME);
-        context.put("MODIFIER_COLUMN_NAME", AuditInfo.LAST_MODIFIED_BY);
+        if (columns.contains(AuditInfo.LAST_MODIFIED_BY)) {
+            context.put("MODIFIER_COLUMN_NAME", AuditInfo.LAST_MODIFIED_BY);
+            context.put("MODIFIER_COLUMN_NAME_LENGTH", Constants.USER_NAME_LEN);
+            context.put("MODIFIER_COLUMN_TYPE", dialect.getTypeName(Types.VARCHAR, Constants.USER_NAME_LEN, 0, 0));
+        }
         context.put("dialect", dialect);
         context.put("objectName", objectName);
         context.put("liveTableName", tableName);
@@ -1989,7 +1994,11 @@ public class CreateDDL {
         Set<String> nonPkColumns = getNonPkCols(columns, pkColumns);
 
         context.put("VERSION_COLUMN_NAME", VERSION_COLUMN_NAME);
-        context.put("MODIFIER_COLUMN_NAME", AuditInfo.LAST_MODIFIED_BY);
+        if (columns.contains(AuditInfo.LAST_MODIFIED_BY)) {
+            context.put("MODIFIER_COLUMN_NAME", AuditInfo.LAST_MODIFIED_BY);
+            context.put("MODIFIER_COLUMN_NAME_LENGTH", Constants.USER_NAME_LEN);
+            context.put("MODIFIER_COLUMN_TYPE", dialect.getTypeName(Types.VARCHAR, Constants.USER_NAME_LEN, 0, 0));
+        }
         context.put("liveTableName", tableName);
         context.put("hstTableName", histTableName);
         context.put("columns", columns);
