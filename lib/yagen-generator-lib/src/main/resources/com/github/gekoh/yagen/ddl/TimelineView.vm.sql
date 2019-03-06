@@ -28,7 +28,11 @@ mut as (
   , nvl(l.new_value, chr(0)) ${selColumn}
 #end
 #else
+#if( $clobColumns.contains($selColumn) )
+  , to_clob(null) ${selColumn}
+#else
   , null ${selColumn}
+#end
 #end
 #end
 	from
@@ -68,8 +72,7 @@ from (
 		last_value(LAST_MODIFIED_BY) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) LAST_MODIFIED_BY,
 #foreach( $column in $columns )
 #if( $clobColumns.contains($column) )
-  -- to work around an obvious serious bug in Oracle we need to define the following coalesce expression exactly this way
-  -- any use of the with object 'mut' will result in a completely weird force to null behaviour of selected Clob expressions like FILTER_EXPRESSION
+  -- analytic functions seem not to work with CLOB type columns
     coalesce(${column},
       (
         select coalesce(NEW_LONG_VALUE, empty_clob()) ${column}
@@ -103,10 +106,7 @@ from (
       e.${column},
 #end
       null EFFECTIVE_TIMESTAMP_FROM,
-      (select min(CREATED_AT) from changelog where uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end} and TABLE_NAME='${tableName.toUpperCase()}') EFFECTIVE_TIMESTAMP_TO
-      -- following was in place before, but due to a serious oracle bug this was rewritten
-      -- with the following line in place oracle seems to silently drop any existing CLOB column value under certain circumstances
-      --(select min(CHANGE_TIMESTAMP) from mut where uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end}) EFFECTIVE_TIMESTAMP_TO
+      (select min(CHANGE_TIMESTAMP) from mut where uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end}) EFFECTIVE_TIMESTAMP_TO
     from
       ${tableName} e
     union all
