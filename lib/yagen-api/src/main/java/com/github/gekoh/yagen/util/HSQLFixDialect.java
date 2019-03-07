@@ -15,6 +15,7 @@
 */
 package com.github.gekoh.yagen.util;
 
+import org.hibernate.HibernateException;
 import org.hibernate.dialect.function.StandardSQLFunction;
 import org.hibernate.type.StandardBasicTypes;
 
@@ -59,5 +60,13 @@ public class HSQLFixDialect extends org.hibernate.dialect.HSQLDialect {
     public boolean dropConstraints() {
         // Do not explicitly drop constraints, use DROP TABLE ... CASCADE
         return false;
+    }
+
+    @Override
+    public String getTypeName(int code, long length, int precision, int scale) throws HibernateException {
+        if (code == Types.TIMESTAMP && length == 0) {
+            return super.getTypeName(code)+"(9)";
+        }
+        return super.getTypeName(code, length, precision, scale);
     }
 }
