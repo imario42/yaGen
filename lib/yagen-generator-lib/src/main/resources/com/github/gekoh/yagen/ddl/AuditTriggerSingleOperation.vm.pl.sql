@@ -25,7 +25,7 @@ begin atomic
     set user_name = substr(user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end, 1, ${MODIFIER_COLUMN_NAME_LENGTH});
 
 #if( ${operation} == 'I' )
-    set new.${created_at} = current_timestamp;
+    set new.${created_at} = current_timestamp_9();
 ##    -- take creator if provided by the application within insert statement as first priority
     set new.${created_by} = user_name;
     set new.${last_modified_at} = null;
@@ -34,7 +34,7 @@ begin atomic
 ##    -- disable update of creation info
     set new.${created_at} = old.${created_at};
     set new.${created_by} = old.${created_by};
-    set new.${last_modified_at} = current_timestamp;
+    set new.${last_modified_at} = current_timestamp_9();
     set new.${last_modified_by} = user_name;
 #end
 end;

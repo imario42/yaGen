@@ -62,11 +62,14 @@ public class HSQLFixDialect extends org.hibernate.dialect.HSQLDialect {
         return false;
     }
 
-    @Override
-    public String getTypeName(int code, long length, int precision, int scale) throws HibernateException {
-        if (code == Types.TIMESTAMP && length == 0) {
-            return super.getTypeName(code)+"(9)";
+    public static class Timestamp9 extends HSQLFixDialect {
+
+        @Override
+        public String getTypeName(int code, long length, int precision, int scale) throws HibernateException {
+            if (code == Types.TIMESTAMP && length == 0) {
+                return super.getTypeName(code) + "(9)";
+            }
+            return super.getTypeName(code, length, precision, scale);
         }
-        return super.getTypeName(code, length, precision, scale);
     }
 }

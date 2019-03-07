@@ -21,6 +21,7 @@ import org.hibernate.dialect.Dialect;
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.sql.Timestamp;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -127,5 +128,46 @@ public class DBHelper {
         }
 
         return driverClassName;
+    }
+
+    public static Timestamp getCurrentTimestamp() {
+        long nanoTime = new NanoSecondsTimestamp().currentNanoSecondsTimestamp();
+
+        Timestamp timestamp = new Timestamp(nanoTime/NanoSecondsTimestamp.MICRO_NANO_FACTOR);
+        timestamp.setNanos(timestamp.getNanos() + (int)(nanoTime-(nanoTime/NanoSecondsTimestamp.MICRO_NANO_FACTOR)*NanoSecondsTimestamp.MICRO_NANO_FACTOR));
+        return timestamp;
+    }
+
+    /**
+     * code from <a href="https://michael.hoennig.de/2009/08/21/absoluter-nanosekunden-zeitstempel-in-java/">here</a>
+     */
+    private static class NanoSecondsTimestamp {
+
+        private static final long MICRO_NANO_FACTOR = 1000000L;
+
+        private long nanoSecondsOffset, nanoSecondsError;
+
+        public NanoSecondsTimestamp() {
+            long curMilliSecs0, curMilliSecs1,
+                    curNanoSecs, startNanoSecs, endNanoSecs;
+            do {
+                startNanoSecs = System.nanoTime();
+                curMilliSecs0 = System.currentTimeMillis();
+                curNanoSecs = System.nanoTime();
+                curMilliSecs1 = System.currentTimeMillis();
+                endNanoSecs = System.nanoTime();
+            } while ( curMilliSecs0 == curMilliSecs1 );
+
+            nanoSecondsOffset = MICRO_NANO_FACTOR*curMilliSecs1 - curNanoSecs;
+            nanoSecondsError = endNanoSecs - startNanoSecs;
+        }
+
+        public long getNanoSecondsDeviation() {
+            return nanoSecondsError;
+        }
+
+        public long currentNanoSecondsTimestamp() {
+            return System.nanoTime() + nanoSecondsOffset;
+        }
     }
 }

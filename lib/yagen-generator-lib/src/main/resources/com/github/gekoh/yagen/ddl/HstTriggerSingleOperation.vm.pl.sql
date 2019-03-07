@@ -4,7 +4,7 @@ referencing #if( ${operation} != 'D' ) new as new #end #if( ${operation} != 'I' 
 for each row
 begin atomic
   declare transaction_id_used bigint;
-  declare transaction_timestamp_found timestamp;
+  declare transaction_timestamp_found ${timestampType};
   declare hst_operation char(1) default '${operation}';
   declare live_rowid varchar(64);
   declare hst_uuid_used varchar(32);
@@ -40,7 +40,7 @@ begin atomic
       declare exit handler for not found
         begin atomic
           declare exit handler for sqlexception;
-          set transaction_timestamp_found=current_timestamp;
+          set transaction_timestamp_found=current_timestamp_9();
           insert into HST_CURRENT_TRANSACTION (transaction_id, transaction_timestamp)
             values (transaction_id_used, transaction_timestamp_found);
         end;

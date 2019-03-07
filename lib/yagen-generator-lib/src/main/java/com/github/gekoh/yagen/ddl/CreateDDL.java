@@ -2006,6 +2006,7 @@ public class CreateDDL {
         context.put("pkColumns", pkColumns);
         context.put("nonPkColumns", nonPkColumns);
         context.put("histRelevantCols", histRelevantCols);
+        context.put("timestampType", dialect.getTypeName(Types.TIMESTAMP, 0, 0, 0));
 
         StringWriter wr = new StringWriter();
 

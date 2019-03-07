@@ -12,6 +12,12 @@ EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.getSysContext'
 ;
 
 ------- CreateDDL statement separator -------
+CREATE FUNCTION current_timestamp_9() RETURNS timestamp(9)
+  LANGUAGE JAVA DETERMINISTIC NO SQL
+  EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.getCurrentTimestamp'
+;
+
+------- CreateDDL statement separator -------
 CREATE FUNCTION regexp_like(s VARCHAR(4000), regexp VARCHAR(500))
   RETURNS BOOLEAN
   LANGUAGE JAVA DETERMINISTIC NO SQL

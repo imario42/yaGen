@@ -24,5 +24,5 @@ begin atomic
 
   set new.${last_modified_by} = user_name;
 #end
-  set new.${last_modified_at} = current_timestamp;
+  set new.${last_modified_at} = current_timestamp_9();
 end;
