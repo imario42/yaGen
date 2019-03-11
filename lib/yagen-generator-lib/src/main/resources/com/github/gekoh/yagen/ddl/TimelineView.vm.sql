@@ -28,11 +28,7 @@ mut as (
   , nvl(l.new_value, chr(0)) ${selColumn}
 #end
 #else
-#if( $clobColumns.contains($selColumn) )
-  , to_clob(null) ${selColumn}
-#else
   , null ${selColumn}
-#end
 #end
 #end
 	from
@@ -106,7 +102,10 @@ from (
       e.${column},
 #end
       null EFFECTIVE_TIMESTAMP_FROM,
-      (select min(CHANGE_TIMESTAMP) from mut where uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end}) EFFECTIVE_TIMESTAMP_TO
+      (select min(CREATED_AT) from changelog where entity_uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end} and TABLE_NAME='${tableName.toUpperCase()}') EFFECTIVE_TIMESTAMP_TO
+      -- following was in place before, but due to a serious oracle bug this was rewritten
+      -- with the following line in place oracle seems to silently drop any existing CLOB column value under certain circumstances
+      --(select min(CHANGE_TIMESTAMP) from mut where uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end}) EFFECTIVE_TIMESTAMP_TO
     from
       ${tableName} e
     union all
