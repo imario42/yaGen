@@ -17,12 +17,7 @@ begin
                         then :new.${last_modified_by} end;
   end if;
 
-  if user_name is null or lower(user_name)='unknown'
-  then
-    user_name:=substr(coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER')), 1, 20);
-  end if;
-
-  user_name:= substr(user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end, 1, ${MODIFIER_COLUMN_NAME_LENGTH});
+  user_name:= substr(get_audit_user(user_name), 1, ${MODIFIER_COLUMN_NAME_LENGTH});
 
   if INSERTING then
     :new.${created_at} := current_timestamp;

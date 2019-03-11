@@ -1,3 +1,20 @@
+#if( $is_oracle )
+------- CreateDDL statement separator -------
+create or replace function get_audit_user(client_user_in in varchar2) return varchar2 is
+  user_name varchar2(50):=substr(client_user_in, 1, 50);
+begin
+  if lower(user_name)='unknown' then
+    user_name:=null;
+  end if;
+  user_name:=substr(regexp_replace(regexp_replace(coalesce(user_name, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER')),
+             '^(.*)@.*$', '\1'),
+             '^.*CN=([^, ]*).*$', '\1'),
+    1, 20);
+  return user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end;
+end;
+/
+#end
+
 #if( $is_hsql )
 ------- CreateDDL statement separator -------
 CREATE FUNCTION sys_guid() RETURNS char(32)
@@ -31,6 +48,22 @@ CREATE FUNCTION regexp_like(s VARCHAR(4000), regexp VARCHAR(500), flags VARCHAR(
   EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.regexpLikeFlags'
 ;
 
+------- CreateDDL statement separator -------
+CREATE FUNCTION get_audit_user(client_user_in VARCHAR(50)) RETURNS varchar(50)
+begin atomic
+  declare user_name VARCHAR(50);
+  set user_name = client_user_in;
+
+  if lower(user_name)='unknown' then
+    set user_name = null;
+  end if;
+
+  set user_name = substr(regexp_replace(regexp_replace(coalesce(user_name, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER')),
+    '^(.*)@.*$', '\1'),
+    '^.*CN=([^, ]*).*$', '\1'),
+    1, 20);
+  return user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end;
+end;
 #end
 
 #if( $is_postgres )
@@ -61,6 +94,15 @@ begin
       return session_user;
     end if;
   end if;
+end;
+$$ LANGUAGE PLPGSQL;
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION get_audit_user() RETURNS VARCHAR AS $$
+begin
+  return regexp_replace(regexp_replace(coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER')),
+             '^(.*)@.*$', '\1'),
+             '^.*CN=([^, ]*).*$', '\1');
 end;
 $$ LANGUAGE PLPGSQL;
 

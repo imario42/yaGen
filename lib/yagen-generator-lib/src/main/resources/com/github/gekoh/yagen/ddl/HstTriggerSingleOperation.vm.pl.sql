@@ -14,7 +14,7 @@ begin atomic
   declare msg varchar(255);
 #if( $MODIFIER_COLUMN_NAME )  declare hst_modified_by ${MODIFIER_COLUMN_TYPE};
 
-  set hst_modified_by=#if(${operation}!='U')substr(user, 1, ${MODIFIER_COLUMN_NAME_LENGTH})#{else}new.${MODIFIER_COLUMN_NAME}#end;
+  set hst_modified_by=#if(${operation}!='U')substr(get_audit_user(null), 1, ${MODIFIER_COLUMN_NAME_LENGTH})#{else}new.${MODIFIER_COLUMN_NAME}#end;
 #end  set transaction_id_used=0;--txid_current();
   set live_rowid=''
     #foreach( $pkColumn in $pkColumns )
