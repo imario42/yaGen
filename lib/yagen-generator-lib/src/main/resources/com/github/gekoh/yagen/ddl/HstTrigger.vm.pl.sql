@@ -61,21 +61,23 @@ begin
     begin
       insert into hst_modified_row values (#if($is_postgres)txid_current(), #{end}hst_table_name, live_rowid, hst_operation, hst_uuid_used);
 
-      -- invalidate latest entry in history table
-      update ${hstTableName} h set invalidated_at=transaction_timestamp_found
-        where
-          transaction_timestamp < transaction_timestamp_found and
+      if hst_operation<>'I' then
+        -- invalidate latest entry in history table
+        update ${hstTableName} h set invalidated_at=transaction_timestamp_found
+          where
+            transaction_timestamp < transaction_timestamp_found and
 #foreach( $pkColumn in $pkColumns )
-          ${pkColumn}=case when hst_operation<>'D' then ${new}.${pkColumn} else ${old}.${pkColumn} end and
+            ${pkColumn}=${old}.${pkColumn} and
 #end
-          invalidated_at is null;
+            invalidated_at is null;
 
-      if sql%rowcount<>1 and hst_operation<>'I' then
-        raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
+        if sql%rowcount<>1 then
+          raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
 #foreach( $pkColumn in $pkColumns )
-            ||' ${pkColumn}='''|| case when hst_operation<>'D' then ${new}.${pkColumn} else ${old}.${pkColumn} end ||''''
+              ||' ${pkColumn}='''|| ${old}.${pkColumn} ||''''
 #end
-          );
+            );
+        end if;
       end if;
     exception when #if(!$is_postgres)dup_val_on_index#{else}unique_violation#end then
       declare

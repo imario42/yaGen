@@ -55,21 +55,21 @@ begin atomic
         begin atomic
           insert into hst_modified_row values (hst_table_name, live_rowid, hst_operation, hst_uuid_used);
 
+#if (${operation} != 'I')
           /* invalidate latest entry in history table */
           update ${hstTableName} h set invalidated_at=transaction_timestamp_found
             where
               transaction_timestamp < transaction_timestamp_found and
 #foreach( $pkColumn in $pkColumns )
-              ${pkColumn}=#if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#end and
+              ${pkColumn}=old.${pkColumn} and
 #end
               invalidated_at is null;
 
-#if (${operation} != 'I')
           GET DIAGNOSTICS affected_rowcount = ROW_COUNT;
           if affected_rowcount<>1 then
             set msg='unable to invalidate history record for '||hst_table_name
 #foreach( $pkColumn in $pkColumns )
-                ||' ${pkColumn}='''|| #if(${operation}=='D')old.${pkColumn}#{else}new.${pkColumn}#{end} ||''''
+                ||' ${pkColumn}='''|| old.${pkColumn} ||''''
 #end
               ;
             SIGNAL SQLSTATE '20100' SET MESSAGE_TEXT = msg;
