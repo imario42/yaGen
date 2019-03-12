@@ -39,6 +39,8 @@ import java.util.List;
 public class PatchTransformer implements ClassFileTransformer {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(PatchTransformer.class);
 
+    public static final String YAGEN_INIT_MARKER_FIELD = "yagenInitDone";
+
     public static final List<String> PATCH_CLASS_LIST = Arrays.asList(
             "org.hibernate.cfg.Configuration$MappingsImpl",
             "org.hibernate.cfg.Configuration",
@@ -78,7 +80,7 @@ public class PatchTransformer implements ClassFileTransformer {
                     return ctClass.toBytecode();
                 }
                 else {
-                    logInfo("... no change");
+                    logInfo("... no change (agent active?)");
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -88,6 +90,17 @@ public class PatchTransformer implements ClassFileTransformer {
     }
 
     public static boolean patchClass(CtClass clazz) throws Exception {
+
+        try {
+            if (clazz.getField(YAGEN_INIT_MARKER_FIELD) != null) {
+                return false;
+            }
+        } catch (NotFoundException ignore) {
+            // exception means this class has not yet been initialized by yagen
+        }
+
+        clazz.addField(new CtField(clazz.getClassPool().get("boolean"), YAGEN_INIT_MARKER_FIELD, clazz));
+
         String className = clazz.getName().replace("/", ".");
         if("org.hibernate.cfg.Configuration".equals(className)) {
             patchConfiguration(clazz);
