@@ -60,6 +60,7 @@ begin atomic
           update ${hstTableName} h set invalidated_at=transaction_timestamp_found
             where
               transaction_timestamp < transaction_timestamp_found and
+              operation <> 'D' and
 #foreach( $pkColumn in $pkColumns )
               ${pkColumn}=old.${pkColumn} and
 #end
