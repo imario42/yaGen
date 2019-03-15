@@ -92,7 +92,7 @@ public class PatchTransformer implements ClassFileTransformer {
     public static boolean patchClass(CtClass clazz) throws Exception {
 
         try {
-            if (clazz.getField(YAGEN_INIT_MARKER_FIELD) != null) {
+            if (clazz.getDeclaredField(YAGEN_INIT_MARKER_FIELD) != null) {
                 return false;
             }
         } catch (NotFoundException ignore) {

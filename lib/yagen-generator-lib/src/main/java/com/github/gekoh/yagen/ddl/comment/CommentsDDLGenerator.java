@@ -53,6 +53,7 @@ import javax.persistence.Transient;
 import javax.persistence.Version;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -151,7 +152,11 @@ public class CommentsDDLGenerator extends Doclet {
 
         final ClassDoc[] classes = root.classes();
         // sorting classes to get deterministic results, otherwise reference columns get added first occasionally
-        Arrays.sort(classes);
+        Arrays.sort(classes, new Comparator<ClassDoc>() {
+            public int compare(ClassDoc o1, ClassDoc o2) {
+                return o1.name().compareTo(o2.name());
+            }
+        });
         
         for (final ClassDoc klass : classes) {
             handleClass(root, klass, null, null);
