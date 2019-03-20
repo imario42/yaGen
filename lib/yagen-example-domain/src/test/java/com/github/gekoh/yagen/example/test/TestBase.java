@@ -15,7 +15,7 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 
 /**
- * @author Georg Kohlweiss (G477448)
+ * @author Georg Kohlweiss
  */
 public class TestBase {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(TestBase.class);
