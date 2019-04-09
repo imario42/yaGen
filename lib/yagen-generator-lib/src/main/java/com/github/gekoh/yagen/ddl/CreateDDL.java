@@ -243,6 +243,10 @@ public class CreateDDL {
 
             TableConfig tableConfig = tblNameToConfig.get(nameLC);
 
+            if (tableConfig == null) {
+                throw new IllegalStateException("did not find table config for '" + nameLC + "', forgot to add entity class " + baseClass + " to mapping file?");
+            }
+
             if (entityClass == baseClass && selectiveRendering &&
                     (!baseClass.isAnnotationPresent(Profile.class) ||
                     !(Arrays.asList(((Profile)baseClass.getAnnotation(Profile.class)).value()).contains(profile.getName())))) {
