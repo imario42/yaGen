@@ -5,6 +5,7 @@ import com.github.gekoh.yagen.ddl.Duplexer;
 import com.github.gekoh.yagen.ddl.ObjectType;
 import com.github.gekoh.yagen.hibernate.YagenInit;
 import junit.framework.Assert;
+import org.junit.After;
 import org.junit.Test;
 
 import javax.persistence.EntityManagerFactory;
@@ -19,6 +20,15 @@ import java.util.regex.Pattern;
  */
 public class GeneratedDdlTest {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(GeneratedDdlTest.class);
+
+    private EntityManagerFactory emf;
+
+    @After
+    public void cleanup() {
+        if (emf != null && emf.isOpen()) {
+            emf.close();
+        }
+    }
 
     @Test
     public void testGeneratedDdl() throws Exception {
@@ -38,7 +48,7 @@ public class GeneratedDdlTest {
         YagenInit.init(profile);
 
         // create EMF to let Yagen do it's work
-        EntityManagerFactory emf = Persistence.createEntityManagerFactory("example-domain-test", null);
+        this.emf = Persistence.createEntityManagerFactory("example-domain-test", null);
 
         // assert operating_resources_htU contains "is null" conditions to update invalidated_at
         assertTriggerContains(ddlMap, "operating_resources_htU", ".*set invalidated_at([^;]+);.*",
