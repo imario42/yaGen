@@ -69,7 +69,7 @@ begin
             operation <> 'D' and
 #foreach( $pkColumn in $pkColumns )
   #if( $!{columnMap.get($pkColumn).nullable} )
-            (${pkColumn} is null and ${old}.${pkColumn} is null or ${pkColumn}=${old}.${pkColumn}) and
+            ((${pkColumn} is null and ${old}.${pkColumn} is null) or ${pkColumn}=${old}.${pkColumn}) and
   #else
             ${pkColumn}=${old}.${pkColumn} and
   #end

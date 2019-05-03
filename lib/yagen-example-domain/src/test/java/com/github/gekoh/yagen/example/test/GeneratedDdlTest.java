@@ -53,7 +53,7 @@ public class GeneratedDdlTest {
         // assert operating_resources_htU contains "is null" conditions to update invalidated_at
         assertTriggerContains(ddlMap, "operating_resources_htU", ".*set invalidated_at([^;]+);.*",
          "board_book_uuid=old.board_book_uuid and",
-         "(added_operating_resources is null and old.added_operating_resources is null or added_operating_resources=old.added_operating_resources) and");
+         "((added_operating_resources is null and old.added_operating_resources is null) or added_operating_resources=old.added_operating_resources) and");
 
         // assert board_book_entry_htU does not contain "is null" conditions to update invalidated_at
         assertTriggerContains(ddlMap, "board_book_entry_htU", ".*(set invalidated_at[^;]+;).*",
