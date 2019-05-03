@@ -43,6 +43,7 @@ public class CreateDDLTest {
             }
             if (lowerCase.contains("amp_job_configs_htr".toLowerCase())) {
                 historyTriggerCreated = true;
+                assertHtrUpdateInvalidatedAtSql(lowerCase);
             }
             if (lowerCase.contains("amp_job_configs_ATR".toLowerCase())) {
                 auditTriggerCreated = true;
@@ -77,5 +78,14 @@ public class CreateDDLTest {
         Assert.assertTrue(existingNnContraint);
         Assert.assertTrue(existingPkContraint);
 
+    }
+
+    private void assertHtrUpdateInvalidatedAtSql(String lowerCase) {
+        Assert.assertTrue(lowerCase.contains("update amp_job_configs_hst h set invalidated_at=transaction_timestamp_found\n" +
+                                              "          where\n" +
+                                              "            transaction_timestamp < transaction_timestamp_found and\n" +
+                                              "            operation <> 'd' and\n" +
+                                              "            id=:old.id and\n" +
+                                              "            invalidated_at is null;"));
     }
 }

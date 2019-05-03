@@ -100,7 +100,7 @@ public class BoardBookEntry extends BaseEntity {
             , uniqueConstraints = @UniqueConstraint(name = "OPR_UK", columnNames = {"BOARD_BOOK_UUID", "ADDED_OPERATING_RESOURCES"})
     )
     @TemporalEntity(historyTableName = "OPERATING_RESOURCES_HST")
-    @Column(name = "ADDED_OPERATING_RESOURCES", nullable = false)
+    @Column(name = "ADDED_OPERATING_RESOURCES", nullable = true)
     private Collection<String> addedOperatingResources;
 
     BoardBookEntry() {
