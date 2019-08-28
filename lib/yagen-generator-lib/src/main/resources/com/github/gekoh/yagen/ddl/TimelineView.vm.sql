@@ -5,10 +5,6 @@ changelog as (
 ${changelogQueryString}
 ),
 mut as (
-#foreach( $column in $columns )
-#if( $foreach.count > 1 )
-	union all
-#end
 	select
     l.uuid CHANGELOG_UUID,
 	  l.created_at CHANGE_TIMESTAMP,
@@ -19,24 +15,18 @@ mut as (
     l.LAST_MODIFIED_AT,
     l.LAST_MODIFIED_BY
 #foreach( $selColumn in $columns )
-#if( $selColumn == $column )
-#if( $numericColumns.contains($selColumn) )
-  , cast(l.new_value as $numericColumnDefinitions[$selColumn]) ${selColumn}
-#elseif( $clobColumns.contains($selColumn) )
-  , nvl(l.new_long_value, empty_clob()) ${selColumn}
-#else
-  , nvl(l.new_value, chr(0)) ${selColumn}
-#end
-#else
-  , null ${selColumn}
-#end
+  , CASE l.column_name WHEN '${selColumn.toUpperCase()}' THEN #if
+  ( $numericColumns.contains($selColumn) )cast(l.new_value as $numericColumnDefinitions[$selColumn])#elseif
+  ( $clobColumns.contains($selColumn) )nvl(l.new_long_value, empty_clob())#{else}nvl(l.new_value, chr(0))#end END as ${selColumn}
 #end
 	from
 	  changelog l
 	where
-	  l.TABLE_NAME='${tableName.toUpperCase()}'
-	  and l.COLUMN_NAME='${column.toUpperCase()}'
+	  l.TABLE_NAME='${tableName.toUpperCase()}' and l.COLUMN_NAME in (
+#foreach( $column in $columns )
+#if( $foreach.count > 1 )       ,#{else}        #end'${column.toUpperCase()}'
 #end
+      )
 )
 select
   TML_UUID,
