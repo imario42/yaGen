@@ -29,7 +29,7 @@ public class YagenInit {
     }
 
     /**
-     * Initialize yagen with specific profile instance.<br/>
+     * Initialize yagen with specific profile instance.<br>
      * NOTE: We cannot strongly type the Profile here since it would already load hibernate classes as dependency
      * but this would prevent us from being able to patch these classes with javassist.
      *

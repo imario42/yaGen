@@ -1,0 +1,2 @@
+#* @implicitly included *#
+#* @vtlvariable name="fieldInfo" type="com.github.gekoh.yagen.util.FieldInfo" file="../resources/com/github/gekoh/yagen/hst/HstTemplate.java.vm" *#
