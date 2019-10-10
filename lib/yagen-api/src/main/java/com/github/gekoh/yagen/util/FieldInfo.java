@@ -30,6 +30,7 @@ import javax.persistence.Enumerated;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
@@ -66,6 +67,7 @@ public class FieldInfo {
 
     private boolean isEnum;
     private boolean isEmbedded;
+    private boolean isLob;
 
 
     public FieldInfo(Class type, String name) {
@@ -89,10 +91,11 @@ public class FieldInfo {
         isEmbedded = true;
     }
 
-    public FieldInfo(Class type, String name, boolean anEnum, Column column) {
+    public FieldInfo(Class type, String name, boolean anEnum, Column column, boolean anLob) {
         this(type, name, formatAnnotation(column));
         this.columnName = MappingUtils.deriveColumnName(column, name).toLowerCase();
         isEnum = anEnum;
+        isLob = anLob;
     }
 
     public FieldInfo(Class type, String name, String columnName, int columnLength) {
@@ -127,6 +130,10 @@ public class FieldInfo {
 
     public boolean isEmbedded() {
         return isEmbedded;
+    }
+
+    public boolean isLob() {
+        return isLob;
     }
 
     public boolean isBooleanType() {
@@ -183,7 +190,7 @@ public class FieldInfo {
         return matcher.find() && matcher.group(2).equals("" + false);
     }
 
-    private static String formatAnnotation (Annotation annotation) {
+    private static String formatAnnotation(Annotation annotation) {
         String a = annotation.toString();
         StringBuilder result = new StringBuilder();
 
@@ -414,7 +421,7 @@ public class FieldInfo {
                     fi = new FieldInfo(type, name, field.getAnnotation(AttributeOverrides.class));
                 }
             } else if (field.isAnnotationPresent(Enumerated.class)) {
-                fi = new FieldInfo(type, name, true, column);
+                fi = new FieldInfo(type, name, true, column, false);
             } else if (column != null && !field.isAnnotationPresent(CollectionTable.class)) {
                 if (type.isPrimitive()) {
                     if (type.equals(Boolean.TYPE)) {
@@ -435,7 +442,7 @@ public class FieldInfo {
                         type = Character.class;
                     }
                 }
-                fi = new FieldInfo(type, name, false, column);
+                fi = new FieldInfo(type, name, false, column, field.isAnnotationPresent(Lob.class));
             } else if ((field.isAnnotationPresent(ManyToOne.class) && !field.isAnnotationPresent(JoinTable.class)) ||
                     (field.isAnnotationPresent(OneToOne.class) && StringUtils.isEmpty(field.getAnnotation(OneToOne.class).mappedBy()))) {
                 fi = getIdFieldInfo(type, name, MappingUtils.deriveColumnName(field));

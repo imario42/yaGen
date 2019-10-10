@@ -72,6 +72,9 @@ public class ${entityClassSimpleName} extends
 #if( ${fieldInfo.isEmbedded()} )
     @javax.persistence.Embedded
 #end
+#if( ${fieldInfo.isLob()} )
+    @javax.persistence.Lob
+#end
 #if( ${fieldInfo.getColumnAnnotation()} )
     ${fieldInfo.getColumnAnnotation()}
 #end

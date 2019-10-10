@@ -27,6 +27,7 @@ import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import java.util.ArrayList;
@@ -90,16 +91,25 @@ public class Aircraft extends BaseEntity {
     @CascadeDelete
     private List<BoardBookEntry> boardBookEntries;
 
+    /**
+     * raw log of production process collected while crafting the aircraft
+     */
+    @Lob
+    @Column(name = "PRODUCTION_LOG", length = 204800)
+    private String productionLog;
+
+
     Aircraft() {
     }
 
-    public Aircraft(EngineType engineType, String type, String callSign, float wingSpan, float length) {
+    public Aircraft(EngineType engineType, String type, String callSign, float wingSpan, float length, String productionLog) {
         this.engineType = engineType;
         this.type = type;
         this.callSign = callSign;
         this.wingSpan = wingSpan;
         this.length = length;
         this.boardBookEntries = new ArrayList<BoardBookEntry>();
+        this.productionLog = productionLog;
     }
 
     public EngineType getEngineType() {
@@ -120,6 +130,10 @@ public class Aircraft extends BaseEntity {
 
     public float getLength() {
         return length;
+    }
+
+    public String getProductionLog() {
+        return productionLog;
     }
 
     public List<BoardBookEntry> getBoardBookEntries() {

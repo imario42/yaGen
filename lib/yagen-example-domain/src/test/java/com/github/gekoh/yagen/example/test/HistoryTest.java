@@ -20,6 +20,7 @@ import com.github.gekoh.yagen.example.AircraftHst;
 import com.github.gekoh.yagen.example.BoardBookEntry;
 import com.github.gekoh.yagen.example.EngineType;
 import com.github.gekoh.yagen.hst.Operation;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Test;
@@ -34,6 +35,8 @@ import java.util.Iterator;
 public class HistoryTest extends TestBase {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(HistoryTest.class);
 
+    private final static String PRODUCTION_LOG = StringUtils.repeat("lorem ipsum dolor.\n", 1024); // 20k string
+
     @Test
     public void testHistory() {
 
@@ -43,7 +46,7 @@ public class HistoryTest extends TestBase {
                     .setParameter("callSign", "OE-DVK")
                     .getSingleResult();
         } catch (Exception e) {
-            ac = new Aircraft(EngineType.piston, "C172", "OE-DVK", 10.92f, 8.2f);
+            ac = new Aircraft(EngineType.piston, "C172", "OE-DVK", 10.92f, 8.2f, PRODUCTION_LOG);
             em.getTransaction().begin();
             em.persist(ac);
             em.flush();
@@ -57,6 +60,7 @@ public class HistoryTest extends TestBase {
         Assert.assertEquals("wrong engine type,", EngineType.piston, ach.getEngineType());
         Assert.assertEquals("wrong type,", "C172", ach.getType());
         Assert.assertEquals("wrong callsign,", "OE-DVK", ach.getCallSign());
+        Assert.assertEquals("wrong production log,", PRODUCTION_LOG, ach.getProductionLog());
     }
 
     /**
@@ -123,7 +127,7 @@ public class HistoryTest extends TestBase {
     public void testConsistentHistory() {
         Timestamp timestamp = new Timestamp(System.currentTimeMillis());
 
-        Aircraft ac = new Aircraft(EngineType.piston, "PA23", "DGGGG", 11.28f, 8.27f);
+        Aircraft ac = new Aircraft(EngineType.piston, "PA23", "DGGGG", 11.28f, 8.27f, PRODUCTION_LOG);
         em.getTransaction().begin();
         em.persist(ac);
         em.flush();
@@ -145,7 +149,7 @@ public class HistoryTest extends TestBase {
     @Test
     public void testCollectionTableUpdate() {
 
-        Aircraft ac = new Aircraft(EngineType.piston, "C172", "OE-DVA", 10.92f, 8.2f);
+        Aircraft ac = new Aircraft(EngineType.piston, "C172", "OE-DVA", 10.92f, 8.2f, PRODUCTION_LOG);
         em.getTransaction().begin();
         em.persist(ac);
         em.flush();
