@@ -19,5 +19,5 @@ begin
 #else
 begin
 #end
-  :new.${last_modified_at} := current_timestamp;
+  :new.${last_modified_at} := systimestamp;
 end;

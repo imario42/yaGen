@@ -45,7 +45,7 @@ begin
       from HST_CURRENT_TRANSACTION
       where transaction_id=#if($is_postgres)txid_current()#{else}DBMS_TRANSACTION.LOCAL_TRANSACTION_ID#{end};
     exception when no_data_found then
-      transaction_timestamp_found:=current_timestamp;
+      transaction_timestamp_found:=systimestamp;
       insert into HST_CURRENT_TRANSACTION (transaction_id, transaction_timestamp)
         values (#if($is_postgres)txid_current()#{else}DBMS_TRANSACTION.LOCAL_TRANSACTION_ID#{end}, transaction_timestamp_found);
     end;

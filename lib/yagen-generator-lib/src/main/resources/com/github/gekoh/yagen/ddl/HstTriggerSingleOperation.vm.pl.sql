@@ -40,7 +40,7 @@ begin atomic
       declare exit handler for not found
         begin atomic
           declare exit handler for sqlexception;
-          set transaction_timestamp_found=current_timestamp_9();
+          set transaction_timestamp_found=systimestamp_9();
           insert into HST_CURRENT_TRANSACTION (transaction_id, transaction_timestamp)
             values (transaction_id_used, transaction_timestamp_found);
         end;

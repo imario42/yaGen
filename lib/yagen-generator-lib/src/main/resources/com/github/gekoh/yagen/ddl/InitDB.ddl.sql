@@ -29,7 +29,7 @@ EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.getSysContext'
 ;
 
 ------- CreateDDL statement separator -------
-CREATE FUNCTION current_timestamp_9() RETURNS timestamp(9)
+CREATE FUNCTION systimestamp_9() RETURNS timestamp(9)
   LANGUAGE JAVA DETERMINISTIC NO SQL
   EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.getCurrentTimestamp'
 ;
@@ -116,7 +116,7 @@ CREATE FUNCTION audit_trigger_function()
   RETURNS trigger AS $$
 BEGIN
   if TG_OP = 'INSERT' then
-    new.created_at := current_timestamp;
+    new.created_at := systimestamp;
     new.created_by := coalesce(new.created_by, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
     new.last_modified_at := null;
     new.last_modified_by := null;
@@ -126,7 +126,7 @@ BEGIN
     if not(new.last_modified_at is not null and (old.last_modified_at is null or new.last_modified_at <> old.last_modified_at )) then
       new.last_modified_by := coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
     end if;
-    new.last_modified_at := current_timestamp;
+    new.last_modified_at := systimestamp;
   end if;
   return new;
 END;
