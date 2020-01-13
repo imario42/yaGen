@@ -17,6 +17,7 @@ mut as (
 #foreach( $selColumn in $columns )
   , CASE l.column_name WHEN '${selColumn.toUpperCase()}' THEN #if
   ( $numericColumns.contains($selColumn) )cast(l.new_value as $numericColumnDefinitions[$selColumn])#elseif
+  ( $timestampColumns.contains($selColumn) )to_timestamp(l.new_value, 'yyyy-mm-dd hh24:mi:ss.ff')#elseif
   ( $clobColumns.contains($selColumn) )nvl(l.new_long_value, empty_clob())#{else}nvl(l.new_value, chr(0))#end END as ${selColumn}
 #end
 	from
@@ -37,7 +38,7 @@ select
   TML_PHASE,
   UUID,
 #foreach( $column in $columns )
-#if( $numericColumns.contains($column) )
+#if( $numericColumns.contains($column) || $timestampColumns.contains($column) )
   ${column},
 #elseif( $clobColumns.contains($column) )
   case when dbms_lob.compare(${column}, empty_clob()) = 0 then null else ${column} end ${column},
@@ -152,39 +153,30 @@ create view CHANGELOG_ROW_V as
 ------- CreateDDL statement separator -------
 create or replace view ${viewName} as
 with mut as (
-#foreach( $column in $columns )
-#if( $foreach.count > 1 )
-	union all
-#end
 	select
-	  l.row_nr,
-		l.uuid CHANGELOG_UUID,
-	  l.created_at CHANGE_TIMESTAMP,
-	  l.mutation_type,
-	  l.entity_uuid UUID,
+    l.row_nr,
+    l.uuid CHANGELOG_UUID,
+    l.created_at CHANGE_TIMESTAMP,
+    l.mutation_type,
+    l.entity_uuid UUID,
     l.CREATED_AT,
     l.CREATED_BY,
     l.LAST_MODIFIED_AT,
     l.LAST_MODIFIED_BY
 #foreach( $selColumn in $columns )
-#if( $selColumn == $column )
-#if( $numericColumns.contains($selColumn) )
-  , cast(l.new_value as $numericColumnDefinitions[$selColumn]) ${selColumn}
-#elseif( $clobColumns.contains($selColumn) )
-	, coalesce(l.new_long_value,'') ${selColumn}
-#else
-	, coalesce(l.new_value,'') ${selColumn}
-#end
-#else
-  , null ${selColumn}
-#end
+  , CASE l.column_name WHEN '${selColumn.toUpperCase()}' THEN #if
+  ( $numericColumns.contains($selColumn) )cast(l.new_value as $numericColumnDefinitions[$selColumn])#elseif
+  ( $timestampColumns.contains($selColumn) )to_timestamp(l.new_value, 'yyyy-mm-dd hh24:mi:ss.ff')#elseif
+  ( $clobColumns.contains($selColumn) )coalesce(l.new_long_value,'')#{else}coalesce(l.new_value,'')#end END as ${selColumn}
 #end
 	from
 	  CHANGELOG_ROW_V l
 	where
-	  l.TABLE_NAME='${tableName.toUpperCase()}'
-	  and l.COLUMN_NAME='${column.toUpperCase()}'
+	  l.TABLE_NAME='${tableName.toUpperCase()}' and l.COLUMN_NAME in (
+#foreach( $column in $columns )
+#if( $foreach.count > 1 )       ,#{else}        #end'${column.toUpperCase()}'
 #end
+      )
 ),
 tml as (
   select
@@ -231,10 +223,10 @@ select
   LAST_MODIFIED_AT,
   LAST_MODIFIED_BY,
 #foreach( $column in $columns )
-#if( $numericColumns.contains($column) )
+#if( $numericColumns.contains($column) || $timestampColumns.contains($column) )
   ${column},
 #else
-	case when ${column}<>'' then ${column} end ${column},
+  case when ${column}<>'' then ${column} end ${column},
 #end
 #end
   EFFECTIVE_TIMESTAMP_FROM,

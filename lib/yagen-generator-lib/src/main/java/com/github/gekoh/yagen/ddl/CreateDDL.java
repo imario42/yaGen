@@ -1226,6 +1226,7 @@ public class CreateDDL {
         checkObjectName(dialect, viewName);
 
         Map<String, String> numericColumnDefinitions = findNumericColumnDefinitions(sqlCreate);
+        Map<String, String> timestampColumnDefinitions = findTimestampColumnDefinitions(sqlCreate);
 
         VelocityContext context = new VelocityContext();
         context.put("changelogQueryString", changelog.changelogQueryString());
@@ -1236,6 +1237,7 @@ public class CreateDDL {
         context.put("pkColumns", pkCols);
         context.put("numericColumns", numericColumnDefinitions.keySet());
         context.put("numericColumnDefinitions", numericColumnDefinitions);
+        context.put("timestampColumns", timestampColumnDefinitions.keySet());
         context.put("clobColumns", findClobColumns(sqlCreate));
 
         mergeTemplateFromResource("TimelineView.vm.sql", objWr, context);
@@ -1273,6 +1275,23 @@ public class CreateDDL {
         }
 
         return numColumnDef;
+    }
+
+    private Map<String, String> findTimestampColumnDefinitions(String sqlCreate) {
+        Map<String, String> colDef = new HashMap<String, String>();
+
+        Matcher colMatcher = COL_PATTERN.matcher(sqlCreate);
+        int idx = 0;
+
+        while (colMatcher.find(idx)) {
+            String type = colMatcher.group(COL_PATTERN_IDX_TYPE).toLowerCase();
+            if (type.contains("timestamp")) {
+                colDef.put(colMatcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase(), type);
+            }
+            idx = colMatcher.end();
+        }
+
+        return colDef;
     }
 
     private void addAuditTrigger(Dialect dialect, StringBuffer buf, String nameLC, Set<String> columns) {
