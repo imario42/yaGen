@@ -41,6 +41,18 @@ public class DBHelper {
         return System.getProperty("user.name");
     }
 
+    public static boolean isBypassed(String objectName) {
+        final String bypass = System.getProperty("yagen.bypass");
+        if (bypass != null) {
+            return true;
+        }
+        final String bypassPattern = System.getProperty("yagen.bypass.regex");
+        if (bypassPattern != null) {
+            return objectName.matches(bypassPattern);
+        }
+        return false;
+    }
+
     public static String getSysContext(String namespace, String parameter) {
         if ("USERENV".equals(namespace)) {
             if ("DB_NAME".equals(parameter)) {

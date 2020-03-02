@@ -49,6 +49,13 @@ CREATE FUNCTION regexp_like(s VARCHAR(4000), regexp VARCHAR(500), flags VARCHAR(
 ;
 
 ------- CreateDDL statement separator -------
+CREATE FUNCTION is_bypassed(object_name VARCHAR(100))
+  RETURNS BOOLEAN
+  LANGUAGE JAVA DETERMINISTIC NO SQL
+  EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.isBypassed'
+;
+
+------- CreateDDL statement separator -------
 CREATE FUNCTION get_audit_user(client_user_in VARCHAR(50)) RETURNS varchar(50)
 begin atomic
   declare user_name VARCHAR(50);
