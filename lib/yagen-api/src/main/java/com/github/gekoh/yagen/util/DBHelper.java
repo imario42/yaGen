@@ -16,14 +16,23 @@
 package com.github.gekoh.yagen.util;
 
 import com.github.gekoh.yagen.hibernate.DDLEnhancer;
+import org.hibernate.Session;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.jdbc.ReturningWork;
 
+import javax.persistence.EntityManager;
 import javax.sql.DataSource;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.sql.CallableStatement;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.UUID;
 import java.util.regex.Pattern;
+
+import static com.github.gekoh.yagen.api.Constants.USER_NAME_LEN;
 
 /**
  * @author Georg Kohlweiss
@@ -97,6 +106,34 @@ public class DBHelper {
         return Pattern.compile(regexp, opts).matcher(value).find();
     }
 
+    public static String injectSessionUser(String user, EntityManager em) {
+        String prevUser = null;
+        if (isHsqlDb(em)) {
+            try {
+                prevUser = (String) em.createNativeQuery("select VALUE from SESSION_VARIABLES where NAME='CLIENT_IDENTIFIER'").getSingleResult();
+                em.createNativeQuery("update SESSION_VARIABLES set VALUE=:user where NAME='CLIENT_IDENTIFIER'").setParameter("user", user).executeUpdate();
+
+            } catch (Exception ignore) {
+                em.createNativeQuery("insert into SESSION_VARIABLES (NAME, VALUE) values ('CLIENT_IDENTIFIER', :user)").setParameter("user", user).executeUpdate();
+            }
+        }
+        else {
+            prevUser = em.unwrap(Session.class).doReturningWork(new SetUserWorkOracle(user));
+        }
+
+        return prevUser;
+    }
+
+    private static boolean isHsqlDb(EntityManager em) {
+        return em.unwrap(Session.class).doReturningWork(new ReturningWork<Boolean>() {
+            public Boolean execute(Connection connection) throws SQLException {
+                String driverName = connection.getMetaData().getDriverName();
+
+                return driverName != null && driverName.toLowerCase().contains("hsql");
+            }
+        });
+    }
+
     public static String getDriverClassName(Dialect dialect) {
         return dialect instanceof DDLEnhancer ? getDriverClassName(((DDLEnhancer) dialect).getServiceRegistry()) : null;
     }
@@ -144,6 +181,30 @@ public class DBHelper {
 
     public static Timestamp getCurrentTimestamp() {
         return NanoAwareTimestampUtil.getCurrentTimestamp();
+    }
+
+    public static class SetUserWorkOracle implements ReturningWork<String> {
+        private String userName;
+
+        public SetUserWorkOracle(String userName) {
+            this.userName = userName;
+        }
+
+        public String execute(Connection connection) throws SQLException {
+            CallableStatement statement = connection.prepareCall(
+                    "declare newUserValue varchar2(" + USER_NAME_LEN + ") := substr(?,1," + USER_NAME_LEN + "); " +
+                            "begin ? := sys_context('USERENV','CLIENT_IDENTIFIER'); " +
+                            "DBMS_SESSION.set_identifier(newUserValue); " +
+                            "end;"
+            );
+            statement.setString(1, userName);
+            statement.registerOutParameter(2, Types.VARCHAR);
+            statement.execute();
+            String result = statement.getString(2);
+            statement.close();
+            LOG.info("set client_identifier in oracle session from '{}' to '{}'", result == null ? "" : result, userName == null ? "" : "<db_user> (" + userName + ")");
+            return result;
+        }
     }
 
 }

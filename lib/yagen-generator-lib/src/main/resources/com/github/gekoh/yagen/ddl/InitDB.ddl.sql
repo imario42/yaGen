@@ -23,10 +23,30 @@ EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.createUUID'
 ;
 
 ------- CreateDDL statement separator -------
-CREATE FUNCTION sys_context(namespace varchar(255), param varchar(255)) RETURNS varchar(255)
+CREATE FUNCTION sys_context_internal(namespace varchar(255), param varchar(255)) RETURNS varchar(255)
 LANGUAGE JAVA DETERMINISTIC NO SQL
 EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.getSysContext'
 ;
+
+------- CreateDDL statement separator -------
+create global temporary table SESSION_VARIABLES (
+    NAME VARCHAR(50),
+    VALUE VARCHAR(50),
+    constraint SESS_VAR_PK primary key (NAME)
+);
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION sys_context(namespace varchar(255), param varchar(255)) RETURNS varchar(255)
+begin atomic
+  declare var_found VARCHAR(50);
+  declare exit handler for SQLEXCEPTION
+      return sys_context_internal(namespace, param);
+  if namespace='USERENV' and param='CLIENT_IDENTIFIER' then
+    select value into var_found from SESSION_VARIABLES where NAME='CLIENT_IDENTIFIER';
+    return var_found;
+  end if;
+  return sys_context_internal(namespace, param);
+end;
 
 ------- CreateDDL statement separator -------
 CREATE FUNCTION systimestamp_9() RETURNS timestamp(9)
