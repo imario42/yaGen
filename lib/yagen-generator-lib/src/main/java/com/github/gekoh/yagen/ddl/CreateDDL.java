@@ -1214,7 +1214,7 @@ public class CreateDDL {
     private String getTimelineView(Changelog changelog, TableConfig tableConfig, Dialect dialect, String sqlCreate, String viewName, String tableName, Set<String> columns, List<String> pkCols) {
         StringWriter objWr = new StringWriter();
 
-        columns = new HashSet<String>(columns);
+        columns = new LinkedHashSet<String>(columns);
 
         Class entityBaseClass = tableConfig.getEntityBaseClass();
         if (entityBaseClass != null) {
