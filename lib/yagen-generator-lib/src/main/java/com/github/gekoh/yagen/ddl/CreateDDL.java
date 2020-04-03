@@ -141,7 +141,7 @@ public class CreateDDL {
     private static final int CONSTRAINT_OR_INDEX_PATTERN_IDX_SHORTNAME = 4;
 
     private static final Pattern VIEW_NAME_PATTERN = Pattern.compile("create( or replace)?[\\s]+view[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
-    private static final Pattern DROP_TABLE_PATTERN = Pattern.compile("drop table( if exists)?[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)( if exists)?");
+    private static final Pattern DROP_TABLE_PATTERN = Pattern.compile("drop table (if exists)?[\\s]*([a-zA-Z]+[0-9a-zA-Z_]*)( if exists)?");
 
     public static final String LANGUAGE_VIEW_NAME = "I18N_LANGUAGE_V";
     public static final String I18N_LIVE_TABLE_SUFFIX = "_i18n";
@@ -177,8 +177,6 @@ public class CreateDDL {
     private DDLGenerator.Profile currentProfile;
 
     private List<String> dbObjects = new ArrayList<String>();
-
-    private boolean historyInitSet = false;
 
     public CreateDDL(Object profile, Dialect dialect) {
         if (!(profile instanceof DDLGenerator.Profile)) {
@@ -329,7 +327,8 @@ public class CreateDDL {
         String nameLC = name.toLowerCase();
 
         if (!renderTable(nameLC)) {
-            return "-- skipped dropping table '" + name + "' as the mapped entity was not chosen to be processed";
+            LOG.info("skipped dropping table '" + name + "' as the mapped entity was not chosen to be processed");
+            return "";
         }
 
         if (tblNameToDropObjectsSql.containsKey(nameLC)) {
@@ -390,7 +389,8 @@ public class CreateDDL {
         Set<String> columns = new LinkedHashSet<String>(columnMap.keySet());
 
         if (!renderTable(nameLC)) {
-            return "-- skipped creation statement for table '" + tableName + "' as the mapped entity was not chosen to be processed";
+            LOG.info("skipped creation statement for table '" + tableName + "' as the mapped entity was not chosen to be processed");
+            return "";
         }
 
         checkTableName(dialect, tableName);
@@ -403,7 +403,8 @@ public class CreateDDL {
         }
 
         if (externalViews.contains(nameLC)) {
-            return "-- skipped creation statement for table '" + tableName + "' since there will be a view in place";
+            LOG.info("skipped creation statement for table '" + tableName + "' since there will be a view in place");
+            return "";
         }
 
         String sqlCreate = buf.toString();
@@ -423,7 +424,7 @@ public class CreateDDL {
 
         if (i18nFK != null) {
             String baseEntityTableName = tableConfig.getI18nBaseEntityTblName();
-            String i18nTblName = getProfile().getNamingStrategy().tableName(getI18NDetailTableName(nameLC));
+            String i18nTblName = getI18NDetailTableName(nameLC);
             liveTableName = i18nTblName;
             columnNames = getI18NEntityColumns(columns);
 
@@ -535,11 +536,6 @@ public class CreateDDL {
                 }
                 else {
                     buf.append(getHsqlDBHistTriggerSql(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols, columnMap));
-                }
-
-                if (!historyInitSet) {
-                    getProfile().addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(CreateDDL.class.getResource("/com/github/gekoh/yagen/ddl/InitHistory.ddl.sql")));
-                    historyInitSet = true;
                 }
             } catch (ClassNotFoundException e) {
                 LOG.info("not generating history table of live table {} since corresponding history entity class not found in classpath", nameLC);
@@ -876,10 +872,11 @@ public class CreateDDL {
             name = newName;
         }
 
-        String tableNameLC = getProfile().getNamingStrategy().tableName(table.getName()).toLowerCase();
+        String tableNameLC = table.getName().toLowerCase();
 
         if (!renderTable(tableNameLC) || externalViews.contains(tableNameLC)) {
-            return "-- skipped creation of constraint '" + name + "' for table '" + table.getName() + "' as the mapped entity was not chosen to be processed or is a view";
+            LOG.info("skipped creation of constraint '" + name + "' for table '" + table.getName() + "' as the mapped entity was not chosen to be processed or is a view");
+            return "";
         }
 
         TableConfig tableConfig = tblNameToConfig.get(tableNameLC);
@@ -887,9 +884,10 @@ public class CreateDDL {
         String refTblNameLC = null;
         if (constraint instanceof ForeignKey) {
             if (tableConfig.getColumnNamesIsNoFK().contains(constraint.getColumn(0).getName().toLowerCase())) {
-                return "-- skipped creation of foreign key constraint '" + name + "' for table '" + table.getName() + "' according to annotation of type " + NoForeignKeyConstraint.class.getSimpleName();
+                LOG.info("skipped creation of foreign key constraint '" + name + "' for table '" + table.getName() + "' according to annotation of type " + NoForeignKeyConstraint.class.getSimpleName());
+                return "";
             }
-            refTblNameLC = getProfile().getNamingStrategy().tableName(((ForeignKey) constraint).getReferencedTable().getName()).toLowerCase();
+            refTblNameLC = ((ForeignKey) constraint).getReferencedTable().getName().toLowerCase();
         }
 
         checkObjectName(dialect, name);
@@ -997,13 +995,15 @@ public class CreateDDL {
             name = newName;
         }
 
-        String tableNameLC = getProfile().getNamingStrategy().tableName(table.getName()).toLowerCase();
+        String tableNameLC = table.getName().toLowerCase();
         if (!renderTable(tableNameLC)) {
-            return "-- skipped creation of index '" + name + "' for table '" + tableNameLC + "' as the mapped entity was not chosen to be processed";
+            LOG.info("skipped creation of index '" + name + "' for table '" + tableNameLC + "' as the mapped entity was not chosen to be processed");
+            return "";
         }
 
         if (externalViews.contains(tableNameLC)) {
-            return "-- skipped creation of index '" + name + "' on table '" + tableNameLC + "' since there is a view in place";
+            LOG.info("skipped creation of index '" + name + "' on table '" + tableNameLC + "' since there is a view in place");
+            return "";
         }
         TableConfig tableConfig = tblNameToConfig.get(tableNameLC);
 
@@ -1054,7 +1054,7 @@ public class CreateDDL {
         return buf.toString();
     }
 
-    public String updateCreateSequence(Dialect dialect, String sqlCreate, org.hibernate.type.Type type) {
+    public String updateCreateSequence(Dialect dialect, String sqlCreate) {
         Matcher matcher = SEQ_CREATE_PATTERN.matcher(sqlCreate);
 
         if (matcher.find()) {
@@ -1751,8 +1751,7 @@ public class CreateDDL {
         String shortName = getShortName(nameLC);
 
         if (StringUtils.isEmpty(shortName)) {
-            String tblName = getProfile().getNamingStrategy().tableName(nameLC);
-            shortName = (tblName.length() > 27 ? tblName.substring(0, 27) : tblName);
+            shortName = (nameLC.length() > 27 ? nameLC.substring(0, 27) : nameLC);
         }
 
         String partColName = partitioning.columnName().toLowerCase();

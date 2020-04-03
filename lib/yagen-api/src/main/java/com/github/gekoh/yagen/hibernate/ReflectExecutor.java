@@ -34,6 +34,7 @@ public class ReflectExecutor {
     public static final String CREATEDDL_CLASS_NAME = "com.github.gekoh.yagen.ddl.CreateDDL";
     public static final String DDLGEN_CLASS_NAME = "com.github.gekoh.yagen.ddl.DDLGenerator$AddDDLEntry";
     public static final String YAGENINIT_CLASS_NAME = "com.github.gekoh.yagen.hibernate.YagenInit";
+    public static final String SESSIONFACTORY_CLASS_NAME = "org.hibernate.internal.SessionFactoryImpl";
 
     static final Initializer<Constructor> i_createDdl = getConstructor(CREATEDDL_CLASS_NAME);
 
@@ -43,7 +44,8 @@ public class ReflectExecutor {
     static final Initializer<Method> m_addPersistenceClass = getMethod(PROFILE_CLASS_NAME + ".addPersistenceClass");
     static final Initializer<Method> m_setNamingStrategy   = getMethod(PROFILE_CLASS_NAME + ".setNamingStrategy");
     static final Initializer<Method> m_clone               = getMethod(PROFILE_CLASS_NAME + ".clone");
-    static final Initializer<Method> m_addDdls             = getMethod(PROFILE_CLASS_NAME + ".addDdls");
+    static final Initializer<Method> m_getHeaderStatements = getMethod(PROFILE_CLASS_NAME + ".getHeaderStatements");
+    static final Initializer<Method> m_getFooterStatements = getMethod(PROFILE_CLASS_NAME + ".getFooterStatements");
 
     static final Initializer<Method> m_getDDLEnhancer  = getMethod(DDLENHANCER_CLASS_NAME + ".getDDLEnhancer");
     static final Initializer<Method> m_initDDLEnhancer = getMethod(DDLENHANCER_CLASS_NAME + ".initDDLEnhancer");
@@ -61,6 +63,8 @@ public class ReflectExecutor {
     static final Initializer<Method> m_getDdlText           = getMethod(DDLGEN_CLASS_NAME + ".getDdlText");
 
     static final Initializer<Method> m_newProfileIfNull     = getMethod(YAGENINIT_CLASS_NAME + ".newProfileIfNull");
+
+    static final Initializer<Method> m_getMetadata          = getMethod(SESSIONFACTORY_CLASS_NAME + ".getMetadata");
 
     private static Initializer<Method> getMethod(final String fqMethodName) {
         final String className = fqMethodName.substring(0, fqMethodName.lastIndexOf("."));

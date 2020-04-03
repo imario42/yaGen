@@ -17,23 +17,27 @@ package com.github.gekoh.yagen.ddl;
 
 import com.github.gekoh.yagen.api.DefaultNamingStrategy;
 import com.github.gekoh.yagen.api.NamingStrategy;
+import com.github.gekoh.yagen.api.TemporalEntity;
 import com.github.gekoh.yagen.hibernate.PatchGlue;
-import com.github.gekoh.yagen.hibernate.PatchHibernateMappingClasses;
 import com.github.gekoh.yagen.util.DBHelper;
 import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.dom4j.Document;
-import org.dom4j.DocumentException;
 import org.dom4j.Element;
 import org.dom4j.Node;
-import org.dom4j.io.DOMWriter;
 import org.dom4j.io.SAXReader;
-import org.hibernate.cfg.Configuration;
+import org.hibernate.boot.Metadata;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
-import org.joda.time.DateTime;
+import org.hibernate.tool.schema.TargetType;
 
+import javax.persistence.EntityManagerFactory;
+import javax.persistence.Persistence;
+import javax.persistence.metamodel.EntityType;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -42,17 +46,16 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
-import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -63,114 +66,39 @@ public class DDLGenerator {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DDLGenerator.class);
 
     public void writeDDL (Profile profile) {
-        SchemaExport export = new SchemaExportFactory().createSchemaExport(profile);
+        SchemaExport export = new SchemaExport();
         export.setDelimiter(";");
         export.setFormat(true);
         export.setOutputFile(profile.getOutputFile());
-        export.execute(true, false, false, true);
+        Metadata metadata = new SchemaExportFactory().createSchemaExportMetadata(profile);
+        export.createOnly(EnumSet.of(TargetType.SCRIPT), metadata);
 
         LOG.info("schema script written to file {}", profile.getOutputFile());
     }
 
     public static class SchemaExportFactory {
 
-        private Configuration cfg;
+        public Metadata createSchemaExportMetadata(Profile profile) {
 
-        public SchemaExport createSchemaExport (Profile profile) {
-            if (StringUtils.isNotEmpty(profile.getPersistenceUnitName())) {
-//            need to patch the class NumericBooleanType only for oracle until all applications have
-//            upgraded hibernate to 3.6.10-Final and the type specifications @Type(type = "org.hibernate.type.NumericBooleanType")
-//            are replaced back to @Type(type = "numeric_boolean")
-                if (profile.getPersistenceUnitName().contains("oracle")) {
-                    try {
-                        PatchHibernateMappingClasses.patchNumericBooleanTypeForOracle();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
+            EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory(profile.getPersistenceUnitName());
 
-                createConfiguration(profile);
-            }
-            else {
-                cfg = new Configuration();
+            ServiceRegistry serviceRegistry =
+                new StandardServiceRegistryBuilder()
+                        .applySettings(entityManagerFactory.getProperties())
+                    .build();
+
+            MetadataSources sources = new MetadataSources(serviceRegistry);
+
+            for (EntityType entityType : entityManagerFactory.getMetamodel().getEntities()) {
+                sources.addAnnotatedClass(entityType.getJavaType());
             }
 
-            if (cfg == null) {
-                throw new IllegalStateException("unable to obtain hibernate configuration");
-            }
+            Metadata metadata = sources.getMetadataBuilder().build();
 
-            for (Class entityClass : profile.getEntityClasses()) {
-                if (cfg.getClassMapping(entityClass.getName()) == null) {
-                    cfg.addAnnotatedClass(entityClass);
-                }
-            }
+            PatchGlue.initDialect(profile, serviceRegistry, metadata.getDatabase().getDialect(), metadata.getDatabase().getPhysicalNamingStrategy(), metadata.getEntityBindings());
 
-            try {
-                DOMWriter wr = new DOMWriter();
-                for (Document persistenceFile : profile.persistenceFiles) {
-                    cfg.addDocument(wr.write(persistenceFile));
-                    cfg.addProperties(extractProperties(persistenceFile));
-                }
-            } catch (DocumentException e) {
-                LOG.error("cannot set persistence xml file", e);
-            }
+            return metadata;
 
-            return new SchemaExport(cfg);
-        }
-
-        private void createConfiguration(Profile profile) {
-            try {
-                Class persistenceProviderClass = Class.forName("org.hibernate.jpa.HibernatePersistenceProvider");
-
-                PatchGlue.addConfigurationInterceptor(new PatchGlue.ConfigurationInterceptor() {
-                    public void use(Configuration configuration) {
-                        cfg = configuration;
-                    }
-                });
-
-                try {
-                    Method createEntityManagerFactory = persistenceProviderClass.getMethod("createEntityManagerFactory", String.class, Map.class);
-                    Object provider = persistenceProviderClass.newInstance();
-                    if (createEntityManagerFactory.invoke(provider, new Object[]{profile.getPersistenceUnitName(), null}) == null) {
-                        throw new IllegalArgumentException("persistence unit '" + profile.getPersistenceUnitName() + "' not found");
-                    };
-                } catch (Exception e) {
-                    throw new IllegalStateException("cannot init hibernate", e);
-                }
-
-            } catch (ClassNotFoundException e) {
-
-                try {
-                    Class ejbConfigurationClass = Class.forName("org.hibernate.ejb.Ejb3Configuration");
-                    Method configure = ejbConfigurationClass.getMethod("configure", String.class, Map.class);
-                    Method getHibernateConfiguration = ejbConfigurationClass.getMethod("getHibernateConfiguration");
-
-                    Object ejb3Configuration = ejbConfigurationClass.newInstance();
-                    ejb3Configuration = configure.invoke(ejb3Configuration, new Object[]{profile.getPersistenceUnitName(), null});
-
-                    if (ejb3Configuration == null) {
-                        throw new IllegalArgumentException("cannot find persistence unit " + profile.getPersistenceUnitName());
-                    }
-                    cfg = (Configuration) getHibernateConfiguration.invoke(ejb3Configuration);
-                    // ensure mappings were ready (needed e.g. for hibernate 4.2.7.Final)
-                    cfg.buildMappings();
-                } catch (Exception e1) {
-                    throw new IllegalStateException("cannot detect hibernate version or init failed", e1);
-                }
-            }
-        }
-
-        private Properties extractProperties(Document persistenceFile) {
-            Properties props = new Properties();
-            Element elm;
-
-            if ((elm = persistenceFile.getRootElement().element("persistence-unit")) != null &&
-                    (elm = elm.element("properties")) != null) {
-                for(Element pElm: (Iterable<? extends Element>) elm.elements("property")) {
-                    props.put(pElm.attribute("name").getValue(), pElm.attribute("value").getValue());
-                }
-            }
-            return props;
         }
     }
 
@@ -191,6 +119,8 @@ public class DDLGenerator {
         private Map<String, Map<String, String>> comments;
         private List<Duplexer> duplexers = new ArrayList<Duplexer>();
         private NamingStrategy namingStrategy;
+
+        private boolean historyInitSet = false;
 
         public static List<Profile> getAllProfiles() {
             return Collections.unmodifiableList(PROFILES);
@@ -299,6 +229,10 @@ public class DDLGenerator {
 
         public void addPersistenceClass(Class clazz) {
             entityClasses.add(clazz);
+            if (!historyInitSet && !isNoHistory() && clazz.isAnnotationPresent(TemporalEntity.class)) {
+                addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(DDLGenerator.class.getResource("/com/github/gekoh/yagen/ddl/InitHistory.ddl.sql")));
+                historyInitSet = true;
+            }
         }
 
         public void addPersistenceFile (String... persistenceXmlFile) {
@@ -349,13 +283,13 @@ public class DDLGenerator {
             return allDdls;
         }
 
-        public String[] addDdls (String[] stmts, Dialect dialect) {
-            List<String> ddlList = new ArrayList<String>(Arrays.asList(stmts));
 
+        public List<String> getHeaderStatements (Dialect dialect) {
+            List<String> ddlList = new ArrayList<String>();
             int idx = 0;
             StringWriter sw = new StringWriter();
 
-            sw.write("-- auto generated by " + getClass().getName() + " at " + new DateTime()+"\n");
+            sw.write("-- auto generated by " + getClass().getName() + " at " + LocalDateTime.now()+"\n");
             sw.write("-- DO NOT EDIT MANUALLY!");
 
             ddlList.add(idx++, sw.toString());
@@ -373,6 +307,12 @@ public class DDLGenerator {
 
                 ddlList.add(idx++, sw.toString());
             }
+            return ddlList;
+        }
+
+        public List<String> getFooterStatements (Dialect dialect) {
+            List<String> ddlList = new ArrayList<String>();
+            StringWriter sw;
 
             for (AddDDLEntry addDdlFile : getAddDdls()) {
                 if (addDdlFile.getDependentOnEntityClass() != null && !getEntityClasses().contains(addDdlFile.getDependentOnEntityClass())) {
@@ -388,7 +328,7 @@ public class DDLGenerator {
                 ddlList.add(sw.toString());
             }
 
-            return ddlList.toArray(new String[ddlList.size()]);
+            return ddlList;
         }
 
         public Set<Class> getEntityClasses() {

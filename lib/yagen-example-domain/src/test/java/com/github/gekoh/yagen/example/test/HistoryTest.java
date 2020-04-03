@@ -22,13 +22,13 @@ import com.github.gekoh.yagen.example.EngineType;
 import com.github.gekoh.yagen.hst.Operation;
 import com.github.gekoh.yagen.util.DBHelper;
 import org.apache.commons.lang3.StringUtils;
-import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Test;
 
 import javax.persistence.Query;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Iterator;
 
 /**
@@ -81,7 +81,7 @@ public class HistoryTest extends TestBase {
                 .setParameter("callSign", "OE-DVK")
                 .getSingleResult();
 
-        BoardBookEntry boardBookEntry = new BoardBookEntry(1, "1+3", "LOAN", new DateTime().minusHours(1), "LOAN", new DateTime(), 3);
+        BoardBookEntry boardBookEntry = new BoardBookEntry(1, "1+3", "LOAN", LocalDateTime.now().minusHours(1), "LOAN", LocalDateTime.now(), 3);
         ac.addBoardBookEntry(boardBookEntry);
 
         em.flush();
@@ -163,7 +163,7 @@ public class HistoryTest extends TestBase {
                 .setParameter("callSign", "OE-DVA")
                 .getSingleResult();
 
-        BoardBookEntry boardBookEntry = new BoardBookEntry(1, "1+3", "LOAN", new DateTime().minusHours(1), "LOAN", new DateTime(), 3);
+        BoardBookEntry boardBookEntry = new BoardBookEntry(1, "1+3", "LOAN", LocalDateTime.now().minusHours(1), "LOAN", LocalDateTime.now(), 3);
         ac.addBoardBookEntry(boardBookEntry);
 
         boardBookEntry.getAddedOperatingResources().add("76l AVGAS");
