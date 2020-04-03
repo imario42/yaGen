@@ -60,7 +60,8 @@ public class DefaultNamingStrategy implements NamingStrategy {
     }
 
     public String tableName(String tableName) {
-        return toPhysicalTableName(Identifier.toIdentifier(tableName), null).getText();
+        Identifier identifier = toPhysicalTableName(Identifier.toIdentifier(tableName), null);
+        return identifier != null ? identifier.getText() : null;
     }
 
     @Override
