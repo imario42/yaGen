@@ -31,7 +31,6 @@ import org.hibernate.mapping.Constraint;
 import org.hibernate.mapping.Index;
 import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
-import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.schema.internal.Helper;
 import org.hibernate.tool.schema.internal.SchemaCreatorImpl;
 import org.hibernate.tool.schema.internal.exec.GenerationTarget;
@@ -80,12 +79,13 @@ public class PatchGlue {
     private static Field generatorScriptDelimiter;
     private static Field generatorStdoutDelimiter;
 
-    public static Object newDDLEnhancer(Object profile, Dialect dialect, Collection<PersistentClass> persistentClasses) {
+    public static Object newDDLEnhancer(Object profile, Object metadataObj) {
         try {
-            for (PersistentClass persistentClass : persistentClasses) {
+            Metadata metadata = (Metadata) metadataObj;
+            for (PersistentClass persistentClass : metadata.getEntityBindings()) {
                 addClass(profile, persistentClass);
             }
-            return ReflectExecutor.i_createDdl.get().newInstance(profile, dialect);
+            return ReflectExecutor.i_createDdl.get().newInstance(profile, metadata.getDatabase().getDialect());
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
@@ -99,37 +99,37 @@ public class PatchGlue {
         }
     }
 
-    public static void initDialect(ServiceRegistry serviceRegistry, Metadata metadata) {
-        initDialect(getOrInitProfile(), serviceRegistry, metadata.getDatabase().getDialect(), metadata.getDatabase().getPhysicalNamingStrategy(), metadata.getEntityBindings());
+    public static void initDialect(Metadata metadata) {
+        initDialect(getOrInitProfile(), metadata);
     }
 
-    public static void initDialect(SessionFactory sessionFactory, PhysicalNamingStrategy namingStrategy) {
+    public static void initDialect(SessionFactory sessionFactory) {
         if (!(sessionFactory instanceof SessionFactoryImpl)) {
             throw new IllegalStateException("expecting SessionFactoryImpl");
         }
         SessionFactoryImpl impl = (SessionFactoryImpl) sessionFactory;
-        Dialect dialect = impl.getJdbcServices().getDialect();
 
         try {
             Metadata metadata = (Metadata) ReflectExecutor.m_getMetadata.get().invoke(impl);
-            initDialect(getOrInitProfile(), impl.getServiceRegistry(), dialect, namingStrategy, metadata.getEntityBindings());
+            initDialect(getOrInitProfile(), metadata);
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
-    public static void initDialect(Object profile, ServiceRegistry serviceRegistry, Dialect dialect, PhysicalNamingStrategy namingStrategy, Collection<PersistentClass> persistentClasses) {
+    public static void initDialect(Object profile, Metadata metadata) {
+        Dialect dialect = metadata.getDatabase().getDialect();
 
         if (dialect != null && ReflectExecutor.c_enhancer.get().isAssignableFrom(dialect.getClass())) {
             try {
                 Object clonedProfile = ReflectExecutor.m_clone.get().invoke(profile);
-                Object ddlEnhancer = dialect;
+                PhysicalNamingStrategy namingStrategy = metadata.getDatabase().getPhysicalNamingStrategy();
 
                 if (namingStrategy instanceof DefaultNamingStrategy) {
                     ReflectExecutor.m_setNamingStrategy.get().invoke(clonedProfile, namingStrategy);
                 }
-                if (ReflectExecutor.m_getDDLEnhancer.get().invoke(ddlEnhancer) == null) {
-                    ReflectExecutor.m_initDDLEnhancer.get().invoke(ddlEnhancer, clonedProfile, dialect, serviceRegistry, persistentClasses);
+                if (ReflectExecutor.m_getDDLEnhancer.get().invoke(dialect) == null) {
+                    ReflectExecutor.m_initDDLEnhancer.get().invoke(dialect, clonedProfile, metadata);
                 }
             } catch (Exception e) {
                 throw new IllegalStateException(e);

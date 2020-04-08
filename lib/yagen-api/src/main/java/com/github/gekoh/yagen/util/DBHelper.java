@@ -17,18 +17,20 @@ package com.github.gekoh.yagen.util;
 
 import com.github.gekoh.yagen.hibernate.DDLEnhancer;
 import org.hibernate.Session;
+import org.hibernate.boot.Metadata;
+import org.hibernate.boot.registry.internal.StandardServiceRegistryImpl;
 import org.hibernate.dialect.Dialect;
 import org.hibernate.jdbc.ReturningWork;
+import org.hibernate.service.ServiceRegistry;
 
 import javax.persistence.EntityManager;
-import javax.sql.DataSource;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -39,6 +41,16 @@ import static com.github.gekoh.yagen.api.Constants.USER_NAME_LEN;
  */
 public class DBHelper {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DBHelper.class);
+
+    private static Field FIELD_CONFIGURATION_VALUES;
+    static {
+        try {
+            FIELD_CONFIGURATION_VALUES = StandardServiceRegistryImpl.class.getDeclaredField("configurationValues");
+            FIELD_CONFIGURATION_VALUES.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            LOG.error("unable to get field via reflection", e);
+        }
+    }
 
     public static String createUUID() {
         return UUID.randomUUID().toString().replaceAll("-", "").toUpperCase(); // replace "-" 36 -> 32 char
@@ -134,49 +146,32 @@ public class DBHelper {
         });
     }
 
-    public static String getDriverClassName(Dialect dialect) {
-        return dialect instanceof DDLEnhancer ? getDriverClassName(((DDLEnhancer) dialect).getServiceRegistry()) : null;
+    public static Metadata getMetadata(Dialect dialect) {
+        Object metadataObj;
+        if (!(dialect instanceof DDLEnhancer) || (metadataObj = ((DDLEnhancer) dialect).getMetadata()) == null) {
+            return null;
+        }
+        return (Metadata) metadataObj;
     }
 
-    public static String getDriverClassName(Object serviceRegistry) {
-        String driverClassName = null;
+    public static String getDriverClassName(Dialect dialect) {
 
-        if (serviceRegistry == null) {
+        Metadata metadata = getMetadata(dialect);
+        if (metadata == null) {
             return null;
         }
 
-        Method getService = null;
+        ServiceRegistry serviceRegistry = metadata.getDatabase().getServiceRegistry();
+
         try {
-            getService = Class.forName("org.hibernate.service.ServiceRegistry").getDeclaredMethod("getService", Class.class);
-        } catch (Exception e) {
-            LOG.warn("cannot detect jdbc driver name");
-            return null;
-        }
-        try {
-
-            Class providerClass = Class.forName("org.hibernate.service.jdbc.connections.internal.DatasourceConnectionProviderImpl");
-            Field dataSourceField = providerClass.getDeclaredField("dataSource");
-            dataSourceField.setAccessible(true);
-            DataSource dataSource = (DataSource) dataSourceField.get(getService.invoke(serviceRegistry, Class.forName("org.hibernate.service.jdbc.connections.spi.ConnectionProvider")));
-            Field driverClassNameField = dataSource.getClass().getDeclaredField("driverClassName");
-            driverClassNameField.setAccessible(true);
-
-            driverClassName = (String) driverClassNameField.get(dataSource);
-        } catch (Exception e) {
-
-            try {
-                Field creatorField = Class.forName("org.hibernate.engine.jdbc.connections.internal.DriverManagerConnectionProviderImpl").getDeclaredField("connectionCreator");
-                creatorField.setAccessible(true);
-                Field driverField = Class.forName("org.hibernate.engine.jdbc.connections.internal.DriverConnectionCreator").getDeclaredField("driver");
-                driverField.setAccessible(true);
-
-                driverClassName = driverField.get(creatorField.get(getService.invoke(serviceRegistry, Class.forName("org.hibernate.engine.jdbc.connections.spi.ConnectionProvider")))).getClass().getName();
-            } catch (Exception e1) {
-                LOG.warn("cannot detect jdbc driver name");
+            if (serviceRegistry instanceof StandardServiceRegistryImpl && FIELD_CONFIGURATION_VALUES != null) {
+                Map configurationValues = (Map) FIELD_CONFIGURATION_VALUES.get(serviceRegistry);
+                return (String) configurationValues.get("hibernate.connection.driver_class");
             }
+        } catch (Exception ignore) {
         }
-
-        return driverClassName;
+        LOG.warn("cannot detect jdbc driver name");
+        return null;
     }
 
     public static Timestamp getCurrentTimestamp() {

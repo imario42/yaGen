@@ -95,7 +95,7 @@ public class DDLGenerator {
 
             Metadata metadata = sources.getMetadataBuilder().build();
 
-            PatchGlue.initDialect(profile, serviceRegistry, metadata.getDatabase().getDialect(), metadata.getDatabase().getPhysicalNamingStrategy(), metadata.getEntityBindings());
+            PatchGlue.initDialect(profile, metadata);
 
             return metadata;
 

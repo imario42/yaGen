@@ -150,7 +150,7 @@ public class PatchTransformer implements ClassFileTransformer {
 
     private static void patchEmf(CtClass clazz) throws CannotCompileException, NotFoundException {
 
-        String initDialectSrc = "com.github.gekoh.yagen.hibernate.PatchGlue.initDialect(standardServiceRegistry, $_);\n" +
+        String initDialectSrc = "com.github.gekoh.yagen.hibernate.PatchGlue.initDialect($_);\n" +
                 "return $_;";
 
         clazz.getDeclaredMethod("metadata").insertAfter(initDialectSrc);
@@ -196,12 +196,12 @@ public class PatchTransformer implements ClassFileTransformer {
 
     private static void patchDialect(CtClass clazz) throws CannotCompileException, NotFoundException {
         clazz.addField(CtField.make("private Object ddlEnhancer;", clazz));
-        clazz.addField(CtField.make("private Object serviceRegistry;", clazz));
+        clazz.addField(CtField.make("private Object metadata;", clazz));
 
         clazz.addMethod(CtMethod.make(
-                "public void initDDLEnhancer(Object profile, org.hibernate.dialect.Dialect dialect, Object serviceRegistry, java.util.Collection persistentClasses) {\n" +
-                        "        this.serviceRegistry = serviceRegistry;\n" +
-                        "        ddlEnhancer = com.github.gekoh.yagen.hibernate.PatchGlue.newDDLEnhancer(profile, dialect, persistentClasses);\n" +
+                "public void initDDLEnhancer(Object profile, Object metadata) {\n" +
+                        "        this.metadata = metadata;\n" +
+                        "        ddlEnhancer = com.github.gekoh.yagen.hibernate.PatchGlue.newDDLEnhancer(profile, metadata);\n" +
                         "    }",
                 clazz
         ));
@@ -214,8 +214,8 @@ public class PatchTransformer implements ClassFileTransformer {
         ));
 
         clazz.addMethod(CtMethod.make(
-                "public Object getServiceRegistry() {\n" +
-                        "        return serviceRegistry;\n" +
+                "public Object getMetadata() {\n" +
+                        "        return metadata;\n" +
                         "    }",
                 clazz
         ));
