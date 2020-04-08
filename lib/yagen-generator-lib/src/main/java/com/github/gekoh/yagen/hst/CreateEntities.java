@@ -41,6 +41,7 @@ import javax.persistence.OneToMany;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -74,7 +75,7 @@ public class CreateEntities {
 
     public static void main (String[] args) {
         if (args == null || args.length<1) {
-            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-xml-file-path> <orm2.0-file-out-path> [<orm1.0-file-out-path>] [override-DateTimeType.class.name] [customFile-BaseEntity.java.vm-template]");
+            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-xml-file-path> <orm2.0-file-out-path> [<orm1.0-file-out-path>] [override-DateTimeType.class.name] [customFile-BaseEntity.java.vm] [customFile-HstTemplate.java.vm]");
             return;
         }
         CreateEntities createEntities = new CreateEntities(new File(args[0]));
@@ -83,9 +84,17 @@ public class CreateEntities {
             createEntities.additionalProperties.put("dateTimeType", StringUtils.isNotEmpty(args[5]) ? args[5] : "");
         }
         Reader customBaseTemplate = null;
-        if (args.length > 6) {
+        if (args.length > 6 && StringUtils.isNotEmpty(args[6])) {
             try {
                 customBaseTemplate = new FileReader(args[6]);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                return;
+            }
+        }
+        if (args.length > 7 && StringUtils.isNotEmpty(args[7])) {
+            try {
+                createEntities.template = readContents(new FileInputStream(args[7]));
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
                 return;
