@@ -16,6 +16,7 @@
 package com.github.gekoh.yagen.hibernate;
 
 import com.github.gekoh.yagen.api.DefaultNamingStrategy;
+import com.github.gekoh.yagen.util.DBHelper;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.Metadata;
@@ -151,6 +152,10 @@ public class PatchGlue {
     }
 
     public static String[] afterTableSqlString(boolean createNotDrop, Table table, Metadata metadata, String[] returnValue) {
+        String objectName = table.getName();
+        if (DBHelper.skipModificationOf(objectName, metadata)) {
+            return returnValue;
+        }
         Dialect dialect = metadata.getDatabase().getDialect();
         StringBuffer buf = new StringBuffer(returnValue[0]);
 
@@ -165,8 +170,8 @@ public class PatchGlue {
         if (ddlEnhancer != null) {
             try {
                 returnValue[0] = (String) (createNotDrop ?
-                        ReflectExecutor.m_updateCreateTable.get().invoke(ddlEnhancer, dialect, buf.append(dialect.getTableTypeString()), table.getName(), allColumns) :
-                        ReflectExecutor.m_updateDropTable.get().invoke(ddlEnhancer, dialect, buf, table.getName()));
+                        ReflectExecutor.m_updateCreateTable.get().invoke(ddlEnhancer, dialect, buf.append(dialect.getTableTypeString()), objectName, allColumns) :
+                        ReflectExecutor.m_updateDropTable.get().invoke(ddlEnhancer, dialect, buf, objectName));
             } catch (Exception e) {
                 throw new IllegalStateException(e);
             }
@@ -179,13 +184,17 @@ public class PatchGlue {
         if (!createNotDrop || returnValue == null || returnValue.length < 1) {
             return returnValue;
         }
+        String objectName = constraint.getName();
+        if (DBHelper.skipModificationOf(objectName, metadata)) {
+            return returnValue;
+        }
         Dialect dialect = metadata.getDatabase().getDialect();
         StringBuffer buf = new StringBuffer(returnValue[0]);
 
         Object ddlEnhancer = getDDLEnhancerFromDialect(dialect);
         if (ddlEnhancer != null) {
             try {
-                returnValue[0] = (String) ReflectExecutor.m_updateCreateConstraint.get().invoke(ddlEnhancer, dialect, buf, constraint.getName(), constraint.getTable(), constraint);
+                returnValue[0] = (String) ReflectExecutor.m_updateCreateConstraint.get().invoke(ddlEnhancer, dialect, buf, objectName, constraint.getTable(), constraint);
             } catch (Exception e) {
                 throw new IllegalStateException(e);
             }
@@ -196,6 +205,10 @@ public class PatchGlue {
 
     public static String[] afterIndexSqlString(boolean createNotDrop, Index index, Metadata metadata, String[] returnValue) {
         if (!createNotDrop) {
+            return returnValue;
+        }
+        String objectName = index.getName();
+        if (DBHelper.skipModificationOf(objectName, metadata)) {
             return returnValue;
         }
         Dialect dialect = metadata.getDatabase().getDialect();
@@ -211,7 +224,7 @@ public class PatchGlue {
         Object ddlEnhancer = getDDLEnhancerFromDialect(dialect);
         if (ddlEnhancer != null) {
             try {
-                returnValue[0] = (String) ReflectExecutor.m_updateCreateIndex.get().invoke(ddlEnhancer, dialect, buf, index.getName(), index.getTable(), columnList);
+                returnValue[0] = (String) ReflectExecutor.m_updateCreateIndex.get().invoke(ddlEnhancer, dialect, buf, objectName, index.getTable(), columnList);
             } catch (Exception e) {
                 throw new IllegalStateException(e);
             }
@@ -222,6 +235,10 @@ public class PatchGlue {
 
     public static String[] afterSequenceSqlString(boolean createNotDrop, Sequence sequence, Metadata metadata, String[] returnValue) {
         if (!createNotDrop) {
+            return returnValue;
+        }
+        String objectName = sequence.getName().getSequenceName().getText();
+        if (DBHelper.skipModificationOf(objectName, metadata)) {
             return returnValue;
         }
         Dialect dialect = metadata.getDatabase().getDialect();

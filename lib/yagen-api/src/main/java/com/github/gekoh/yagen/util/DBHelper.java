@@ -42,6 +42,10 @@ import static com.github.gekoh.yagen.api.Constants.USER_NAME_LEN;
 public class DBHelper {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DBHelper.class);
 
+    public static final String PROPERTY_BYPASS = "yagen.bypass";
+    public static final String PROPERTY_BYPASS_REGEX = "yagen.bypass.regex";
+    public static final String PROPERTY_SKIP_MODIFICATION = "yagen.skip-modification.regex";
+
     private static Field FIELD_CONFIGURATION_VALUES;
     static {
         try {
@@ -62,12 +66,21 @@ public class DBHelper {
         return System.getProperty("user.name");
     }
 
+    public static boolean skipModificationOf(String objectName, Metadata metadata) {
+        Map configurationValues = DBHelper.getConfigurationValues(metadata);
+        if (objectName == null || configurationValues == null || !configurationValues.containsKey(PROPERTY_SKIP_MODIFICATION)) {
+            return false;
+        }
+
+        return objectName.matches((String) configurationValues.get(PROPERTY_SKIP_MODIFICATION));
+    }
+
     public static boolean isBypassed(String objectName) {
-        final String bypass = System.getProperty("yagen.bypass");
+        final String bypass = System.getProperty(PROPERTY_BYPASS);
         if (bypass != null) {
             return true;
         }
-        final String bypassPattern = System.getProperty("yagen.bypass.regex");
+        final String bypassPattern = System.getProperty(PROPERTY_BYPASS_REGEX);
         if (bypassPattern != null) {
             return objectName.matches(bypassPattern);
         }
@@ -161,16 +174,23 @@ public class DBHelper {
             return null;
         }
 
-        ServiceRegistry serviceRegistry = metadata.getDatabase().getServiceRegistry();
+        Map configurationValues = getConfigurationValues(metadata);
+        if (configurationValues != null) {
+            return (String) configurationValues.get("hibernate.connection.driver_class");
+        }
+        LOG.warn("cannot detect jdbc driver name");
+        return null;
+    }
 
+    public static Map getConfigurationValues(Metadata metadata) {
+        ServiceRegistry serviceRegistry = metadata.getDatabase().getServiceRegistry();
         try {
             if (serviceRegistry instanceof StandardServiceRegistryImpl && FIELD_CONFIGURATION_VALUES != null) {
-                Map configurationValues = (Map) FIELD_CONFIGURATION_VALUES.get(serviceRegistry);
-                return (String) configurationValues.get("hibernate.connection.driver_class");
+                return (Map) FIELD_CONFIGURATION_VALUES.get(serviceRegistry);
             }
         } catch (Exception ignore) {
         }
-        LOG.warn("cannot detect jdbc driver name");
+        LOG.warn("cannot get configuration values");
         return null;
     }
 
