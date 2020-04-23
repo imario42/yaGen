@@ -7,6 +7,7 @@ ${changelogQueryString}
 mut as (
 	select
     l.uuid CHANGELOG_UUID,
+	l.changeset_uuid,
 	  l.created_at CHANGE_TIMESTAMP,
 	  l.mutation_type,
 	  l.entity_uuid UUID,
@@ -29,129 +30,137 @@ mut as (
 #end
       )
 )
-select
-  TML_UUID,
-	CREATED_AT,
-	CREATED_BY,
-	LAST_MODIFIED_AT,
-	LAST_MODIFIED_BY,
-  TML_PHASE,
-  UUID,
-#foreach( $column in $columns )
-#if( $numericColumns.contains($column) || $timestampColumns.contains($column) )
-  ${column},
-#elseif( $clobColumns.contains($column) )
-  case when dbms_lob.compare(${column}, empty_clob()) = 0 then null else ${column} end ${column},
-#else
-  decode(${column}, chr(0), null, ${column}) ${column},
-#end
-#end
-  EFFECTIVE_TIMESTAMP_FROM,
-  EFFECTIVE_TIMESTAMP_TO
-from (
+select * from (
   select
     TML_UUID,
+    CREATED_AT,
+    CREATED_BY,
+    LAST_MODIFIED_AT,
+    LAST_MODIFIED_BY,
     TML_PHASE,
     UUID,
-		first_value(CREATED_AT) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) CREATED_AT,
-		first_value(CREATED_BY) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) CREATED_BY,
-		last_value(LAST_MODIFIED_AT) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) LAST_MODIFIED_AT,
-		last_value(LAST_MODIFIED_BY) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) LAST_MODIFIED_BY,
 #foreach( $column in $columns )
-#if( $clobColumns.contains($column) )
-  -- analytic functions seem not to work with CLOB type columns
-    coalesce(${column},
-      (
-        select coalesce(NEW_LONG_VALUE, empty_clob()) ${column}
-        from changelog mi
-        where ENTITY_UUID=o_tml.UUID
-        and CREATED_AT=(select max(CREATED_AT) from changelog where ENTITY_UUID=mi.ENTITY_UUID and CREATED_AT<o_tml.EFFECTIVE_TIMESTAMP_FROM and COLUMN_NAME=mi.COLUMN_NAME)
-        and COLUMN_NAME='${column.toUpperCase()}'
-      ),
-      (
-        select ${column}
-        from ${tableName}
-        where UUID=o_tml.UUID
-      )
-    ) ${column},
+#if( $numericColumns.contains($column) || $timestampColumns.contains($column) )
+    ${column},
+#elseif( $clobColumns.contains($column) )
+    case when dbms_lob.compare(${column}, empty_clob()) = 0 then null else ${column} end ${column},
 #else
-		nth_value(${column}, 1) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM desc nulls last rows between current row and unbounded following) ${column},
+    decode(${column}, chr(0), null, ${column}) ${column},
 #end
 #end
     EFFECTIVE_TIMESTAMP_FROM,
-    EFFECTIVE_TIMESTAMP_TO
+    lead(EFFECTIVE_TIMESTAMP_FROM) over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) EFFECTIVE_TIMESTAMP_TO
   from (
-    select
-      #foreach( $pkColumn in $pkColumns )e.${pkColumn}||'-'||#{end}coalesce(e.LAST_MODIFIED_AT,e.CREATED_AT) TML_UUID,
-      'L' TML_PHASE,
-      #foreach( $pkColumn in $pkColumns )#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end} UUID,
-      e.CREATED_AT,
-      e.CREATED_BY,
-      e.LAST_MODIFIED_AT,
-      e.LAST_MODIFIED_BY,
-#foreach( $column in $columns )
-      e.${column},
-#end
-      null EFFECTIVE_TIMESTAMP_FROM,
-      (select min(CREATED_AT) from changelog where entity_uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end} and TABLE_NAME='${tableName.toUpperCase()}') EFFECTIVE_TIMESTAMP_TO
-      -- following was in place before, but due to a serious oracle bug this was rewritten
-      -- with the following line in place oracle seems to silently drop any existing CLOB column value under certain circumstances
-      --(select min(CHANGE_TIMESTAMP) from mut where uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end}) EFFECTIVE_TIMESTAMP_TO
-    from
-      ${tableName} e
-    union all
-    select
-      CHANGELOG_UUID TML_UUID,
-      'M' TML_PHASE,
-      UUID,
-      CREATED_AT,
-      CREATED_BY,
-      LAST_MODIFIED_AT,
-      LAST_MODIFIED_BY,
-#foreach( $column in $columns )
-      ${column},
-#end
-      EFFECTIVE_TIMESTAMP_FROM,
-      EFFECTIVE_TIMESTAMP_TO
+    select *
     from (
         select
-          m.CHANGELOG_UUID,
-          m.MUTATION_TYPE,
-          m.UUID,
-          m.CREATED_AT,
-          m.CREATED_BY,
-          m.LAST_MODIFIED_AT,
-          m.LAST_MODIFIED_BY,
+          TML_UUID,
+          TML_PHASE,
+          UUID,
+          first_value(CREATED_AT) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) CREATED_AT,
+          first_value(CREATED_BY) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) CREATED_BY,
+          last_value(LAST_MODIFIED_AT) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) LAST_MODIFIED_AT,
+          last_value(LAST_MODIFIED_BY) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM nulls first) LAST_MODIFIED_BY,
 #foreach( $column in $columns )
-          m.${column},
+#if( $clobColumns.contains($column) )
+        -- analytic functions seem not to work with CLOB type columns
+          coalesce(${column},
+            (
+              select coalesce(NEW_LONG_VALUE, empty_clob()) ${column}
+              from changelog mi
+              where ENTITY_UUID=o_tml.UUID
+              and CREATED_AT=(select max(CREATED_AT) from changelog where ENTITY_UUID=mi.ENTITY_UUID and CREATED_AT<o_tml.EFFECTIVE_TIMESTAMP_FROM and COLUMN_NAME=mi.COLUMN_NAME)
+              and COLUMN_NAME='${column.toUpperCase()}'
+            ),
+            (
+              select ${column}
+              from ${tableName}
+              where UUID=o_tml.UUID
+            )
+          ) ${column},
+#else
+              nth_value(${column}, 1) ignore nulls over (partition by UUID order by EFFECTIVE_TIMESTAMP_FROM desc nulls last rows between current row and unbounded following) ${column},
 #end
-          m.CHANGE_TIMESTAMP EFFECTIVE_TIMESTAMP_FROM,
-          lead(m.CHANGE_TIMESTAMP) over (partition by m.UUID order by decode(m.MUTATION_TYPE,'NEW',1,'TERMINATE',3,2), m.CHANGE_TIMESTAMP) EFFECTIVE_TIMESTAMP_TO
-        from
-          mut m
+#end
+          EFFECTIVE_TIMESTAMP_FROM,
+          REV_VERSION_IN_CHANGESET_NR
+        from (
+          select
+#foreach( $pkColumn in $pkColumns )e.${pkColumn}||'-'||#{end}coalesce(e.LAST_MODIFIED_AT,e.CREATED_AT) TML_UUID,
+            'L' TML_PHASE,
+#foreach( $pkColumn in $pkColumns )#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end} UUID,
+            e.CREATED_AT,
+            e.CREATED_BY,
+            e.LAST_MODIFIED_AT,
+            e.LAST_MODIFIED_BY,
+#foreach( $column in $columns )
+            e.${column},
+#end
+            null EFFECTIVE_TIMESTAMP_FROM,
+            null REV_VERSION_IN_CHANGESET_NR
+          from
+            ${tableName} e
+          union all
+          select
+            CHANGELOG_UUID TML_UUID,
+            case when MUTATION_TYPE='TERMINATE' then 'T' else 'M' end TML_PHASE,
+            UUID,
+            CREATED_AT,
+            CREATED_BY,
+            LAST_MODIFIED_AT,
+            LAST_MODIFIED_BY,
+#foreach( $column in $columns )
+            ${column},
+#end
+            EFFECTIVE_TIMESTAMP_FROM,
+            REV_VERSION_IN_CHANGESET_NR
+          from (
+              select
+                m.CHANGELOG_UUID,
+                m.MUTATION_TYPE,
+                m.UUID,
+                m.CREATED_AT,
+                m.CREATED_BY,
+                m.LAST_MODIFIED_AT,
+                m.LAST_MODIFIED_BY,
+#foreach( $column in $columns )
+                m.${column},
+#end
+                m.CHANGE_TIMESTAMP EFFECTIVE_TIMESTAMP_FROM,
+                row_number() over (partition by m.CHANGESET_UUID, m.UUID order by m.CHANGE_TIMESTAMP desc) REV_VERSION_IN_CHANGESET_NR
+              from
+                mut m
+            )
+        ) o_tml
       )
-    where
-      -- terminations will only give EFFECTIVE_TIMESTAMP_TO value in previous row
-      MUTATION_TYPE<>'TERMINATE'
-  ) o_tml
+    where REV_VERSION_IN_CHANGESET_NR is null or REV_VERSION_IN_CHANGESET_NR=1
+  )
 )
+where TML_PHASE<>'T'
 ;
 #else
 ------- CreateDDL statement separator -------
-drop view CHANGELOG_ROW_V if exists;
-
-------- CreateDDL statement separator -------
-create view CHANGELOG_ROW_V as
-	select l.*, rownum() row_nr
-	from
-		dsm_changelog l
-	join dsm_changeset s on l.CHANGESET_UUID=s.uuid
-	where
-		s.CHANGESET_STATUS='READY_TO_DEPLOY'
+create or replace view CHANGELOG_ROW_V as
+with
+recursive changeset_tree (PRECURSOR_CHANGESET_UUID, UUID, CHANGESET_STATUS) AS (
+    select PRECURSOR_CHANGESET_UUID, UUID, CHANGESET_STATUS
+    from
+        DSM_CHANGESET
+    where CHANGESET_STATUS='READY_TO_DEPLOY'
+    UNION
+    select s.PRECURSOR_CHANGESET_UUID, s.UUID, s.CHANGESET_STATUS
+    from
+        DSM_CHANGESET s
+        join changeset_tree t on s.PRECURSOR_CHANGESET_UUID=t.UUID
+)
+select l.*, rownum() as row_nr
+from
+    dsm_changelog l
+    join changeset_tree s on l.CHANGESET_UUID=s.uuid
 ;
 
 ------- CreateDDL statement separator -------
-create or replace view ${viewName} as
+create or replace view ${viewName}_base as
 with mut as (
 	select
     l.row_nr,
@@ -191,13 +200,13 @@ tml as (
     e.${column},
 #end
     null EFFECTIVE_TIMESTAMP_FROM,
-    (select min(CHANGE_TIMESTAMP) from mut where uuid=#foreach($pkColumn in $pkColumns)#if($foreach.count>1)||'-'||#{end}e.${pkColumn}#{end}) EFFECTIVE_TIMESTAMP_TO
+    1 as ROW_NR
   from
     ${tableName} e
   union all
   select
     m.CHANGELOG_UUID TML_UUID,
-    'M' TML_PHASE,
+    case when m.MUTATION_TYPE='TERMINATE' then 'T' else 'M' end TML_PHASE,
     m.UUID,
     m.CREATED_AT,
     m.CREATED_BY,
@@ -207,13 +216,33 @@ tml as (
     m.${column},
 #end
     m.CHANGE_TIMESTAMP EFFECTIVE_TIMESTAMP_FROM,
-    (select min(CHANGE_TIMESTAMP) from mut mi where UUID=m.UUID and (CHANGE_TIMESTAMP>m.CHANGE_TIMESTAMP or (CHANGE_TIMESTAMP=m.CHANGE_TIMESTAMP and ROW_NR>m.ROW_NR))) EFFECTIVE_TIMESTAMP_TO
+    m.ROW_NR
   from
     mut m
-  where
-    -- terminations will only give EFFECTIVE_TIMESTAMP_TO value in previous row
-    m.MUTATION_TYPE<>'TERMINATE'
 )
+	select distinct
+        o_tml.TML_UUID,
+        o_tml.TML_PHASE,
+        o_tml.UUID,
+		coalesce(o_tml.CREATED_AT, (select CREATED_AT from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and CREATED_AT is not null order by EFFECTIVE_TIMESTAMP_FROM asc nulls last limit 1)) CREATED_AT,
+		coalesce(o_tml.CREATED_BY, (select CREATED_BY from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and CREATED_BY is not null order by EFFECTIVE_TIMESTAMP_FROM asc nulls last limit 1)) CREATED_BY,
+		coalesce(o_tml.LAST_MODIFIED_AT, (select LAST_MODIFIED_AT from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and LAST_MODIFIED_AT is not null order by EFFECTIVE_TIMESTAMP_FROM desc nulls last limit 1)) LAST_MODIFIED_AT,
+		coalesce(o_tml.LAST_MODIFIED_BY, (select LAST_MODIFIED_BY from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and LAST_MODIFIED_BY is not null order by EFFECTIVE_TIMESTAMP_FROM desc nulls last limit 1)) LAST_MODIFIED_BY,
+#foreach( $column in $columns )
+		coalesce(${column}, (select ${column} from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and ${column} is not null order by EFFECTIVE_TIMESTAMP_FROM desc nulls last limit 1)) ${column},
+#end
+        o_tml.EFFECTIVE_TIMESTAMP_FROM
+	from
+		tml o_tml
+	    left join DSM_CHANGELOG o_cl on o_tml.TML_UUID=o_cl.UUID
+    where o_tml.EFFECTIVE_TIMESTAMP_FROM is null or (
+            o_tml.EFFECTIVE_TIMESTAMP_FROM = (select max(EFFECTIVE_TIMESTAMP_FROM) from tml left join DSM_CHANGELOG cl on tml.TML_UUID=cl.UUID where tml.UUID=o_tml.UUID and cl.CHANGESET_UUID=o_cl.CHANGESET_UUID)
+            and o_tml.ROW_NR = (select max(ROW_NR) from tml left join DSM_CHANGELOG cl on tml.TML_UUID=cl.UUID where tml.UUID=o_tml.UUID and cl.CHANGESET_UUID=o_cl.CHANGESET_UUID and o_tml.EFFECTIVE_TIMESTAMP_FROM=tml.EFFECTIVE_TIMESTAMP_FROM)
+        )
+;
+
+------- CreateDDL statement separator -------
+create or replace view ${viewName} as
 select
   TML_UUID,
   TML_PHASE,
@@ -230,24 +259,8 @@ select
 #end
 #end
   EFFECTIVE_TIMESTAMP_FROM,
-  EFFECTIVE_TIMESTAMP_TO
-from (
-	select distinct
-		TML_UUID,
-		TML_PHASE,
-		UUID,
-		coalesce(CREATED_AT, (select CREATED_AT from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and CREATED_AT is not null order by EFFECTIVE_TIMESTAMP_FROM asc nulls last limit 1)) CREATED_AT,
-		coalesce(CREATED_BY, (select CREATED_BY from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and CREATED_BY is not null order by EFFECTIVE_TIMESTAMP_FROM asc nulls last limit 1)) CREATED_BY,
-		coalesce(LAST_MODIFIED_AT, (select LAST_MODIFIED_AT from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and LAST_MODIFIED_AT is not null order by EFFECTIVE_TIMESTAMP_FROM desc nulls last limit 1)) LAST_MODIFIED_AT,
-		coalesce(LAST_MODIFIED_BY, (select LAST_MODIFIED_BY from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and LAST_MODIFIED_BY is not null order by EFFECTIVE_TIMESTAMP_FROM desc nulls last limit 1)) LAST_MODIFIED_BY,
-#foreach( $column in $columns )
-		coalesce(${column}, (select ${column} from tml where UUID=o_tml.UUID and (EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM<=o_tml.EFFECTIVE_TIMESTAMP_FROM) and ${column} is not null order by EFFECTIVE_TIMESTAMP_FROM desc nulls last limit 1)) ${column},
-#end
-		EFFECTIVE_TIMESTAMP_FROM,
-		EFFECTIVE_TIMESTAMP_TO
-	from
-		tml o_tml
-)
-where EFFECTIVE_TIMESTAMP_FROM<>EFFECTIVE_TIMESTAMP_TO or EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_TO is null
+  (select min(EFFECTIVE_TIMESTAMP_FROM) from ${viewName}_base where UUID=tml.UUID and (tml.EFFECTIVE_TIMESTAMP_FROM is null or EFFECTIVE_TIMESTAMP_FROM>tml.EFFECTIVE_TIMESTAMP_FROM)) as EFFECTIVE_TIMESTAMP_TO
+from ${viewName}_base tml
+where TML_PHASE<>'T'
 ;
 #end

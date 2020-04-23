@@ -20,11 +20,13 @@ import com.github.gekoh.yagen.example.AircraftHst;
 import com.github.gekoh.yagen.example.BoardBookEntry;
 import com.github.gekoh.yagen.example.EngineType;
 import com.github.gekoh.yagen.hst.Operation;
+import com.github.gekoh.yagen.util.DBHelper;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.DateTime;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.persistence.Query;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.Iterator;
@@ -200,4 +202,32 @@ public class HistoryTest extends TestBase {
                 .getResultList()
                 .size());
     }
+
+    @Test
+    public void testDeleteRecord() {
+        em.getTransaction().begin();
+        em.persist(new Aircraft(EngineType.piston, "PA23", "D_GGGG", 11.28f, 8.27f, PRODUCTION_LOG));
+        em.persist(new Aircraft(EngineType.piston, "PA23", "D-GGGG", 11.28f, 8.27f, PRODUCTION_LOG));
+        em.flush();
+        em.getTransaction().commit();
+
+        em.getTransaction().begin();
+        DBHelper.injectSessionUser("deleter", em);
+        em.createNativeQuery("delete from AIRCRAFT where CALL_SIGN='D_GGGG'").executeUpdate();
+        em.flush();
+        Assert.assertEquals("deleter", DBHelper.injectSessionUser("anyuser", em));
+        em.getTransaction().commit();
+
+        final Query nativeQuery = em.createNativeQuery("select last_modified_by from AIRCRAFT_HST where OPERATION='D' and UUID=(select UUID from AIRCRAFT_HST where OPERATION='I' and CALL_SIGN=:callSign)");
+        Assert.assertEquals("SA (deleter)", nativeQuery.setParameter("callSign", "D_GGGG").getSingleResult());
+
+        em.getTransaction().begin();
+        em.createNativeQuery("delete from AIRCRAFT where CALL_SIGN='D-GGGG'").executeUpdate();
+        em.flush();
+        em.getTransaction().commit();
+
+        Assert.assertEquals("SA (" + DBHelper.getOsUser()+")", nativeQuery.setParameter("callSign", "D-GGGG").getSingleResult());
+
+    }
+
 }

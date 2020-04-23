@@ -25,7 +25,7 @@
 
     <groupId>com.github.gekoh.yagen</groupId>
     <artifactId>yagen-master</artifactId>
-    <version>3.2-SNAPSHOT</version>
+    <version>3.8-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>yaGen - yet another Generator</name>
     <description>

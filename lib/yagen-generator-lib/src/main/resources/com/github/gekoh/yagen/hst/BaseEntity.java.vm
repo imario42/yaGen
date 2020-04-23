@@ -64,14 +64,22 @@ public abstract class BaseEntity {
      * (currently we use the timestamp when the first entity of a transaction was changed,
      * but this timestamp then is used for all changed entities within the same transaction)
      */
+#if ( ${dateTimeType} && ${dateTimeType.length()} > 0 )
+    @Type(type = "${dateTimeType}")
+#elseif(${dateTimeType} != "")
     @Type(type = DateTimeType.TYPE)
+#end
     @Column(name = "TRANSACTION_TIMESTAMP", nullable = false)
     private DateTime transactionTimestamp;
 
     /**
      * Entity was invalidated at.
      */
+#if ( ${dateTimeType} && ${dateTimeType.length()} > 0 )
+    @Type(type = "${dateTimeType}")
+#elseif(${dateTimeType} != "")
     @Type(type = DateTimeType.TYPE)
+#end
     @Column(name = "INVALIDATED_AT", nullable = true)
     private DateTime invalidatedAt;
 

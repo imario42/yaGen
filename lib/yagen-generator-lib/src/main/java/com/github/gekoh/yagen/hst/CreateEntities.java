@@ -41,6 +41,8 @@ import javax.persistence.OneToMany;
 import javax.persistence.PrimaryKeyJoinColumn;
 import javax.persistence.Table;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,14 +70,29 @@ public class CreateEntities {
 
     public static final String HISTORY_ENTITY_SUFFIX = "Hst";
 
+    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+
     public static void main (String[] args) {
         if (args == null || args.length<1) {
-            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-xml-file-path> <orm2.0-file-out-path> [<orm1.0-file-out-path>]");
+            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-xml-file-path> <orm2.0-file-out-path> [<orm1.0-file-out-path>] [override-DateTimeType.class.name] [customFile-BaseEntity.java.vm-template]");
             return;
         }
         CreateEntities createEntities = new CreateEntities(new File(args[0]));
 
-        createEntities.writeBaseClasses(args[1]);
+        if (args.length > 5) {
+            createEntities.additionalProperties.put("dateTimeType", StringUtils.isNotEmpty(args[5]) ? args[5] : "");
+        }
+        Reader customBaseTemplate = null;
+        if (args.length > 6) {
+            try {
+                customBaseTemplate = new FileReader(args[6]);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                return;
+            }
+        }
+
+        createEntities.writeBaseClasses(args[1], customBaseTemplate);
 
         String[] persistenceXmlFiles = args[2].split(";[\\s]*");
         createEntities.processBaseEntityClasses(
@@ -85,7 +102,7 @@ public class CreateEntities {
         File orm20OutFile = new File(args[3]);
         createEntities.writeOrmFile(orm20OutFile, args[1], "2.0");
 
-        if (args.length > 4) {
+        if (args.length > 4 && StringUtils.isNotEmpty(args[4])) {
             File orm10OutFile = new File(args[4]);
             createEntities.writeOrmFile(orm10OutFile, args[1], "1.0");
         }
@@ -348,11 +365,13 @@ public class CreateEntities {
         return hstEntityClassName;
     }
 
-    private void writeBaseClasses(String baseClassPackageName) {
-        VelocityContext context = new VelocityContext();
+    private void writeBaseClasses(String baseClassPackageName, Reader customBaseTemplate) {
+        VelocityContext context = new VelocityContext(additionalProperties);
         context.put("baseClassPackageName", baseClassPackageName);
 
-        evaluate2JavaFile(baseClassPackageName+".BaseEntity", new StringReader(readClasspathResource("BaseEntity.java.vm")), context);
+        evaluate2JavaFile(baseClassPackageName+".BaseEntity",
+                customBaseTemplate == null ? new StringReader(readClasspathResource("BaseEntity.java.vm")) : customBaseTemplate,
+                context);
     }
 
     private void evaluate2JavaFile(String entityClassName, Reader template, VelocityContext context) {
