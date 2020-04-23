@@ -46,12 +46,12 @@ public class DefaultNamingStrategy implements NamingStrategy {
 
     @Override
     public Identifier toPhysicalTableName(Identifier name, JdbcEnvironment jdbcEnvironment) {
-        return name;
+        return name != null ? Identifier.toIdentifier(tableName(name.getText())) : null;
     }
 
     @Override
     public Identifier toPhysicalSequenceName(Identifier name, JdbcEnvironment jdbcEnvironment) {
-        return name;
+        return name != null ? Identifier.toIdentifier(sequenceName(name.getText())) : null;
     }
 
     @Override
@@ -60,8 +60,7 @@ public class DefaultNamingStrategy implements NamingStrategy {
     }
 
     public String tableName(String tableName) {
-        Identifier identifier = toPhysicalTableName(Identifier.toIdentifier(tableName), null);
-        return identifier != null ? identifier.getText() : null;
+        return tableName;
     }
 
     @Override

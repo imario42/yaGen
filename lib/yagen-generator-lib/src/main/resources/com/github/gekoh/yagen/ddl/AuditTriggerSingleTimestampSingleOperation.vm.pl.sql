@@ -5,9 +5,11 @@ for each row
 begin atomic
 #if( $last_modified_by )
   declare user_name varchar(35);
+#end
 
 if not(is_bypassed('${triggerName}')) then
 
+#if( $last_modified_by )
 #*
 -- re-/set the modifier / modifierdate values ONLY if no different modifier since last update
 -- has been set in incoming value - this enables entity listeners to work properly as their values will be kept

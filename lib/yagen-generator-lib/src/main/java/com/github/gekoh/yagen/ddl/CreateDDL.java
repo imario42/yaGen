@@ -858,7 +858,7 @@ public class CreateDDL {
 
     public String updateCreateConstraint(Dialect dialect, StringBuffer buf, String name, Table table, Constraint constraint) {
         NamingStrategy namingStrategy = getProfile().getNamingStrategy();
-        String newName = namingStrategy.constraintName(constraint, getEntityClassName(namingStrategy.tableName(table.getName())));
+        String newName = namingStrategy.constraintName(constraint, getEntityClassName(table.getName()));
 
         if (!name.equals(newName)) {
             String sqlCreate = buf.toString();
