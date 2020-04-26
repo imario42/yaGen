@@ -1119,15 +1119,12 @@ public class CreateDDL {
     private String createCascadeNullableTrigger(Dialect dialect, StringBuffer buf, String tableName, String colName, String template, String operation) {
         String triggerName = getProfile().getNamingStrategy().triggerName(getEntityClassName(tableName), tableName, colName, operation == null ? Constants._NNTR : "_NNT" + operation);
 
-        VelocityContext context = new VelocityContext();
-        context.put("dialect", dialect);
+        VelocityContext context = newVelocityContext(dialect);
         context.put("triggerName", triggerName);
         context.put("operation", operation);
         context.put("tableName", tableName);
         context.put("fkColumnName", colName);
         context.put("SYSTEM_SETTING", getProfile().getNamingStrategy().tableName("SYSTEM_SETTING"));
-
-        setNewOldVar(dialect, context);
 
         StringWriter wr = new StringWriter();
         mergeTemplateFromResource(template, wr, context);
@@ -1137,6 +1134,18 @@ public class CreateDDL {
         buf.append(STATEMENT_SEPARATOR).append(wr.toString()).append("\n/");
 
         return triggerName;
+    }
+
+    static VelocityContext newVelocityContext(Dialect dialect) {
+        VelocityContext context = new VelocityContext();
+        context.put("dialect", dialect);
+        context.put("is_oracle", isOracle(dialect));
+        context.put("is_postgres", isPostgreSql(dialect));
+        context.put("is_hsql", isHsqlDB(dialect));
+        context.put("is_oracleXE", isOracleXE(dialect));
+
+        setNewOldVar(dialect, context);
+        return context;
     }
 
     private String addDefaultValues(String sqlCreate, String nameLC) {
@@ -1202,7 +1211,7 @@ public class CreateDDL {
         int intPrec  = precision != null ? precision : 0;
         int intScale = scale != null ? scale : 0;
 
-        VelocityContext context = new VelocityContext();
+        VelocityContext context = newVelocityContext(dialect);
         context.put("timestampType", dialect.getTypeName(Types.TIMESTAMP, intLen, intPrec, intScale));
         context.put("varcharType", dialect.getTypeName(Types.VARCHAR, intLen, intPrec, intScale));
 
@@ -1228,9 +1237,8 @@ public class CreateDDL {
         Map<String, String> numericColumnDefinitions = findNumericColumnDefinitions(sqlCreate);
         Map<String, String> timestampColumnDefinitions = findTimestampColumnDefinitions(sqlCreate);
 
-        VelocityContext context = new VelocityContext();
+        VelocityContext context = newVelocityContext(dialect);
         context.put("changelogQueryString", changelog.changelogQueryString());
-        context.put("dialect", dialect);
         context.put("viewName", viewName);
         context.put("tableName", tableName);
         context.put("columns", columns);
@@ -1319,7 +1327,7 @@ public class CreateDDL {
 
         StringWriter wr = new StringWriter();
 
-        VelocityContext context = new VelocityContext();
+        VelocityContext context = newVelocityContext(dialect);
         context.put("liveTableName", nameLC);
         putIfExisting(context, "created_at", AuditInfo.CREATED_AT, columns);
         putIfExisting(context, "created_by", AuditInfo.CREATED_BY, columns);
@@ -1679,9 +1687,7 @@ public class CreateDDL {
     }
 
     private String getDeferredCheckConstraintFunction (Dialect dialect, String objectName, String constraintName, String tableName, String declaration, List<String> pkColumns) {
-        VelocityContext context = new VelocityContext();
-
-        context.put("dialect", dialect);
+        VelocityContext context = newVelocityContext(dialect);
         context.put("objectName", objectName);
         context.put("tableName", tableName);
         context.put("constraintName", constraintName);
@@ -1865,9 +1871,7 @@ public class CreateDDL {
     }
     
     private String getI18NDetailViewCreateString (Dialect dialect, String i18nDetailTblName, String baseEntityTableName, String i18nTblName, String i18nFKColName, Set<String> columns) {
-        VelocityContext context = new VelocityContext();
-
-        context.put("dialect", dialect);
+        VelocityContext context = newVelocityContext(dialect);
         context.put("i18nDetailTblName", i18nDetailTblName);
         context.put("i18nTblName", i18nTblName);
         context.put("baseEntityTableName", baseEntityTableName);
@@ -1888,10 +1892,9 @@ public class CreateDDL {
     }
 
     private void writeI18NDetailViewTriggerCreateString (Dialect dialect, StringBuffer buf, String i18nDetailTblName, String i18nTblName, String i18nFKColName, Set<String> columns) {
-        VelocityContext context = new VelocityContext();
+        VelocityContext context = newVelocityContext(dialect);
         String triggerBaseName = i18nDetailTblName.length() > MAX_LEN_OBJECT_NAME-4 ? i18nDetailTblName.substring(0, MAX_LEN_OBJECT_NAME-4) : i18nDetailTblName;
 
-        context.put("dialect", dialect);
         context.put("i18nDetailTblName", i18nDetailTblName);
         context.put("i18nTblName", i18nTblName);
         context.put("i18nFKColName", i18nFKColName);
@@ -1901,8 +1904,6 @@ public class CreateDDL {
         if (isOracle(dialect)) {
             String objectName = getProfile().getNamingStrategy().triggerName(triggerBaseName + "_TRG");
             context.put("objectName", objectName);
-
-            setNewOldVar(dialect, context);
 
             mergeTemplateFromResource("I18NDetailViewTrigger.vm.pl.sql", wr, context);
 
@@ -1914,8 +1915,6 @@ public class CreateDDL {
             String triggerName = getProfile().getNamingStrategy().triggerName(triggerBaseName + "_TRG");
             String objectName = triggerName + "_function";
             context.put("objectName", objectName);
-
-            setNewOldVar(dialect, context);
 
             mergeTemplateFromResource("I18NDetailViewTrigger.vm.pl.sql", wr, context);
 
@@ -1982,7 +1981,7 @@ public class CreateDDL {
                                          Map<String, Column> columnMap) {
         checkObjectName(dialect, objectName);
 
-        VelocityContext context = new VelocityContext();
+        VelocityContext context = newVelocityContext(dialect);
 
         Set<String> hstNoNullColumns = new HashSet<String>();
         TableConfig tableConfig = tblNameToConfig.get(tableName);
@@ -2000,7 +1999,6 @@ public class CreateDDL {
             context.put("MODIFIER_COLUMN_NAME_LENGTH", Constants.USER_NAME_LEN);
             context.put("MODIFIER_COLUMN_TYPE", dialect.getTypeName(Types.VARCHAR, Constants.USER_NAME_LEN, 0, 0));
         }
-        context.put("dialect", dialect);
         context.put("objectName", objectName);
         context.put("liveTableName", tableName);
         context.put("hstTableName", histTableName);
@@ -2013,8 +2011,6 @@ public class CreateDDL {
         context.put("blobCols", blobCols);
         context.put("columnMap", columnMap);
         context.put("varcharType", dialect.getTypeName(Types.VARCHAR, 64, 0, 0));
-
-        setNewOldVar(dialect, context);
 
         StringWriter wr = new StringWriter();
         mergeTemplateFromResource("HstTrigger.vm.pl.sql", wr, context);
@@ -2030,7 +2026,7 @@ public class CreateDDL {
                                             List<String> pkColumns,
                                             List<String> histRelevantCols,
                                             Map<String, Column> columnMap) {
-        VelocityContext context = new VelocityContext();
+        VelocityContext context = newVelocityContext(dialect);
 
         Set<String> nonPkColumns = getNonPkCols(columns, pkColumns);
 
