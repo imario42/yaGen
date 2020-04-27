@@ -10,6 +10,8 @@ import org.junit.Test;
 
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -23,6 +25,20 @@ public class GeneratedDdlTest {
 
     private EntityManagerFactory emf;
 
+    private ByteArrayOutputStream out;
+    private PrintStream originalOut;
+
+    private void interceptSystemOut() {
+        originalOut = System.out;
+        out = new ByteArrayOutputStream(16*1024);
+        System.setOut(new PrintStream(out));
+    }
+
+    private void resetSystemOut() {
+        System.setOut(originalOut);
+        System.out.println(out.toString());
+    }
+
     @After
     public void cleanup() {
         if (emf != null && emf.isOpen()) {
@@ -33,6 +49,8 @@ public class GeneratedDdlTest {
     @Test
     public void testGeneratedDdl() throws Exception {
         final Map<ObjectType, Map<String, String>> ddlMap = new HashMap<ObjectType, Map<String, String>>();
+
+        interceptSystemOut();
 
         DDLGenerator.Profile profile = new DDLGenerator.Profile("default");
         profile.addDuplexer(new Duplexer() {
@@ -50,6 +68,8 @@ public class GeneratedDdlTest {
         // create EMF to let Yagen do it's work
         this.emf = Persistence.createEntityManagerFactory("example-domain-test", null);
 
+        resetSystemOut();
+
         // assert operating_resources_htU contains "is null" conditions to update invalidated_at
         assertTriggerContains(ddlMap, "operating_resources_htU", ".*set invalidated_at([^;]+);.*",
          "board_book_uuid=old.board_book_uuid and",
@@ -60,6 +80,19 @@ public class GeneratedDdlTest {
          "operation <> 'd' and",
           "uuid=old.uuid and");
 
+        assertGeneratedDdlContainsAll(out,
+         "function get_audit_user(",
+         "table HST_CURRENT_TRANSACTION (",
+         "table HST_MODIFIED_ROW (",
+         "procedure set_transaction_timestamp("
+        );
+    }
+
+    private void assertGeneratedDdlContainsAll(ByteArrayOutputStream interceptedOut, String ... containedTexts) {
+        String generatedDdlLc = interceptedOut.toString().toLowerCase();
+        for (String containedText : containedTexts) {
+            Assert.assertTrue("Generated DDL should contain: " + containedText, generatedDdlLc.contains(containedText.toLowerCase()));
+        }
     }
 
     private void assertTriggerContains(Map<ObjectType, Map<String, String>> ddlMap, String name, String patternMatchOneGroup, String... contents) {
