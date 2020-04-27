@@ -489,10 +489,7 @@ public class DDLGenerator {
                 String classNameLC;
 
                 String template = super.getDdlText(dialect);
-                VelocityContext ctx = new VelocityContext();
-                ctx.put("dialect", dialect);
-
-                ctx.put("is_oracleXE", dialectClassLC.contains("oraclexe"));
+                VelocityContext ctx = CreateDDL.newVelocityContext(dialect);
 
                 String driverClassName = DBHelper.getDriverClassName(dialect);
                 if (driverClassName != null) {
@@ -503,6 +500,7 @@ public class DDLGenerator {
                     classNameLC = dialectClassLC;
                 }
 
+                // re-apply is_* flags possibly based on driver classname
                 ctx.put("is_postgres", classNameLC.contains("postgres"));
                 ctx.put("is_oracle", classNameLC.contains("oracle"));
                 ctx.put("is_hsql", classNameLC.contains("hsql"));
