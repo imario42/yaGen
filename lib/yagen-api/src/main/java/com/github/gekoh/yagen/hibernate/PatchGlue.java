@@ -380,6 +380,8 @@ public class PatchGlue {
                 i--;
                 continue;
             }
+            /* this would split comments as separate statements, which then would be suppressed as emptyStatements
+               maybe this could make sense if one can configure to suppress all comments, but I actually like the comments.
             matcher = COMMENT_PATTERN.matcher(stmt);
             if (matcher.find() && stmt.substring(0, matcher.start()).trim().length() < 1) {
                 statements.remove(i);
@@ -388,6 +390,7 @@ public class PatchGlue {
                     statements.add(i, stmt.substring(0, matcher.end()));
                 }
             }
+            */
         }
 
         return statements;

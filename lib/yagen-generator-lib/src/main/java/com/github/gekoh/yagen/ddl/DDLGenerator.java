@@ -485,31 +485,36 @@ public class DDLGenerator {
         @Override
         public String getDdlText(Dialect dialect) {
             if (text == null) {
-                String dialectClassLC = dialect.getClass().getSimpleName().toLowerCase();
-                String classNameLC;
-
                 String template = super.getDdlText(dialect);
+                // this ctx already contains is_* db flags derived from dialect
                 VelocityContext ctx = CreateDDL.newVelocityContext(dialect);
 
                 String driverClassName = DBHelper.getDriverClassName(dialect);
-                if (driverClassName != null) {
+                if (driverClassName != null && !"java.sql.Driver".equalsIgnoreCase(driverClassName)) {
                     ctx.put("driverClassName", driverClassName);
-                    classNameLC = driverClassName.toLowerCase();
+                    String classNameLC = driverClassName.toLowerCase();
+                    // re-apply is_* flags possibly based on driver classname
+                    validateSetDbFlagFromDialectAndDriver(ctx, "is_postgres", classNameLC.contains("postgres"), driverClassName, dialect);
+                    validateSetDbFlagFromDialectAndDriver(ctx, "is_oracle", classNameLC.contains("oracle"), driverClassName, dialect);
+                    validateSetDbFlagFromDialectAndDriver(ctx,"is_hsql", classNameLC.contains("hsql"), driverClassName, dialect);
                 }
-                else {
-                    classNameLC = dialectClassLC;
-                }
-
-                // re-apply is_* flags possibly based on driver classname
-                ctx.put("is_postgres", classNameLC.contains("postgres"));
-                ctx.put("is_oracle", classNameLC.contains("oracle"));
-                ctx.put("is_hsql", classNameLC.contains("hsql"));
 
                 StringWriter wr = new StringWriter();
                 Velocity.evaluate(ctx, wr, url != null ? url.toString() : ddlText, template);
                 text = wr.toString();
             }
             return text;
+        }
+
+        private void validateSetDbFlagFromDialectAndDriver(VelocityContext ctx, String ctxKey, boolean dbTypeFromDriverClassFlag, String driverClassName, Dialect dialect) {
+            Object ctxFlag = ctx.get(ctxKey);
+            if (ctxFlag instanceof Boolean) {
+                if (!ctxFlag.equals(dbTypeFromDriverClassFlag)) {
+                    throw new IllegalStateException("Error validating '"+ctxKey+"': driver class " + driverClassName + " leads to different DB type recognition than the given dialect: " + dialect);
+                }
+            } else {
+                ctx.put(ctxKey, dbTypeFromDriverClassFlag);
+            }
         }
     }
 }
