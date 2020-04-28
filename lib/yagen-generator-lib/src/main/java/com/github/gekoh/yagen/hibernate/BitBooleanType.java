@@ -32,7 +32,6 @@ import java.io.Serializable;
  * Usage: create custom {@link Dialect} subclass where you
  * override {@link Dialect#contributeTypes(TypeContributions, ServiceRegistry)} and add this type, e.g.:
  * <pre>
- * @Override
  * public void contributeTypes(TypeContributions typeContributions, ServiceRegistry serviceRegistry) {
  *     super.contributeTypes(typeContributions, serviceRegistry);
  *     typeContributions.contributeType(new BitBooleanType());
