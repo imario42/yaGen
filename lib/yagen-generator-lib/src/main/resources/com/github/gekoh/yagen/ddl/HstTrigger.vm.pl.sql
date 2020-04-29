@@ -26,8 +26,9 @@ declare
 #end  hst_table_name ${varcharType}:=upper('${liveTableName}');
 begin
 
+  if is_bypassed(upper('${objectName}')) = 0
 #if( !$is_postgres )
-  if inserting or deleting
+     and (inserting or deleting
 #foreach( $column in $histRelevantCols )
   or ((${new}.$column is null and ${old}.$column is not null) or
       (${new}.$column is not null and ${old}.$column is null) or
@@ -37,9 +38,9 @@ begin
       ${new}.$column!=${old}.$column)
 #end
 #end
-  then
-
+    )
 #end
+  then
     begin
       select transaction_timestamp into #if($is_postgres)strict #{end}transaction_timestamp_found
       from HST_CURRENT_TRANSACTION

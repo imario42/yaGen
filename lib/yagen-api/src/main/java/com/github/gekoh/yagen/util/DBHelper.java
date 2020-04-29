@@ -75,7 +75,85 @@ public class DBHelper {
         return objectName.matches((String) configurationValues.get(PROPERTY_SKIP_MODIFICATION));
     }
 
-    public static boolean isBypassed(String objectName) {
+    public static void setBypass(String objectRegex, EntityManager em) {
+        if (objectRegex == null) {
+            objectRegex = "^.*$";
+        }
+        setSessionVariable(PROPERTY_BYPASS_REGEX, objectRegex, em);
+    }
+
+    public static void removeBypass(EntityManager em) {
+        removeSessionVariable(PROPERTY_BYPASS_REGEX, em);
+    }
+
+    public static void removeSessionVariable(String name, EntityManager em) {
+        // postgres drops the temporary table when the session closes, so probably it's not even existing
+        if (isPostgres(getDriverClassName(em))) {
+            em.createNativeQuery("do $$\n" +
+                    "begin\n" +
+                    "  delete from SESSION_VARIABLES\n" +
+                    "  where name=:name;\n" +
+                    "exception when others then null;\n" +
+                    "end $$;")
+                    .setParameter("name", name)
+                    .executeUpdate();
+            return;
+        }
+
+        em.createNativeQuery("delete from SESSION_VARIABLES where name=:name")
+                .setParameter("name", name)
+                .executeUpdate();
+    }
+
+    public static void setSessionVariable(String name, String value, EntityManager em) {
+
+        // postgres drops the temporary table when the session closes, so probably we have to create it beforehand
+        if (isPostgres(getDriverClassName(em))) {
+            em.createNativeQuery("do $$\n" +
+                    "declare affected_rows integer;\n" +
+                    "begin\n" +
+                    "  begin\n" +
+                    "    with stmt as (\n" +
+                    "      update SESSION_VARIABLES\n" +
+                    "        set value=:value\n" +
+                    "      where name=:name\n" +
+                    "      returning 1\n" +
+                    "    )\n" +
+                    "    select count(*) into affected_rows\n" +
+                    "    from stmt;\n" +
+                    "    if affected_rows=1 then\n" +
+                    "      return;\n" +
+                    "    end if;\n" +
+                    "  exception when others then\n" +
+                    "    create temporary table SESSION_VARIABLES (\n" +
+                    "      NAME VARCHAR(255),\n" +
+                    "      VALUE VARCHAR(255),\n" +
+                    "      constraint SESS_VAR_PK primary key (NAME)\n" +
+                    "    ) ON COMMIT PRESERVE ROWS;\n" +
+                    "  end;\n" +
+                    "  insert into SESSION_VARIABLES (name, value)\n" +
+                    "    values (:name, :value);\n" +
+                    "end $$")
+                    .setParameter("name", name)
+                    .setParameter("value", value)
+                    .executeUpdate();
+            return;
+        }
+
+        int affected = em.createNativeQuery("update SESSION_VARIABLES set VALUE=:value where NAME=:name")
+                .setParameter("name", name)
+                .setParameter("value", value)
+                .executeUpdate();
+
+        if (affected < 1) {
+            em.createNativeQuery("insert into SESSION_VARIABLES (name, value) values (:name, :value)")
+                    .setParameter("name", name)
+                    .setParameter("value", value)
+                    .executeUpdate();
+        }
+    }
+
+    public static boolean isStaticallyBypassed(String objectName) {
         final String bypass = System.getProperty(PROPERTY_BYPASS);
         if (bypass != null) {
             return true;
@@ -133,7 +211,7 @@ public class DBHelper {
 
     public static String injectSessionUser(String user, EntityManager em) {
         String prevUser = null;
-        if (isHsqlDb(em)) {
+        if (isHsqlDb(getDriverClassName(em))) {
             try {
                 prevUser = (String) em.createNativeQuery("select VALUE from SESSION_VARIABLES where NAME='CLIENT_IDENTIFIER'").getSingleResult();
                 em.createNativeQuery("update SESSION_VARIABLES set VALUE=:user where NAME='CLIENT_IDENTIFIER'").setParameter("user", user).executeUpdate();
@@ -149,14 +227,28 @@ public class DBHelper {
         return prevUser;
     }
 
-    private static boolean isHsqlDb(EntityManager em) {
-        return em.unwrap(Session.class).doReturningWork(new ReturningWork<Boolean>() {
-            public Boolean execute(Connection connection) throws SQLException {
-                String driverName = connection.getMetaData().getDriverName();
+    public static boolean isHsqlDb(Dialect dialect) {
+        return isHsqlDb(getDriverClassName(dialect));
+    }
 
-                return driverName != null && driverName.toLowerCase().contains("hsql");
-            }
-        });
+    public static boolean isHsqlDb(String driverClassName) {
+        return driverClassName.toLowerCase().contains("hsql");
+    }
+
+    public static boolean isPostgres(Dialect dialect) {
+        return isPostgres(getDriverClassName(dialect));
+    }
+
+    public static boolean isPostgres(String driverClassName) {
+        return driverClassName.toLowerCase().contains("postgres");
+    }
+
+    public static boolean isOracle(Dialect dialect) {
+        return isOracle(getDriverClassName(dialect));
+    }
+
+    public static boolean isOracle(String driverClassName) {
+        return driverClassName.toLowerCase().contains("oracle");
     }
 
     public static Metadata getMetadata(Dialect dialect) {
@@ -165,6 +257,14 @@ public class DBHelper {
             return null;
         }
         return (Metadata) metadataObj;
+    }
+
+    public static String getDriverClassName(EntityManager em) {
+        return em.unwrap(Session.class).doReturningWork(new ReturningWork<String>() {
+            public String execute(Connection connection) throws SQLException {
+                return connection.getMetaData().getDriverName();
+            }
+        });
     }
 
     public static String getDriverClassName(Dialect dialect) {

@@ -77,6 +77,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static com.github.gekoh.yagen.hibernate.PatchGlue.STATEMENT_SEPARATOR;
+import static com.github.gekoh.yagen.util.DBHelper.isHsqlDb;
+import static com.github.gekoh.yagen.util.DBHelper.isOracle;
+import static com.github.gekoh.yagen.util.DBHelper.isPostgres;
 
 /**
  * @author Georg Kohlweiss
@@ -513,7 +516,7 @@ public class CreateDDL {
                     buf.append("-- creating trigger for inserting history rows from table ").append(tableName).append("\n")
                             .append(getOracleHistTriggerSql(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols, blobCols, columnMap)).append("\n/");
                 }
-                else if (isPostgreSql(dialect)) {
+                else if (isPostgres(dialect)) {
                     buf.append(STATEMENT_SEPARATOR)
                             .append(getPostgreSQLHistTriggerFunction(dialect, liveTableName, histTableName, histColNameLC, columnNames, pkCols, historyRelevantCols, blobCols, columnMap)).append("\n/");
 
@@ -674,7 +677,7 @@ public class CreateDDL {
         ddl.append("-- not directly creating table '").append(tblName).append("', layered table structure requested");
 
         viewSource.append("\ncreate ");
-        if (isOracle(dialect) || isPostgreSql(dialect)) {
+        if (isOracle(dialect) || isPostgres(dialect)) {
             viewSource.append("or replace ");
         }
         viewSource.append("view ").append(tblName).append(" (").append(colList);
@@ -795,6 +798,10 @@ public class CreateDDL {
                     continue;
                 }
                 String constraintName = getProfile().getNamingStrategy().constraintName(uniqueConstraint);
+                if (uniqueConstraint.functionBased() && supportsFunctionBased(dialect)) {
+                    LOG.warn("unable to create UniqueConstraint '{}' since function based constraints are not available on target RDBMS", constraintName);
+                    continue;
+                }
                 if (StringUtils.isEmpty(constraintName)) {
                     throw new IllegalArgumentException("please specify an unique constraint name in annotation UniqueConstraint for table " + tableName);
                 }
@@ -834,6 +841,10 @@ public class CreateDDL {
         String indexName = getProfile().getNamingStrategy().indexName(index);
         if (StringUtils.isEmpty(indexName)) {
             throw new IllegalArgumentException("please specify an index name in annotation Index for table " + tableConfig.getTableName());
+        }
+        if (index.functionBased() && supportsFunctionBased(dialect)) {
+            LOG.warn("unable to create Index '{}' since function based indexes are not available on target RDBMS", indexName);
+            return;
         }
         StringBuilder objDdl = new StringBuilder();
         objDdl.append("create index ").append(indexName);
@@ -1101,7 +1112,7 @@ public class CreateDDL {
         if (isOracle(dialect)) {
             createCascadeNullableTrigger(dialect, buf, tableName, colName, "CascadeNullableTrigger.vm.pl.sql", null);
         }
-        else if (isPostgreSql(dialect)) {
+        else if (isPostgres(dialect)) {
             String triggerName = createCascadeNullableTrigger(dialect, buf, tableName, colName, "CascadeNullableTrigger.vm.pl.sql", null);
 
             buf.append(STATEMENT_SEPARATOR)
@@ -1110,7 +1121,7 @@ public class CreateDDL {
                     .append("for each row\n")
                     .append("execute procedure ").append(triggerName).append("()");
         }
-        else if (isHsqlDB(dialect)) {
+        else if (isHsqlDb(dialect)) {
             createCascadeNullableTrigger(dialect, buf, tableName, colName, "hsqldb/CascadeNullableTrigger.vm.pl.sql", "I");
             createCascadeNullableTrigger(dialect, buf, tableName, colName, "hsqldb/CascadeNullableTrigger.vm.pl.sql", "U");
         }
@@ -1140,8 +1151,8 @@ public class CreateDDL {
         VelocityContext context = new VelocityContext();
         context.put("dialect", dialect);
         context.put("is_oracle", isOracle(dialect));
-        context.put("is_postgres", isPostgreSql(dialect));
-        context.put("is_hsql", isHsqlDB(dialect));
+        context.put("is_postgres", isPostgres(dialect));
+        context.put("is_hsql", isHsqlDb(dialect));
         context.put("is_oracleXE", isOracleXE(dialect));
 
         setNewOldVar(dialect, context);
@@ -1320,7 +1331,7 @@ public class CreateDDL {
             return;
         }
 
-        if (isPostgreSql(dialect)) {
+        if (isPostgres(dialect)) {
             writePostgreSqlAuditTrigger(dialect, buf, nameLC);
             return;
         }
@@ -1622,7 +1633,7 @@ public class CreateDDL {
                         throw new IllegalArgumentException("please specify a check constraint name in annotation CheckConstraint for table " + nameLC);
                     }
                     checkObjectName(dialect, constraintName);
-                    if (checkConstraint.initiallyDeferred() && isPostgreSql(dialect)) {
+                    if (checkConstraint.initiallyDeferred() && isPostgres(dialect)) {
                         String objectName = constraintName + "_FCT";
                         additionalObjects.append(STATEMENT_SEPARATOR)
                                 .append(getDeferredCheckConstraintFunction(dialect, objectName, constraintName, nameLC, String.format(checkConstraint.declaration(), "t."), pkColumns))
@@ -1649,6 +1660,10 @@ public class CreateDDL {
                         continue;
                     }
                     String constraintName = getProfile().getNamingStrategy().constraintName(uniqueConstraint);
+                    if (uniqueConstraint.functionBased() && supportsFunctionBased(dialect)) {
+                        LOG.warn("unable to create UniqueConstraint '{}' since function based constraints are not available on target RDBMS", constraintName);
+                        continue;
+                    }
                     if (StringUtils.isEmpty(constraintName)) {
                         throw new IllegalArgumentException("please specify a unique constraint name in annotation UniqueConstraint on table " + nameLC);
                     }
@@ -1911,7 +1926,7 @@ public class CreateDDL {
 
             buf.append(STATEMENT_SEPARATOR).append(wr.toString()).append("\n/\n");
         }
-        else if (isPostgreSql(dialect)) {
+        else if (isPostgres(dialect)) {
             String triggerName = getProfile().getNamingStrategy().triggerName(triggerBaseName + "_TRG");
             String objectName = triggerName + "_function";
             context.put("objectName", objectName);
@@ -2356,40 +2371,28 @@ public class CreateDDL {
     }
 
     private static String getNameAndIfExistsWhenSupported(Dialect dialect, String objectName) {
-        if (supportsDropIfExists(dialect)) {
-            if (isPostgreSql(dialect)) {
-                return "if exists " + objectName;
-            }
+        if (dialect.supportsIfExistsBeforeTableName()) {
+            return "if exists " + objectName;
+        }
+        if (dialect.supportsIfExistsAfterTableName()) {
             return objectName + " if exists";
         }
         return objectName;
-    }
-
-    private static boolean isPostgreSql(Dialect dialect) {
-        return dialect.getClass().getSimpleName().toLowerCase().contains("postgres");
-    }
-
-    private static boolean isHsqlDB(Dialect dialect) {
-        return dialect.getClass().getName().toLowerCase().contains("hsql");
-    }
-
-    private static boolean isOracle(Dialect dialect) {
-        return dialect.getClass().getSimpleName().toLowerCase().contains("oracle");
     }
 
     private static boolean isOracleXE(Dialect dialect) {
         return dialect.getClass().getSimpleName().toLowerCase().contains("oraclexe");
     }
 
+    private static boolean supportsFunctionBased(Dialect dialect) {
+        return !isHsqlDb(dialect);
+    }
+
     private static boolean supportsDeferrable(Dialect dialect) {
-        return !isHsqlDB(dialect);
+        return !isHsqlDb(dialect);
     }
 
     private static boolean supportsPartitioning(Dialect dialect) {
         return isOracle(dialect) && !isOracleXE(dialect);
-    }
-
-    private static boolean supportsDropIfExists(Dialect dialect) {
-        return !isOracle(dialect);
     }
 }

@@ -26,7 +26,7 @@ begin atomic
   set hst_uuid_used=public.sys_guid();
   set hst_table_name=upper('${liveTableName}');
 
-if not(is_bypassed('${triggerName}')) then
+if not(is_statically_bypassed('${triggerName}')) and is_bypassed(upper('${triggerName}')) = 0 then
 
 #if (${operation} == 'U')
 --/* TRYING to reactivate detection of changes (WAS: need to disable detection of changes, somehow this causes a NPE within HSQLDB, only god knows why)

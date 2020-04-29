@@ -13,6 +13,32 @@ begin
   return user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end;
 end;
 /
+
+------- CreateDDL statement separator -------
+create global temporary table SESSION_VARIABLES (
+    NAME VARCHAR(255),
+    VALUE VARCHAR(255),
+    constraint SESS_VAR_PK primary key (NAME)
+) ON COMMIT PRESERVE ROWS;
+
+------- CreateDDL statement separator -------
+create or replace function is_bypassed(object_name in varchar2) return number is
+  bypass_regex varchar2(255);
+begin
+  select value into bypass_regex
+  from SESSION_VARIABLES
+  where name='yagen.bypass.regex' and REGEXP_LIKE(object_name, value);
+
+  if bypass_regex is null then
+    return 0;
+  end if;
+
+  return 1;
+exception when no_data_found then
+  return 0;
+end;
+/
+
 #end
 
 #if( $is_hsql )
@@ -30,8 +56,8 @@ EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.getSysContext'
 
 ------- CreateDDL statement separator -------
 create global temporary table SESSION_VARIABLES (
-    NAME VARCHAR(50),
-    VALUE VARCHAR(50),
+    NAME VARCHAR(255),
+    VALUE VARCHAR(255),
     constraint SESS_VAR_PK primary key (NAME)
 );
 
@@ -69,11 +95,30 @@ CREATE FUNCTION regexp_like(s VARCHAR(4000), regexp VARCHAR(500), flags VARCHAR(
 ;
 
 ------- CreateDDL statement separator -------
-CREATE FUNCTION is_bypassed(object_name VARCHAR(100))
+CREATE FUNCTION is_statically_bypassed(object_name VARCHAR(100))
   RETURNS BOOLEAN
   LANGUAGE JAVA DETERMINISTIC NO SQL
-  EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.isBypassed'
+  EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.isStaticallyBypassed'
 ;
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION is_bypassed(object_name VARCHAR(100))
+  RETURNS NUMERIC
+begin atomic
+  declare bypass_regex VARCHAR(255);
+  declare exit handler for not found
+    return 0;
+
+  select value into bypass_regex
+  from SESSION_VARIABLES
+  where name='yagen.bypass.regex';
+
+  if REGEXP_MATCHES(object_name, bypass_regex) then
+    return 1;
+  end if;
+
+  return 0;
+end;
 
 ------- CreateDDL statement separator -------
 CREATE FUNCTION get_audit_user(client_user_in VARCHAR(50)) RETURNS varchar(50)
@@ -94,6 +139,14 @@ end;
 #end
 
 #if( $is_postgres )
+
+------- CreateDDL statement separator -------
+create temporary table SESSION_VARIABLES (
+    NAME VARCHAR(255),
+    VALUE VARCHAR(255),
+    constraint SESS_VAR_PK primary key (NAME)
+) ON COMMIT PRESERVE ROWS;
+
 ------- CreateDDL statement separator -------
 /*
   java execution requires a certain postgres setup
@@ -132,6 +185,23 @@ begin
              '^.*CN=([^, ]*).*$', '\1');
 end;
 $$ LANGUAGE PLPGSQL;
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION is_bypassed(object_name varchar) RETURNS NUMERIC AS $$
+declare bypass_regex varchar(255);
+begin
+  select value into bypass_regex
+  from SESSION_VARIABLES
+  where name='yagen.bypass.regex';
+
+  if REGEXP_MATCHES(object_name, bypass_regex) is not null then
+    return 1;
+  end if;
+  return 0;
+exception when others then
+  return 0;
+end; $$
+LANGUAGE PLPGSQL;
 
 ------- CreateDDL statement separator -------
 CREATE VIEW dual AS

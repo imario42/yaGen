@@ -5,7 +5,7 @@ for each row
 begin atomic
   declare user_name varchar(${MODIFIER_COLUMN_NAME_LENGTH});
 
-if not(is_bypassed('${triggerName}')) then
+if not(is_statically_bypassed('${triggerName}')) and is_bypassed(upper('${triggerName}')) = 0 then
 
 #if( ${operation} == 'I' )
     set user_name = case when new.${created_at} is not null then new.${created_by} end;

@@ -309,7 +309,6 @@ public class PatchGlue {
         for (String singleSql : splitSQL(sqlCommand)) {
             SqlStatement ddlStmt = prepareDDL(singleSql);
             wrapArr[0] = ddlStmt.getSql();
-            boolean emptyStatement = isEmptyStatement(singleSql);
             try {
                 GenerationTarget[] passedExporters = new GenerationTarget[1];
                 for (GenerationTarget exporter : targets) {
@@ -320,12 +319,10 @@ public class PatchGlue {
                     else if (exporter.getClass() == GenerationTargetToStdout.class) {
                         generatorStdoutDelimiter.set(exporter, ddlStmt.getDelimiter());
                     }
-                    if (!emptyStatement) {
-                        schemaExportPerform.invoke(null, new Object[]{wrapArr, formatter, options, passedExporters});
-                    }
+                    schemaExportPerform.invoke(null, new Object[]{wrapArr, formatter, options, passedExporters});
                 }
             } catch (InvocationTargetException e) {
-                if (e.getCause() instanceof SQLException && !emptyStatement) {
+                if (e.getCause() instanceof SQLException) {
                     LOG.warn("failed executing sql: {}", singleSql);
                     LOG.warn("failure: {}", e.getCause().getMessage());
                 }
@@ -380,8 +377,6 @@ public class PatchGlue {
                 i--;
                 continue;
             }
-            /* this would split comments as separate statements, which then would be suppressed as emptyStatements
-               maybe this could make sense if one can configure to suppress all comments, but I actually like the comments.
             matcher = COMMENT_PATTERN.matcher(stmt);
             if (matcher.find() && stmt.substring(0, matcher.start()).trim().length() < 1) {
                 statements.remove(i);
@@ -390,7 +385,6 @@ public class PatchGlue {
                     statements.add(i, stmt.substring(0, matcher.end()));
                 }
             }
-            */
         }
 
         return statements;

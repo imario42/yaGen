@@ -7,7 +7,7 @@ begin atomic
   declare user_name varchar(35);
 #end
 
-if not(is_bypassed('${triggerName}')) then
+if not(is_statically_bypassed('${triggerName}')) and is_bypassed(upper('${triggerName}')) = 0 then
 
 #if( $last_modified_by )
 #*
