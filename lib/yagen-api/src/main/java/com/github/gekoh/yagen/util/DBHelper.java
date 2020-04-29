@@ -20,6 +20,7 @@ import org.hibernate.Session;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.registry.internal.StandardServiceRegistryImpl;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.internal.SessionFactoryImpl;
 import org.hibernate.jdbc.ReturningWork;
 import org.hibernate.service.ServiceRegistry;
 
@@ -88,7 +89,7 @@ public class DBHelper {
 
     public static void removeSessionVariable(String name, EntityManager em) {
         // postgres drops the temporary table when the session closes, so probably it's not even existing
-        if (isPostgres(getDriverClassName(em))) {
+        if (isPostgres(getDialect(em))) {
             em.createNativeQuery("do $$\n" +
                     "begin\n" +
                     "  delete from SESSION_VARIABLES\n" +
@@ -108,7 +109,7 @@ public class DBHelper {
     public static void setSessionVariable(String name, String value, EntityManager em) {
 
         // postgres drops the temporary table when the session closes, so probably we have to create it beforehand
-        if (isPostgres(getDriverClassName(em))) {
+        if (isPostgres(getDialect(em))) {
             em.createNativeQuery("do $$\n" +
                     "declare affected_rows integer;\n" +
                     "begin\n" +
@@ -211,7 +212,7 @@ public class DBHelper {
 
     public static String injectSessionUser(String user, EntityManager em) {
         String prevUser = null;
-        if (isHsqlDb(getDriverClassName(em))) {
+        if (isHsqlDb(getDialect(em))) {
             try {
                 prevUser = (String) em.createNativeQuery("select VALUE from SESSION_VARIABLES where NAME='CLIENT_IDENTIFIER'").getSingleResult();
                 em.createNativeQuery("update SESSION_VARIABLES set VALUE=:user where NAME='CLIENT_IDENTIFIER'").setParameter("user", user).executeUpdate();
@@ -228,27 +229,20 @@ public class DBHelper {
     }
 
     public static boolean isHsqlDb(Dialect dialect) {
-        return isHsqlDb(getDriverClassName(dialect));
-    }
-
-    public static boolean isHsqlDb(String driverClassName) {
-        return driverClassName.toLowerCase().contains("hsql");
+        return dialectMatches(dialect, "hsql");
     }
 
     public static boolean isPostgres(Dialect dialect) {
-        return isPostgres(getDriverClassName(dialect));
-    }
-
-    public static boolean isPostgres(String driverClassName) {
-        return driverClassName.toLowerCase().contains("postgres");
+        return dialectMatches(dialect, "postgres");
     }
 
     public static boolean isOracle(Dialect dialect) {
-        return isOracle(getDriverClassName(dialect));
+        return dialectMatches(dialect, "oracle");
     }
 
-    public static boolean isOracle(String driverClassName) {
-        return driverClassName.toLowerCase().contains("oracle");
+    private static boolean dialectMatches(Dialect dialect, String subStr) {
+        String driverClassName = getDriverClassName(dialect);
+        return driverClassName != null ? driverClassName.toLowerCase().contains(subStr) : dialect.getClass().getName().toLowerCase().contains(subStr);
     }
 
     public static Metadata getMetadata(Dialect dialect) {
@@ -265,6 +259,15 @@ public class DBHelper {
                 return connection.getMetaData().getDriverName();
             }
         });
+    }
+
+    public static Dialect getDialect(EntityManager em) {
+        if (em instanceof Session) {
+            final Session session = (Session) em.getDelegate();
+            final SessionFactoryImpl sessionFactory = (SessionFactoryImpl) session.getSessionFactory();
+            return sessionFactory.getJdbcServices().getDialect();
+        }
+        return null;
     }
 
     public static String getDriverClassName(Dialect dialect) {

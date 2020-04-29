@@ -493,9 +493,9 @@ public class DDLGenerator {
                 if (driverClassName != null && !"java.sql.Driver".equalsIgnoreCase(driverClassName)) {
                     ctx.put("driverClassName", driverClassName);
                     // re-apply is_* flags possibly based on driver classname
-                    validateSetDbFlagFromDialectAndDriver(ctx, "is_postgres", DBHelper.isPostgres(driverClassName), driverClassName, dialect);
-                    validateSetDbFlagFromDialectAndDriver(ctx, "is_oracle", DBHelper.isOracle(driverClassName), driverClassName, dialect);
-                    validateSetDbFlagFromDialectAndDriver(ctx,"is_hsql", DBHelper.isHsqlDb(driverClassName), driverClassName, dialect);
+                    validateSetDbFlagFromDialectAndDriver(ctx, "is_postgres", DBHelper.isPostgres(dialect), driverClassName, dialect);
+                    validateSetDbFlagFromDialectAndDriver(ctx, "is_oracle", DBHelper.isOracle(dialect), driverClassName, dialect);
+                    validateSetDbFlagFromDialectAndDriver(ctx,"is_hsql", DBHelper.isHsqlDb(dialect), driverClassName, dialect);
                 }
 
                 StringWriter wr = new StringWriter();

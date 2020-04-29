@@ -35,6 +35,7 @@ import org.hibernate.mapping.Table;
 import org.hibernate.tool.schema.internal.Helper;
 import org.hibernate.tool.schema.internal.SchemaCreatorImpl;
 import org.hibernate.tool.schema.internal.exec.GenerationTarget;
+import org.hibernate.tool.schema.internal.exec.GenerationTargetToDatabase;
 import org.hibernate.tool.schema.internal.exec.GenerationTargetToScript;
 import org.hibernate.tool.schema.internal.exec.GenerationTargetToStdout;
 import org.hibernate.tool.schema.spi.ExecutionOptions;
@@ -318,6 +319,9 @@ public class PatchGlue {
                     }
                     else if (exporter.getClass() == GenerationTargetToStdout.class) {
                         generatorStdoutDelimiter.set(exporter, ddlStmt.getDelimiter());
+                    }
+                    else if (exporter.getClass() == GenerationTargetToDatabase.class && isEmptyStatement(ddlStmt.getSql())) {
+                        continue;
                     }
                     schemaExportPerform.invoke(null, new Object[]{wrapArr, formatter, options, passedExporters});
                 }
