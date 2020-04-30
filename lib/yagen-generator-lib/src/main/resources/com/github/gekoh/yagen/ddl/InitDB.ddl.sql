@@ -148,19 +148,24 @@ create temporary table SESSION_VARIABLES (
 ) ON COMMIT PRESERVE ROWS;
 
 ------- CreateDDL statement separator -------
-/*
-  java execution requires a certain postgres setup
-  1) java initialized
-    - installed package (e.g. postgresql-9.1-pljava-gcj)
-    - set trusted language (UPDATE pg_language SET lanpltrusted = true WHERE lanname LIKE 'java';)
-  2) DBHelper jar to be loaded
-    - e.g.: select sqlj.install_jar('file:///<path-to>.jar', 'dbhelper', true);
-  3) classpath set
-    - e.g.: select sqlj.set_classpath('public', 'dbhelper');
- */
-CREATE FUNCTION sys_guid() RETURNS VARCHAR
-AS 'com.github.gekoh.yagen.util.DBHelper.createUUID'
-LANGUAGE java;
+CREATE EXTENSION "uuid-ossp";
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION sys_guid() RETURNS VARCHAR AS $$
+declare
+	guid varchar;
+begin
+    SELECT upper(REPLACE(uuid_generate_v4()::varchar, '-', '')) into guid;
+    return guid;
+end;
+$$ LANGUAGE PLPGSQL;
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION raise_application_error(code int, message varchar) RETURNS void AS $$
+begin
+    raise exception '%: %', code, message;
+end;
+$$ LANGUAGE PLPGSQL;
 
 ------- CreateDDL statement separator -------
 CREATE FUNCTION sys_context(namespace varchar,parameter varchar) RETURNS VARCHAR AS $$
