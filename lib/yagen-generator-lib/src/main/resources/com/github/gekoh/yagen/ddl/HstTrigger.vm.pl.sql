@@ -78,7 +78,7 @@ begin
             invalidated_at is null;
 
         if sql%rowcount<>1 then
-          raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
+          #if( $is_postgres )perform #{end}raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
 #foreach( $pkColumn in $pkColumns )
               ||' ${pkColumn}='''|| ${old}.${pkColumn} ||''''
 #end
@@ -114,11 +114,10 @@ begin
         values (#foreach( $pkColumn in $pkColumns ) ${old}.${pkColumn},#end #foreach( $column in $nonPkColumns ) #if( $column == $MODIFIER_COLUMN_NAME ) hst_modified_by,#else #if( $column != $histColName )#if( $noNullColumns.contains($column) ) ${old}.$column#else null#end,#end #end #end hst_uuid_used, hst_operation, transaction_timestamp_found);
       end if;
     end if;
+  end if;
 
 #if( $is_postgres )
   return new;
-#else
-  end if;
 #end
 end;#if( $is_postgres )
 

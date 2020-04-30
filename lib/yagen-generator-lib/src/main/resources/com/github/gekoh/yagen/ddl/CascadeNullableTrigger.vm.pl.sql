@@ -17,7 +17,7 @@ begin
   exception when others then null;
   end;
   if ${new}.${fkColumnName} is null and null_permitted_setting=0 then
-    #if( $is_postgres )RAISE EXCEPTION #{else}raise_application_error(-20001, #{end}'the relation ${tableName}.${fkColumnName} is only nullable during cleanup job if target entity is deleted'#if( !$is_postgres ))#{end};
+    #if( $is_postgres )perform #{end}raise_application_error(-20001, 'the relation ${tableName}.${fkColumnName} is only nullable during cleanup job if target entity is deleted');
   end if;
 
   end if;
