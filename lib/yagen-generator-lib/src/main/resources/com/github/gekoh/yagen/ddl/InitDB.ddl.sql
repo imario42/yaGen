@@ -169,6 +169,8 @@ $$ LANGUAGE PLPGSQL;
 
 ------- CreateDDL statement separator -------
 CREATE FUNCTION sys_context(namespace varchar,parameter varchar) RETURNS VARCHAR AS $$
+DECLARE
+  override_user varchar;
 begin
   if 'USERENV' = namespace then
     if 'DB_NAME' = parameter then
@@ -176,18 +178,31 @@ begin
     elsif 'OS_USER' = parameter then
       return null;
     elsif 'CLIENT_IDENTIFIER' = parameter then
-      return session_user;
+      override_user = get_session_variable(parameter);
+
+      if override_user is not null then
+        return override_user;
+      else
+        return session_user;
+      end if;
     end if;
   end if;
 end;
 $$ LANGUAGE PLPGSQL;
 
 ------- CreateDDL statement separator -------
-CREATE FUNCTION get_audit_user() RETURNS VARCHAR AS $$
+create function get_audit_user(client_user_in in VARCHAR) RETURNS VARCHAR AS $$
+declare
+  user_name varchar := substr(client_user_in, 1, 50);
 begin
-  return regexp_replace(regexp_replace(coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER')),
+  if lower(user_name)='unknown' then
+    user_name:=null;
+  end if;
+  user_name:=substr(regexp_replace(regexp_replace(coalesce(user_name, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER')),
              '^(.*)@.*$', '\1'),
-             '^.*CN=([^, ]*).*$', '\1');
+             '^.*CN=([^, ]*).*$', '\1'),
+    1, 20);
+  return user || case when user_name is not null and lower(user) <> lower(user_name) then ' ('||user_name||')' end;
 end;
 $$ LANGUAGE PLPGSQL;
 
@@ -205,8 +220,8 @@ begin
   return 0;
 exception when others then
   return 0;
-end; $$
-LANGUAGE PLPGSQL;
+end;
+$$ LANGUAGE PLPGSQL;
 
 ------- CreateDDL statement separator -------
 CREATE VIEW dual AS
@@ -217,22 +232,77 @@ CREATE VIEW dual AS
 CREATE FUNCTION audit_trigger_function()
   RETURNS trigger AS $$
 BEGIN
-  if TG_OP = 'INSERT' then
-    new.created_at := systimestamp;
-    new.created_by := coalesce(new.created_by, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
-    new.last_modified_at := null;
-    new.last_modified_by := null;
-  elsif TG_OP = 'UPDATE' then
-    new.created_at := old.created_at;
-    new.created_by := old.created_by;
-    if not(new.last_modified_at is not null and (old.last_modified_at is null or new.last_modified_at <> old.last_modified_at )) then
-      new.last_modified_by := coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
+    if is_bypassed(upper(tg_table_name)) = 0
+    then
+        if TG_OP = 'INSERT' then
+            new.created_at := localtimestamp;
+            new.created_by := coalesce(new.created_by, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
+            new.last_modified_at := null;
+            new.last_modified_by := null;
+        elsif TG_OP = 'UPDATE' then
+            new.created_at := old.created_at;
+            new.created_by := old.created_by;
+            if not(new.last_modified_at is not null and (old.last_modified_at is null or new.last_modified_at <> old.last_modified_at )) then
+              new.last_modified_by := coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
+            end if;
+            new.last_modified_at := localtimestamp;
+        end if;
     end if;
-    new.last_modified_at := systimestamp;
-  end if;
-  return new;
+    return new;
 END;
 $$ LANGUAGE 'plpgsql';
-/
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION set_session_variable(var_name varchar, var_value varchar) RETURNS void AS $$
+declare
+    affected_rows integer;
+begin
+    begin
+        with stmt as (
+          update SESSION_VARIABLES
+            set value = var_value
+            where name = var_name
+            returning 1
+        )
+
+        select count(*) into affected_rows from stmt;
+        if affected_rows=1 then
+          return;
+        end if;
+
+    exception when others then
+        create temporary table SESSION_VARIABLES (
+          NAME VARCHAR(255),
+          VALUE VARCHAR(255),
+          constraint SESS_VAR_PK primary key (NAME)
+        ) ON COMMIT PRESERVE ROWS;
+    end;
+
+    insert into SESSION_VARIABLES (name, value)
+        values (var_name, var_value);
+end;
+$$ LANGUAGE PLPGSQL;
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION remove_session_variable(var_name varchar) RETURNS void AS $$
+begin
+    delete from SESSION_VARIABLES
+        where name = var_name;
+        exception when others then null;
+end;
+$$ LANGUAGE PLPGSQL;
+
+------- CreateDDL statement separator -------
+CREATE FUNCTION get_session_variable(var_name varchar) RETURNS varchar AS $$
+DECLARE
+    ret varchar;
+begin
+    select value into ret from SESSION_VARIABLES where name = var_name;
+    return ret;
+
+    exception when others then
+        return null;
+end;
+$$ LANGUAGE PLPGSQL;
 
 #end

@@ -61,7 +61,6 @@ begin atomic
   insert into HST_CURRENT_TRANSACTION (TRANSACTION_ID, TRANSACTION_TIMESTAMP)
     values (transaction_id_used, timestamp_in);
 end;
-/
 #end
 
 #if( $is_postgres )
@@ -83,7 +82,6 @@ begin
   return old;
 end;
 $$ LANGUAGE 'plpgsql';
-/
 
 ------- CreateDDL statement separator -------
 /*
@@ -95,4 +93,14 @@ create constraint trigger HST_CURRENT_TRANSACTION_TRG after insert
 on HST_CURRENT_TRANSACTION initially deferred for each row
 execute procedure HST_CURRENT_TRANSACTION_TRG_FCT();
 
+------- CreateDDL statement separator -------
+create function set_transaction_timestamp(timestamp_in timestamp) RETURNS void AS $$
+declare
+  transaction_id_used bigint;
+begin
+  transaction_id_used := 0;--txid_current();
+  insert into HST_CURRENT_TRANSACTION (TRANSACTION_ID, TRANSACTION_TIMESTAMP)
+    values (transaction_id_used, timestamp_in);
+end;
+$$ LANGUAGE PLPGSQL;
 #end

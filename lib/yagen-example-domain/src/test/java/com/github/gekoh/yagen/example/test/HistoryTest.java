@@ -25,6 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.persistence.ParameterMode;
 import javax.persistence.Query;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -34,7 +35,7 @@ import java.util.Iterator;
 /**
  * @author Georg Kohlweiss
  */
-public class HistoryTest extends TestBase {
+public abstract class HistoryTest extends TestBase {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(HistoryTest.class);
 
     private final static String PRODUCTION_LOG = StringUtils.repeat("lorem ipsum dolor.\n", 1024); // 20k string
@@ -74,7 +75,7 @@ public class HistoryTest extends TestBase {
     public void testHistoryCollectionTableLimitation() {
         testHistory();
 
-        em = emf.createEntityManager();
+        em = getEntityManagerFactory().createEntityManager();
         em.getTransaction().begin();
 
         Aircraft ac = em.createQuery("select ac from Aircraft ac where ac.callSign=:callSign", Aircraft.class)
@@ -136,7 +137,10 @@ public class HistoryTest extends TestBase {
         em.getTransaction().commit();
 
         em.getTransaction().begin();
-        em.createNativeQuery("call set_transaction_timestamp(:ts);").setParameter("ts", timestamp).executeUpdate();
+
+        DBHelper.executeProcedure(em, "set_transaction_timestamp(?)", timestamp);
+        // em.createNativeQuery("call set_transaction_timestamp(:ts);").setParameter("ts", timestamp).executeUpdate();
+
         try {
             em.createNativeQuery("update AIRCRAFT set CALL_SIGN='D-GGGG' where CALL_SIGN='DGGGG'").executeUpdate();
             em.flush();

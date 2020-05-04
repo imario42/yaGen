@@ -320,8 +320,14 @@ public class PatchGlue {
                     else if (exporter.getClass() == GenerationTargetToStdout.class) {
                         generatorStdoutDelimiter.set(exporter, ddlStmt.getDelimiter());
                     }
-                    else if (exporter.getClass() == GenerationTargetToDatabase.class && isEmptyStatement(ddlStmt.getSql())) {
-                        continue;
+                    else if (exporter.getClass() == GenerationTargetToDatabase.class) {
+                        if (isEmptyStatement(ddlStmt.getSql())) {
+                            continue;
+                        }
+                        if (wrapArr[0].endsWith("/")) {
+                            // remove pl/sql specific ending as postgresql does not like it
+                            wrapArr[0] = wrapArr[0].substring(0, wrapArr[0].length()-1);
+                        }
                     }
                     schemaExportPerform.invoke(null, new Object[]{wrapArr, formatter, options, passedExporters});
                 }

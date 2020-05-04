@@ -17,10 +17,10 @@ import javax.persistence.Persistence;
 /**
  * @author Georg Kohlweiss
  */
-public class TestBase {
+public abstract class TestBase {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(TestBase.class);
 
-    protected static final EntityManagerFactory emf;
+    private EntityManagerFactory emf;
 
     static {
         try {
@@ -28,21 +28,36 @@ public class TestBase {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        emf = Persistence.createEntityManagerFactory("example-domain-test", null);
     }
 
     protected EntityManager em;
 
+    public EntityManagerFactory getEntityManagerFactory() {
+        if (emf == null) {
+            setupDatabase();
+            emf = Persistence.createEntityManagerFactory(getPersistenceUnitName(), null);
+        }
+        return emf;
+    }
+
+    protected abstract String getPersistenceUnitName();
+
     @Before
     public void setup() {
-        em = emf.createEntityManager();
+        em = getEntityManagerFactory().createEntityManager();
     }
 
     @After
     public void shutdown() {
-        if (em.getTransaction().isActive()) {
-            em.getTransaction().rollback();
+        if (em != null) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            em.close();
         }
-        em.close();
+        shutdownDatabase();
     }
+
+    protected void setupDatabase() { }
+    protected void shutdownDatabase() {}
 }

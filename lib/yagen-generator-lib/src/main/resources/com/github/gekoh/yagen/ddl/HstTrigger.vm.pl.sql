@@ -8,6 +8,9 @@ after insert or update or delete on ${liveTableName}
 for each row
 #end
 declare
+#if($is_postgres)
+  sql_rowcount integer;
+#end
   transaction_timestamp_found timestamp;
   hst_operation HST_MODIFIED_ROW.operation%TYPE:=#if($is_postgres)substr(TG_OP, 1, 1)#{else}case when inserting then 'I'
                                                       when updating then 'U'
@@ -46,7 +49,7 @@ begin
       from HST_CURRENT_TRANSACTION
       where transaction_id=#if($is_postgres)txid_current()#{else}DBMS_TRANSACTION.LOCAL_TRANSACTION_ID#{end};
     exception when no_data_found then
-      transaction_timestamp_found:=systimestamp;
+      transaction_timestamp_found:=#if($is_postgres)localtimestamp#{else}systimestamp#{end};
       insert into HST_CURRENT_TRANSACTION (transaction_id, transaction_timestamp)
         values (#if($is_postgres)txid_current()#{else}DBMS_TRANSACTION.LOCAL_TRANSACTION_ID#{end}, transaction_timestamp_found);
     end;
@@ -77,7 +80,12 @@ begin
 #end
             invalidated_at is null;
 
+#if($is_postgres)
+        GET DIAGNOSTICS sql_rowcount = ROW_COUNT;
+        if sql_rowcount<>1 then
+#else
         if sql%rowcount<>1 then
+#end
           #if( $is_postgres )perform #{end}raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
 #foreach( $pkColumn in $pkColumns )
               ||' ${pkColumn}='''|| ${old}.${pkColumn} ||''''
