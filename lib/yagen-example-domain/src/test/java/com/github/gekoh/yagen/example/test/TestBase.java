@@ -60,4 +60,5 @@ public abstract class TestBase {
 
     protected void setupDatabase() { }
     protected void shutdownDatabase() {}
+    protected abstract String getDbUserName();
 }

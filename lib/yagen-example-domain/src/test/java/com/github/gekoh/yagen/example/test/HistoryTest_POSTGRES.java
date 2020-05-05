@@ -16,10 +16,6 @@
 package com.github.gekoh.yagen.example.test;
 
 import com.opentable.db.postgres.embedded.EmbeddedPostgres;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
 
 import java.io.IOException;
 
@@ -38,6 +34,7 @@ public class HistoryTest_POSTGRES extends HistoryTest {
     protected void setupDatabase() {
         try {
             pg = EmbeddedPostgres.builder()
+                    .setCleanDataDirectory(true)
                     .setPort(9002)
                     .start();
         } catch (IOException e) {
@@ -53,5 +50,10 @@ public class HistoryTest_POSTGRES extends HistoryTest {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Override
+    protected String getDbUserName() {
+        return "postgres";
     }
 }

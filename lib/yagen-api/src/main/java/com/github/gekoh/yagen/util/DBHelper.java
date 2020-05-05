@@ -26,15 +26,13 @@ import org.hibernate.jdbc.Work;
 import org.hibernate.service.ServiceRegistry;
 
 import javax.persistence.EntityManager;
-import javax.persistence.ParameterMode;
-import javax.persistence.StoredProcedureQuery;
+import javax.persistence.NoResultException;
 import java.lang.reflect.Field;
 import java.sql.CallableStatement;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLType;
 import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.Map;
@@ -119,6 +117,33 @@ public class DBHelper {
         }
     }
 
+    public static String getSessionVariable(DatabaseDialect dialect, Connection connection, String name) throws SQLException {
+        switch (dialect) {
+            case ORACLE:
+            case HSQLDB:
+                try (PreparedStatement stmtUpdate = connection.prepareStatement("select value from SESSION_VARIABLES where name=?")) {
+                    stmtUpdate.setString(1, name);
+                    try (ResultSet rs = stmtUpdate.executeQuery()) {
+                        if (rs.next()) {
+                            String ret = rs.getString(1);
+                            return ret;
+                        }
+                        return null;
+                    }
+                }
+            case POSTGRESQL:
+                try (CallableStatement callableStatement = connection.prepareCall("{? = call get_session_variable(?)}")) {
+                    callableStatement.setString(2, name);
+                    callableStatement.registerOutParameter(1, Types.VARCHAR);
+                    callableStatement.execute();
+
+                    return callableStatement.getString(1);
+                }
+            default:
+                throw new IllegalArgumentException("unknown dialect: " + dialect);
+        }
+    }
+
     public static void setSessionVariable(DatabaseDialect dialect, Connection connection, String name, String value) throws SQLException {
         switch (dialect) {
             case ORACLE:
@@ -171,6 +196,30 @@ public class DBHelper {
                     .setParameter("value", value)
                     .executeUpdate();
         }
+    }
+
+    public static String getSessionVariable(String name, EntityManager em) {
+
+        // postgres drops the temporary table when the session closes, so probably we have to create it beforehand
+        if (isPostgres(getDialect(em))) {
+            return em.unwrap(Session.class).doReturningWork(new ReturningWork<String>() {
+                @Override
+                public String execute(Connection connection) throws SQLException {
+                    String ret = getSessionVariable(DatabaseDialect.POSTGRESQL, connection, name);
+                    return ret;
+                }
+            });
+        }
+
+        String value = null;
+        try {
+            value = (String) em.createNativeQuery("select value from SESSION_VARIABLES where NAME=:name")
+                    .setParameter("name", name)
+                    .getSingleResult();
+        } catch (NoResultException noResult) {
+            // ignore
+        }
+        return value;
     }
 
     public static void removeSessionVariable(String name, EntityManager em) {
@@ -247,19 +296,16 @@ public class DBHelper {
     }
 
     public static String injectSessionUser(String user, EntityManager em) {
-        String prevUser = null;
-        if (isHsqlDb(getDialect(em))) {
-            try {
-                prevUser = (String) em.createNativeQuery("select VALUE from SESSION_VARIABLES where NAME='CLIENT_IDENTIFIER'").getSingleResult();
-                em.createNativeQuery("update SESSION_VARIABLES set VALUE=:user where NAME='CLIENT_IDENTIFIER'").setParameter("user", user).executeUpdate();
+        String prevUser;
 
-            } catch (Exception ignore) {
-                em.createNativeQuery("insert into SESSION_VARIABLES (NAME, VALUE) values ('CLIENT_IDENTIFIER', :user)").setParameter("user", user).executeUpdate();
+        if (isPostgres(getDialect(em))
+                || isHsqlDb(getDialect(em))) {
+            prevUser = getSessionVariable("CLIENT_IDENTIFIER", em);
+            if (user == null) {
+                removeSessionVariable("CLIENT_IDENTIFIER", em);
+            } else {
+                setSessionVariable("CLIENT_IDENTIFIER", user, em);
             }
-        }
-        else if (isPostgres(getDialect(em))) {
-            prevUser = executeProcedureWithReturn(em, "get_session_variable", String.class, "CLIENT_IDENTIFIER");
-            setSessionVariable("CLIENT_IDENTIFIER", "user", em);
         }
         else {
             prevUser = em.unwrap(Session.class).doReturningWork(new SetUserWorkOracle(user));
@@ -377,31 +423,6 @@ public class DBHelper {
                         }
                     }
                     callableStatement.execute();
-                }
-            }
-        });
-    }
-
-    /**
-     * call a database stored procedure and return the single result.
-     * Notice: Actually only Stirng.class is supported as result value
-     */
-    public static <T> T executeProcedureWithReturn(EntityManager em, String method, Class<T> returnClass, Object... args) {
-        Session session = em.unwrap(Session.class);
-        return session.doReturningWork(new ReturningWork<T>() {
-            @Override
-            public T execute(Connection connection) throws SQLException {
-                try (CallableStatement callableStatement = connection.prepareCall(String.format("{? = call %s}", method))) {
-                    callableStatement.registerOutParameter(1, Types.VARCHAR);
-                    if (args != null) {
-                        for (int i = 0; i<args.length; i++) {
-                            callableStatement.setObject(i+1, args[i]);
-                        }
-                    }
-
-                    callableStatement.execute();
-                    String ret = callableStatement.getString(1);
-                    return returnClass.cast(ret);
                 }
             }
         });

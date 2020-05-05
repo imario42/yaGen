@@ -23,4 +23,9 @@ public class HistoryTest_HSQLDB extends HistoryTest {
     protected String getPersistenceUnitName() {
         return "example-domain-test";
     }
+
+    @Override
+    protected String getDbUserName() {
+        return "SA";
+    }
 }

@@ -16,11 +16,7 @@ declare
                                                       when updating then 'U'
                                                       when deleting then 'D' end#{end};
 #if( $is_postgres )
-  live_rowid ${varcharType}:=''
-    #foreach( $pkColumn in $pkColumns )
-        ||case when hst_operation<>'D' then ${new}.${pkColumn} else ${old}.${pkColumn} end
-    #end
-    ;
+  live_rowid tid:=case when hst_operation in ('U', 'I') then ${new}.ctid else ${old}.ctid end;
 #else
   live_rowid rowid:=coalesce(${new}.rowid, ${old}.rowid);
 #end
@@ -57,11 +53,18 @@ begin
 #if( !$is_postgres )
     if ${new}.rowid<>${old}.rowid then
       update hst_modified_row set row_id=${new}.rowid
-        where #if($is_postgres)transaction_id=txid_current() and #{end}table_name=hst_table_name
+        where table_name=hst_table_name
           and row_id=${old}.rowid;
     end if;
+#else
 
+    if (hst_operation  = 'U') and ${new}.ctid <> ${old}.ctid then
+      update hst_modified_row set row_id=${new}.ctid
+        where transaction_id=txid_current() and table_name=hst_table_name
+          and row_id=${old}.ctid;
+    end if;
 #end
+
     begin
       insert into hst_modified_row values (#if($is_postgres)txid_current(), #{end}hst_table_name, live_rowid, hst_operation, hst_uuid_used);
 

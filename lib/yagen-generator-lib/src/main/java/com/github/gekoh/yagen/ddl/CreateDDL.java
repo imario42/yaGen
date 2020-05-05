@@ -123,7 +123,7 @@ public class CreateDDL {
     private static final Pattern SEQ_CREATE_PATTERN = Pattern.compile("create sequence[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)");
     private static final Pattern PKG_CREATE_PATTERN = Pattern.compile("create( or replace)?[\\s]+package[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*)[\\s]", Pattern.MULTILINE | Pattern.CASE_INSENSITIVE);
 
-    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(numeric\\([^\\)]+\\))|(timestamp(\\s*\\([0-9]+\\))?)|(date)|([cb]lob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(((double)|(float8)|(float))( precision)?)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*))?([\\s]+not)?[\\s]+null)?(([\\s]+constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*))?[\\s]+unique)?[^\\(,]*(,|\\))");
+    private static final Pattern COL_PATTERN = Pattern.compile("([\\(|\\s]?)(" + REGEX_COLNAME + ")([\\s]((varchar(2)?\\([^\\)]+\\))|(number\\([^\\)]+\\))|(numeric\\([^\\)]+\\))|(timestamp(\\s*\\([0-9]+\\))?)|(date)|([cb]lob)|(char\\([^\\)]+\\))|(int((eger)|[0-9]*))|(bigint)|(bit)|(bool(ean)?)|(((double)|(float[0-9]?))( precision)?)))([\\s]+default[\\s]*([^\\s]*))?(([\\s]+constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*))?([\\s]+not)?[\\s]+null)?(([\\s]+constraint[\\s]+([a-zA-Z]+[0-9a-zA-Z_]*))?[\\s]+unique)?[^\\(,]*(,|\\))");
     private static final int COL_PATTERN_IDX_COLNAME = 2;
     private static final int COL_PATTERN_IDX_TYPE    = 4;
     private static final int COL_PATTERN_IDX_DEFAULT = 26;
@@ -1287,7 +1287,7 @@ public class CreateDDL {
 
         while (colMatcher.find(idx)) {
             String type = colMatcher.group(COL_PATTERN_IDX_TYPE).toLowerCase();
-            if (type.contains("num") || type.contains("int") || type.contains("long") || type.contains("double") || type.contains("float") || type.contains("float8")) {
+            if (type.contains("num") || type.contains("int") || type.contains("long") || type.contains("double") || type.contains("float")) {
                 numColumnDef.put(colMatcher.group(COL_PATTERN_IDX_COLNAME).toLowerCase(), type);
             }
             idx = colMatcher.end();

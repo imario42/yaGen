@@ -25,7 +25,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
-import javax.persistence.ParameterMode;
 import javax.persistence.Query;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -69,7 +68,7 @@ public abstract class HistoryTest extends TestBase {
     /**
      * Unfortunately this does not work with ORACLE since we use ORACLE's rowid as identifier for transaction changes
      * whereas for HSQLDB we concatenate the primary key columns of collection tables.
-     * So in ORACLE this will violate the UK constraint of the history table.
+     * So in ORACLE (and Postgresql) this will violate the UK constraint of the history table.
      */
     @Test
     public void testHistoryCollectionTableLimitation() {
@@ -220,18 +219,19 @@ public abstract class HistoryTest extends TestBase {
         em.createNativeQuery("delete from AIRCRAFT where CALL_SIGN='D_GGGG'").executeUpdate();
         em.flush();
         Assert.assertEquals("deleter", DBHelper.injectSessionUser("anyuser", em));
+
+        System.err.println("1 >>" + DBHelper.getSessionVariable("CLIENT_IDENTIFIER", em));
         em.getTransaction().commit();
+        System.err.println("2 >>" + DBHelper.getSessionVariable("CLIENT_IDENTIFIER", em));
 
         final Query nativeQuery = em.createNativeQuery("select last_modified_by from AIRCRAFT_HST where OPERATION='D' and UUID=(select UUID from AIRCRAFT_HST where OPERATION='I' and CALL_SIGN=:callSign)");
-        Assert.assertEquals("SA (deleter)", nativeQuery.setParameter("callSign", "D_GGGG").getSingleResult());
+        Assert.assertEquals(getDbUserName() + " (deleter)", nativeQuery.setParameter("callSign", "D_GGGG").getSingleResult());
 
         em.getTransaction().begin();
         em.createNativeQuery("delete from AIRCRAFT where CALL_SIGN='D-GGGG'").executeUpdate();
         em.flush();
         em.getTransaction().commit();
 
-        Assert.assertEquals("SA (" + DBHelper.getOsUser()+")", nativeQuery.setParameter("callSign", "D-GGGG").getSingleResult());
-
+        Assert.assertEquals(getDbUserName() + " (anyuser)", nativeQuery.setParameter("callSign", "D-GGGG").getSingleResult());
     }
-
 }

@@ -65,10 +65,21 @@ end;
 
 #if( $is_postgres )
 ------- CreateDDL statement separator -------
-create table HST_CURRENT_TRANSACTION (transaction_id bigint, transaction_timestamp timestamp, constraint hsttr_transaction_id_PK primary key (transaction_id));
+create table HST_CURRENT_TRANSACTION (
+    transaction_id bigint,
+    transaction_timestamp timestamp,
+    constraint hsttr_transaction_id_PK primary key (transaction_id)
+);
 
 ------- CreateDDL statement separator -------
-create table HST_MODIFIED_ROW (transaction_id bigint, table_name varchar(30), row_id varchar(64), operation char(1), hst_uuid varchar(32), constraint hstmod_rowid_tablename_PK primary key (transaction_id, row_id, table_name));
+create table HST_MODIFIED_ROW (
+    transaction_id bigint,
+    table_name varchar(30),
+    row_id tid,
+    operation char(1),
+    hst_uuid varchar(32),
+    constraint hstmod_rowid_tablename_PK primary key (transaction_id, row_id, table_name)
+);
 
 ------- CreateDDL statement separator -------
 create index hstmod_rowid_tablename_IX on HST_MODIFIED_ROW (row_id, table_name);
@@ -98,7 +109,7 @@ create function set_transaction_timestamp(timestamp_in timestamp) RETURNS void A
 declare
   transaction_id_used bigint;
 begin
-  transaction_id_used := 0;--txid_current();
+  transaction_id_used := txid_current();
   insert into HST_CURRENT_TRANSACTION (TRANSACTION_ID, TRANSACTION_TIMESTAMP)
     values (transaction_id_used, timestamp_in);
 end;

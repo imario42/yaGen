@@ -59,7 +59,7 @@ create global temporary table SESSION_VARIABLES (
     NAME VARCHAR(255),
     VALUE VARCHAR(255),
     constraint SESS_VAR_PK primary key (NAME)
-);
+) ON COMMIT PRESERVE ROWS; -- align with postrgresql and oracle behavior
 
 ------- CreateDDL statement separator -------
 CREATE FUNCTION sys_context(namespace varchar(255), param varchar(255)) RETURNS varchar(255)
@@ -163,7 +163,7 @@ $$ LANGUAGE PLPGSQL;
 ------- CreateDDL statement separator -------
 CREATE FUNCTION raise_application_error(code int, message varchar) RETURNS void AS $$
 begin
-    raise exception '%: %', code, message;
+    raise exception '%: %', code, message using errcode = abs(code)::varchar;
 end;
 $$ LANGUAGE PLPGSQL;
 
