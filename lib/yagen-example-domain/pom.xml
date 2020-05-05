@@ -201,6 +201,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.12.4</version>
                 <configuration>
+                    <forkMode>always</forkMode>
                     <argLine>-javaagent:${project.build.directory}/agents/yagen-agent.jar</argLine>
                 </configuration>
             </plugin>

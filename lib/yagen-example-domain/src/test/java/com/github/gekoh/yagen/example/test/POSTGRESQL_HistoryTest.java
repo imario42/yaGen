@@ -16,13 +16,15 @@
 package com.github.gekoh.yagen.example.test;
 
 import com.opentable.db.postgres.embedded.EmbeddedPostgres;
+import org.junit.Ignore;
+import org.junit.Test;
 
 import java.io.IOException;
 
 /**
  * @author Mario Ivankovits
  */
-public class HistoryTest_POSTGRES extends HistoryTest {
+public class POSTGRESQL_HistoryTest extends HistoryTest {
 
     private EmbeddedPostgres pg;
 
@@ -55,5 +57,10 @@ public class HistoryTest_POSTGRES extends HistoryTest {
     @Override
     protected String getDbUserName() {
         return "postgres";
+    }
+
+    @Ignore("test does not work with oracle or postgresql")
+    @Test
+    public void testHistoryCollectionTableLimitation() {
     }
 }

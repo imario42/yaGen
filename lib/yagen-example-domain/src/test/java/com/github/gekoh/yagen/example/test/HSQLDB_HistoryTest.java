@@ -18,7 +18,7 @@ package com.github.gekoh.yagen.example.test;
 /**
  * @author Georg Kohlweiss
  */
-public class HistoryTest_HSQLDB extends HistoryTest {
+public class HSQLDB_HistoryTest extends HistoryTest {
     @Override
     protected String getPersistenceUnitName() {
         return "example-domain-test";
