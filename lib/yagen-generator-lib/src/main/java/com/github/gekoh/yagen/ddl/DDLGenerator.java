@@ -204,8 +204,16 @@ public class DDLGenerator {
         }
 
         public void addHeaderDdl (AddDDLEntry... entries) {
-            for (AddDDLEntry entry: entries) {
-                headerDdls.add(entry);
+            addHeaderDdl(headerDdls.size(), entries);
+        }
+
+        public void addHeaderDdlOnTop (AddDDLEntry... entries) {
+            addHeaderDdl(0, entries);
+        }
+
+        public void addHeaderDdl (int insertAt, AddDDLEntry... entries) {
+            for (int i=entries.length-1; i>=0; i--) {
+                headerDdls.add(insertAt, entries[i]);
             }
         }
 

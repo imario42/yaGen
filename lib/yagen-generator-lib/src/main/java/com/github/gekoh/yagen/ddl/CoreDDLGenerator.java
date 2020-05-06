@@ -71,7 +71,7 @@ public class CoreDDLGenerator {
             throw new IllegalStateException("cannot init patches for ddl generator", e);
         }
 
-        profile.addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(
+        profile.addHeaderDdlOnTop(new DDLGenerator.AddTemplateDDLEntry(
                 "#if( ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )\n" +
                 "-- this prevents us from being asked by the executing SQL console to replace a variable\n" +
                 "-- when using entity declarations like &amp; in varchar values\n" +

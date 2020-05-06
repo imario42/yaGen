@@ -233,9 +233,11 @@
                                     <mainClass>com.github.gekoh.yagen.ddl.CoreDDLGenerator</mainClass>
                                     <arguments>
                                         <argument>--profile-name</argument>
-                                        <argument>anyName</argument>
+                                        <argument>addImportTimestampProfile</argument>
                                         <argument>--persistence-unit-name</argument>
                                         <argument>generation-unit</argument>
+                                        <argument>--profile-provider-class</argument>
+                                        <argument>com.github.gekoh.yagen.example.ddl.ExampleProfileProvider</argument>
                                         <argument>--output-file</argument>
                                         <argument>"${project.build.outputDirectory}/META-INF/schema-objects-generated.ddl.sql"</argument>
                                     </arguments>

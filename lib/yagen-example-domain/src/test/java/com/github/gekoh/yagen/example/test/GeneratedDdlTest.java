@@ -1,19 +1,12 @@
 package com.github.gekoh.yagen.example.test;
 
-import com.github.gekoh.yagen.ddl.DDLGenerator;
-import com.github.gekoh.yagen.ddl.Duplexer;
 import com.github.gekoh.yagen.ddl.ObjectType;
-import com.github.gekoh.yagen.hibernate.YagenInit;
 import junit.framework.Assert;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import javax.persistence.EntityManagerFactory;
-import javax.persistence.Persistence;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -71,6 +64,9 @@ public class GeneratedDdlTest extends TestBase {
          "table HST_MODIFIED_ROW (",
          "procedure set_transaction_timestamp("
         );
+
+        //testing if dynamically created DDL by com.github.gekoh.yagen.example.ddl.ExampleProfileProvider is considered
+        em.createNativeQuery("select import_timestamp from AIRCRAFT_HST").getResultList();
     }
 
     private void assertGeneratedDdlContainsAll(ByteArrayOutputStream interceptedOut, String ... containedTexts) {

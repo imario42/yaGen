@@ -9,6 +9,7 @@ package com.github.gekoh.yagen.example.test;
 import com.github.gekoh.yagen.ddl.DDLGenerator;
 import com.github.gekoh.yagen.ddl.Duplexer;
 import com.github.gekoh.yagen.ddl.ObjectType;
+import com.github.gekoh.yagen.example.ddl.ExampleProfileProvider;
 import com.github.gekoh.yagen.hibernate.YagenInit;
 import org.junit.After;
 import org.junit.Before;
@@ -29,7 +30,7 @@ public abstract class TestBase {
     protected static EntityManagerFactory emf;
 
     static {
-        DDLGenerator.Profile profile = new DDLGenerator.Profile("default");
+        DDLGenerator.Profile profile = new ExampleProfileProvider().getProfile("addImportTimestampProfile");
         profile.addDuplexer(new Duplexer() {
             public void handleDdl(ObjectType objectType, String objectName, String ddl) {
                 Map<String, String> ddlSubMap = ddlMap.get(objectType);
