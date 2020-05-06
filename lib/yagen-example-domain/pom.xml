@@ -101,6 +101,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>com.opentable.components</groupId>
+            <artifactId>otj-pg-embedded</artifactId>
+            <version>0.13.3</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -195,6 +201,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.12.4</version>
                 <configuration>
+                    <forkMode>always</forkMode>
                     <argLine>-javaagent:${project.build.directory}/agents/yagen-agent.jar</argLine>
                 </configuration>
             </plugin>

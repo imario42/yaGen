@@ -37,6 +37,27 @@
 
     </persistence-unit>
 
+    <persistence-unit name="example-domain-test-postgres" transaction-type="RESOURCE_LOCAL">
+
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
+
+        <mapping-file>META-INF/example-domain.orm.xml</mapping-file>
+        <mapping-file>META-INF/example-domain-hst.orm.xml</mapping-file>
+
+        <exclude-unlisted-classes>true</exclude-unlisted-classes>
+
+        <properties>
+            <property name="hibernate.connection.driver_class" value="org.postgresql.Driver"/>
+            <property name="hibernate.connection.url" value="jdbc:postgresql://localhost:9002/postgres"/>
+            <property name="hibernate.connection.username" value="postgres"/>
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQL95Dialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="create"/>
+            <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
+        </properties>
+
+    </persistence-unit>
+
 </persistence>
 
 
