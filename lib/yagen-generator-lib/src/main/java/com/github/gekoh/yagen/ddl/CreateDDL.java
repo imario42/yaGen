@@ -798,7 +798,7 @@ public class CreateDDL {
                     continue;
                 }
                 String constraintName = getProfile().getNamingStrategy().constraintName(uniqueConstraint);
-                if (uniqueConstraint.functionBased() && supportsFunctionBased(dialect)) {
+                if (uniqueConstraint.functionBased() && !supportsFunctionBased(dialect)) {
                     LOG.warn("unable to create UniqueConstraint '{}' since function based constraints are not available on target RDBMS", constraintName);
                     continue;
                 }
@@ -842,7 +842,7 @@ public class CreateDDL {
         if (StringUtils.isEmpty(indexName)) {
             throw new IllegalArgumentException("please specify an index name in annotation Index for table " + tableConfig.getTableName());
         }
-        if (index.functionBased() && supportsFunctionBased(dialect)) {
+        if (index.functionBased() && !supportsFunctionBased(dialect)) {
             LOG.warn("unable to create Index '{}' since function based indexes are not available on target RDBMS", indexName);
             return;
         }
@@ -1660,7 +1660,7 @@ public class CreateDDL {
                         continue;
                     }
                     String constraintName = getProfile().getNamingStrategy().constraintName(uniqueConstraint);
-                    if (uniqueConstraint.functionBased() && supportsFunctionBased(dialect)) {
+                    if (uniqueConstraint.functionBased() && !supportsFunctionBased(dialect)) {
                         LOG.warn("unable to create UniqueConstraint '{}' since function based constraints are not available on target RDBMS", constraintName);
                         continue;
                     }
