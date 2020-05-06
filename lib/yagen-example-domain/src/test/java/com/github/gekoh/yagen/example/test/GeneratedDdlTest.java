@@ -6,6 +6,7 @@ import com.github.gekoh.yagen.ddl.ObjectType;
 import com.github.gekoh.yagen.hibernate.YagenInit;
 import junit.framework.Assert;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 
 import javax.persistence.EntityManagerFactory;
@@ -20,13 +21,22 @@ import java.util.regex.Pattern;
 /**
  * @author Hanspeter Duennenberger
  */
-public class GeneratedDdlTest {
+public class GeneratedDdlTest extends TestBase {
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(GeneratedDdlTest.class);
-
-    private EntityManagerFactory emf;
 
     private ByteArrayOutputStream out;
     private PrintStream originalOut;
+
+    @Override
+    protected String getPersistenceUnitName() {
+        interceptSystemOut();
+        return "example-domain-test-sysout";
+    }
+
+    @Override
+    protected String getDbUserName() {
+        return "SA";
+    }
 
     private void interceptSystemOut() {
         originalOut = System.out;
@@ -34,42 +44,17 @@ public class GeneratedDdlTest {
         System.setOut(new PrintStream(out));
     }
 
-    private void resetSystemOut() {
-        System.setOut(originalOut);
-        System.out.println(out.toString());
-    }
-
-    @After
-    public void cleanup() {
-        if (emf != null && emf.isOpen()) {
-            emf.close();
+    @Before
+    public void resetSystemOut() {
+        if (originalOut != null) {
+            System.setOut(originalOut);
+            originalOut = null;
+            System.out.println(out.toString());
         }
     }
 
     @Test
     public void testGeneratedDdl() throws Exception {
-        final Map<ObjectType, Map<String, String>> ddlMap = new HashMap<ObjectType, Map<String, String>>();
-
-        interceptSystemOut();
-
-        DDLGenerator.Profile profile = new DDLGenerator.Profile("default");
-        profile.addDuplexer(new Duplexer() {
-            public void handleDdl(ObjectType objectType, String objectName, String ddl) {
-                Map<String, String> ddlSubMap = ddlMap.get(objectType);
-                if (ddlSubMap == null) {
-                    ddlSubMap = new HashMap<String, String>();
-                    ddlMap.put(objectType, ddlSubMap);
-                }
-                ddlSubMap.put(objectName, ddl);
-            }
-        });
-        YagenInit.init(profile);
-
-        // create EMF to let Yagen do it's work
-        this.emf = Persistence.createEntityManagerFactory("example-domain-test", null);
-
-        resetSystemOut();
-
         // assert operating_resources_htU contains "is null" conditions to update invalidated_at
         assertTriggerContains(ddlMap, "operating_resources_htU", ".*set invalidated_at([^;]+);.*",
          "board_book_uuid=old.board_book_uuid and",

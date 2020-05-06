@@ -6,6 +6,9 @@
  */
 package com.github.gekoh.yagen.example.test;
 
+import com.github.gekoh.yagen.ddl.DDLGenerator;
+import com.github.gekoh.yagen.ddl.Duplexer;
+import com.github.gekoh.yagen.ddl.ObjectType;
 import com.github.gekoh.yagen.hibernate.YagenInit;
 import org.junit.After;
 import org.junit.Before;
@@ -13,18 +16,32 @@ import org.junit.Before;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * @author Georg Kohlweiss
  */
 public abstract class TestBase {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(TestBase.class);
+    protected  static final Map<ObjectType, Map<String, String>> ddlMap = new HashMap<ObjectType, Map<String, String>>();
 
-    private EntityManagerFactory emf;
+    protected static EntityManagerFactory emf;
 
     static {
+        DDLGenerator.Profile profile = new DDLGenerator.Profile("default");
+        profile.addDuplexer(new Duplexer() {
+            public void handleDdl(ObjectType objectType, String objectName, String ddl) {
+                Map<String, String> ddlSubMap = ddlMap.get(objectType);
+                if (ddlSubMap == null) {
+                    ddlSubMap = new HashMap<String, String>();
+                    ddlMap.put(objectType, ddlSubMap);
+                }
+                ddlSubMap.put(objectName, ddl);
+            }
+        });
         try {
-            YagenInit.init();
+            YagenInit.init(profile);
         } catch (Exception e) {
             e.printStackTrace();
         }

@@ -16,6 +16,7 @@
 package com.github.gekoh.yagen.example.test;
 
 import com.opentable.db.postgres.embedded.EmbeddedPostgres;
+import org.junit.After;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -52,6 +53,11 @@ public class POSTGRESQL_HistoryTest extends HistoryTest {
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @After
+    public void enableRecreateEmf() {
+        emf = null;
     }
 
     @Override
