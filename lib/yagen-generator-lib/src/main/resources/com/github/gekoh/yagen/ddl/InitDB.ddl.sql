@@ -103,7 +103,7 @@ CREATE FUNCTION is_statically_bypassed(object_name VARCHAR(100))
 
 ------- CreateDDL statement separator -------
 CREATE FUNCTION is_bypassed(object_name VARCHAR(100))
-  RETURNS NUMERIC
+  RETURNS INTEGER
 begin atomic
   declare bypass_regex VARCHAR(255);
   declare exit handler for not found
