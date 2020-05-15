@@ -54,6 +54,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -109,7 +110,7 @@ public class DDLGenerator {
             Metadata metadata = createSchemaExportMetadata();
 
             List<Class> entityClasses = metadata.getEntityBindings().stream().map(PersistentClass::getMappedClass).collect(Collectors.toList());
-            List<Class> allClasses = new ArrayList<>(entityClasses);
+            Set<Class> allClasses = new HashSet<>(entityClasses);
             for (Class entityClass : entityClasses) {
                 Class superClass = entityClass;
                 while ((superClass = superClass.getSuperclass()) != null) {
