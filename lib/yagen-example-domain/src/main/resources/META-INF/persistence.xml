@@ -18,7 +18,7 @@
 
     <persistence-unit name="generation-unit" transaction-type="RESOURCE_LOCAL">
 
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <mapping-file>META-INF/example-domain.orm.xml</mapping-file>
 

@@ -31,7 +31,6 @@ public class CoreDDLGenerator {
     private static final String PARAM_PROFILE_NAME = "profile-name";
     public static final String PARAM_PROFILE_PROVIDER_CLASS = "profile-provider-class";
     private static final String PARAM_PERSISTENCE_UNIT_NAME = "persistence-unit-name";
-    private static final String PARAM_PERSISTENCE_XML_LIST = "persistence-xml-list";
     private static final String PARAM_OUTPUT_FILENAME = "output-file";
     private static final String PARAM_HEADER_DDLS_LIST = "header-ddl-list";
     private static final String PARAM_ADDITIONAL_DDLS_LIST = "additional-ddl-list";
@@ -45,7 +44,6 @@ public class CoreDDLGenerator {
         addOption(PARAM_OUTPUT_FILENAME, true, "path of generated ddl file");
         addOption(PARAM_PROFILE_PROVIDER_CLASS, true, "full qualified class name of profile provider");
         addOption(PARAM_PERSISTENCE_UNIT_NAME, true, "name of the persistent unit holding the entity configuration");
-        addOption(PARAM_PERSISTENCE_XML_LIST, true, "semicolon separated list of persistence files to be scanned");
         addOption(PARAM_HEADER_DDLS_LIST, true, "semicolon separated list of header include files");
         addOption(PARAM_ADDITIONAL_DDLS_LIST, true, "semicolon separated list of footer include files");
         addOption(PARAM_REGEX_RENDER_ONLY_ENTITIES, true, "entities matching specified regex will be rendered");
@@ -113,10 +111,6 @@ public class CoreDDLGenerator {
 
             if (cl.hasOption(PARAM_PERSISTENCE_UNIT_NAME)) {
                 profile.setPersistenceUnitName(cl.getOptionValue(PARAM_PERSISTENCE_UNIT_NAME));
-            }
-
-            if (cl.hasOption(PARAM_PERSISTENCE_XML_LIST)) {
-                profile.addPersistenceFile(cl.getOptionValue(PARAM_PERSISTENCE_XML_LIST).split(";[\\s]*"));
             }
 
             if (cl.hasOption(PARAM_HEADER_DDLS_LIST)) {

@@ -348,10 +348,9 @@ public class DBHelper {
     }
 
     public static Dialect getDialect(EntityManager em) {
-        if (em instanceof Session) {
-            final Session session = (Session) em.getDelegate();
-            final SessionFactoryImpl sessionFactory = (SessionFactoryImpl) session.getSessionFactory();
-            return sessionFactory.getJdbcServices().getDialect();
+        if (em.unwrap(Session.class) != null) {
+            final SessionFactoryImpl sessionFactory = em.unwrap(Session.class).getSessionFactory().unwrap(SessionFactoryImpl.class);
+            return sessionFactory != null ? sessionFactory.getJdbcServices().getDialect() : null;
         }
         return null;
     }

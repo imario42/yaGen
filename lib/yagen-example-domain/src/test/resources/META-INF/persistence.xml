@@ -18,7 +18,7 @@
 
     <persistence-unit name="example-domain-test-sysout" transaction-type="RESOURCE_LOCAL">
 
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <mapping-file>META-INF/example-domain.orm.xml</mapping-file>
         <mapping-file>META-INF/example-domain-hst.orm.xml</mapping-file>
@@ -39,7 +39,7 @@
 
     <persistence-unit name="example-domain-test" transaction-type="RESOURCE_LOCAL">
 
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
+        <provider>org.hibernate.jpa.HibernatePersistenceProvider</provider>
 
         <mapping-file>META-INF/example-domain.orm.xml</mapping-file>
         <mapping-file>META-INF/example-domain-hst.orm.xml</mapping-file>

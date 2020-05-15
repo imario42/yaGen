@@ -24,18 +24,18 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.dom4j.Document;
-import org.dom4j.Element;
-import org.dom4j.Node;
 import org.dom4j.io.SAXReader;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.hibernate.dialect.Dialect;
+import org.hibernate.mapping.PersistentClass;
 import org.hibernate.service.ServiceRegistry;
 import org.hibernate.tool.hbm2ddl.SchemaExport;
 import org.hibernate.tool.schema.TargetType;
 
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.MappedSuperclass;
 import javax.persistence.Persistence;
 import javax.persistence.metamodel.EntityType;
 import java.io.File;
@@ -50,6 +50,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -58,6 +59,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * @author Georg Kohlweiss
@@ -70,17 +72,24 @@ public class DDLGenerator {
         export.setDelimiter(";");
         export.setFormat(true);
         export.setOutputFile(profile.getOutputFile());
-        Metadata metadata = new SchemaExportFactory().createSchemaExportMetadata(profile);
+        Metadata metadata = new SchemaExportHelper(profile.getPersistenceUnitName()).createSchemaExportMetadata();
+        PatchGlue.initDialect(profile, metadata);
         export.createOnly(EnumSet.of(TargetType.SCRIPT), metadata);
 
         LOG.info("schema script written to file {}", profile.getOutputFile());
     }
 
-    public static class SchemaExportFactory {
+    public static class SchemaExportHelper {
 
-        public Metadata createSchemaExportMetadata(Profile profile) {
+        private String persistenceUnitName;
 
-            EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory(profile.getPersistenceUnitName());
+        public SchemaExportHelper(String persistenceUnitName) {
+            this.persistenceUnitName = persistenceUnitName;
+        }
+
+        public Metadata createSchemaExportMetadata() {
+
+            EntityManagerFactory entityManagerFactory = Persistence.createEntityManagerFactory(persistenceUnitName);
 
             ServiceRegistry serviceRegistry =
                 new StandardServiceRegistryBuilder()
@@ -93,12 +102,24 @@ public class DDLGenerator {
                 sources.addAnnotatedClass(entityType.getJavaType());
             }
 
-            Metadata metadata = sources.getMetadataBuilder().build();
+            return sources.getMetadataBuilder().build();
+        }
 
-            PatchGlue.initDialect(profile, metadata);
+        public Collection<Class> getEntityAndMappedSuperClasses() {
+            Metadata metadata = createSchemaExportMetadata();
 
-            return metadata;
+            List<Class> entityClasses = metadata.getEntityBindings().stream().map(PersistentClass::getMappedClass).collect(Collectors.toList());
+            List<Class> allClasses = new ArrayList<>(entityClasses);
+            for (Class entityClass : entityClasses) {
+                Class superClass = entityClass;
+                while ((superClass = superClass.getSuperclass()) != null) {
+                    if (superClass.isAnnotationPresent(MappedSuperclass.class)) {
+                        allClasses.add(superClass);
+                    }
+                }
+            }
 
+            return allClasses;
         }
     }
 
@@ -109,7 +130,6 @@ public class DDLGenerator {
         private String name;
         private String outputFile;
         private String persistenceUnitName;
-        private List<Document> persistenceFiles = new ArrayList<Document>();
         private Set<Class> entityClasses = new LinkedHashSet<Class>();
         private List<AddDDLEntry> headerDdls = new ArrayList<AddDDLEntry>();
         private List<AddDDLEntry> addDdls = new ArrayList<AddDDLEntry>();
@@ -243,40 +263,6 @@ public class DDLGenerator {
             }
         }
 
-        public void addPersistenceFile (String... persistenceXmlFile) {
-            for (String file : persistenceXmlFile) {
-                addPersistenceFile(getPersistenceDocument(file));
-            }
-        }
-
-        public void addPersistenceFile (Document persistenceXml) {
-            if (persistenceXml==null) {
-                return;
-            }
-            try {
-                Element pu = persistenceXml.getRootElement().element("persistence-unit");
-                if(pu != null) {
-                    persistenceFiles.add(persistenceXml);
-
-                    for (Object classNode: pu.elements("class")) {
-                        entityClasses.add(Class.forName(((Node) classNode).getText()));
-                    }
-                    for (Object fileNode: pu.elements("mapping-file")) {
-                        addPersistenceFile(getPersistenceDocument(((Node) fileNode).getText()));
-                    }
-                } else {
-                    for(Object entityNode : persistenceXml.getRootElement().elements("mapped-superclass")) {
-                        entityClasses.add(Class.forName((String) ((Element)entityNode).attribute("class").getData()));
-                    }
-                    for(Object entityNode : persistenceXml.getRootElement().elements("entity")) {
-                        entityClasses.add(Class.forName((String) ((Element)entityNode).attribute("class").getData()));
-                    }
-                }
-            } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(e);
-            }
-        }
-
         public List<AddDDLEntry> getHeaderDdls() {
             return Collections.unmodifiableList(headerDdls);
         }
@@ -373,7 +359,6 @@ public class DDLGenerator {
             profile.name = getName();
             profile.outputFile = getOutputFile();
             profile.persistenceUnitName = getPersistenceUnitName();
-            profile.persistenceFiles = new ArrayList<Document>(this.persistenceFiles);
             profile.entityClasses = new LinkedHashSet<Class>(this.entityClasses);
             profile.headerDdls = new ArrayList<AddDDLEntry>(this.headerDdls);
             profile.addDdls = new ArrayList<AddDDLEntry>(this.addDdls);

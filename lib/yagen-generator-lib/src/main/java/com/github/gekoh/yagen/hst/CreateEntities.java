@@ -75,7 +75,7 @@ public class CreateEntities {
 
     public static void main (String[] args) {
         if (args == null || args.length<1) {
-            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-xml-file-path> <orm2.0-file-out-path> [<orm1.0-file-out-path>] [override-DateTimeType.class.name] [customFile-BaseEntity.java.vm] [customFile-HstTemplate.java.vm]");
+            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-unit-name> <orm2.0-file-out-path> [<orm1.0-file-out-path>] [override-DateTimeType.class.name] [customFile-BaseEntity.java.vm] [customFile-HstTemplate.java.vm]");
             return;
         }
         CreateEntities createEntities = new CreateEntities(new File(args[0]));
@@ -103,10 +103,9 @@ public class CreateEntities {
 
         createEntities.writeBaseClasses(args[1], customBaseTemplate);
 
-        String[] persistenceXmlFiles = args[2].split(";[\\s]*");
         createEntities.processBaseEntityClasses(
                 args[1],
-                scanEntityClasses(persistenceXmlFiles));
+                scanEntityClasses(args[2]));
 
         File orm20OutFile = new File(args[3]);
         createEntities.writeOrmFile(orm20OutFile, args[1], "2.0");
@@ -422,13 +421,12 @@ public class CreateEntities {
 
     /**
      * <p>Extracts all entity classes in the given set of persistence.xml files an returns a collection thereof.</p>
-     * @param persistenceXmlFiles set of persistence.xml files that you want to scan
+     * @param persistenceUnitName persistence unit managing source entity classes
      * @return extracted entity classes
      */
-    private static Collection<Class> scanEntityClasses(String... persistenceXmlFiles) {
-        DDLGenerator.Profile profile = new DDLGenerator.Profile(null);
-        profile.addPersistenceFile(persistenceXmlFiles);
-        return profile.getEntityClasses();
+    private static Collection<Class> scanEntityClasses(String persistenceUnitName) {
+
+        return new DDLGenerator.SchemaExportHelper(persistenceUnitName).getEntityAndMappedSuperClasses();
     }
 
     /**

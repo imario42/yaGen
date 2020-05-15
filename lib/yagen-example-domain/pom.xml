@@ -31,7 +31,7 @@
     <name>yaGen - example domain lib with ddl generation</name>
 
     <properties>
-        <hst-src.dir>${project.build.directory}/generated-src/main/java</hst-src.dir>
+        <hst-src.dir>${project.build.directory}/generated-sources/main/java</hst-src.dir>
     </properties>
 
     <dependencies>
@@ -109,6 +109,16 @@
         </dependency>
     </dependencies>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.6.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <build>
         <plugins>
             <plugin>
@@ -150,7 +160,6 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>1.2.1</version>
                 <executions>
                     <!-- generating history entity sources (classes annotated with @TemporalEntity) to be able to use them in JPA -->
                     <execution>
@@ -161,10 +170,11 @@
                         </goals>
                         <configuration>
                             <mainClass>com.github.gekoh.yagen.hst.CreateEntities</mainClass>
+                            <addResourcesToClasspath>true</addResourcesToClasspath>
                             <arguments>
                                 <argument>${hst-src.dir}</argument>
                                 <argument>com.github.gekoh.yagen.example.hst</argument>
-                                <argument>${project.basedir}/src/main/resources/META-INF/example-domain.orm.xml</argument>
+                                <argument>generation-unit</argument>
                                 <argument>${project.build.outputDirectory}/META-INF/example-domain-hst.orm.xml</argument>
                             </arguments>
                         </configuration>
@@ -221,7 +231,6 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>exec-maven-plugin</artifactId>
-                        <version>1.2.1</version>
                         <executions>
                             <execution>
                                 <id>generateDDL</id>
