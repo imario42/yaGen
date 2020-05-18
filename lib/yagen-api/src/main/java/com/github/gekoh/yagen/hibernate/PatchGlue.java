@@ -307,6 +307,13 @@ public class PatchGlue {
         }
         final String[] wrapArr = new String[1];
 
+        // for whatever reason create statements other than create table do not receive initial newline which would make generated DDL more readable
+        final Formatter delegateFormatter = formatter;
+        formatter = source -> {
+            String format = delegateFormatter.format(source);
+            return format.startsWith("create") ? System.lineSeparator() + format : format;
+        };
+
         for (String singleSql : splitSQL(sqlCommand)) {
             SqlStatement ddlStmt = prepareDDL(singleSql);
             wrapArr[0] = ddlStmt.getSql();
