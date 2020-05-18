@@ -30,7 +30,6 @@ import org.hibernate.internal.SessionFactoryImpl;
 import org.hibernate.mapping.Column;
 import org.hibernate.mapping.Constraint;
 import org.hibernate.mapping.Index;
-import org.hibernate.mapping.PersistentClass;
 import org.hibernate.mapping.Table;
 import org.hibernate.tool.schema.internal.Helper;
 import org.hibernate.tool.schema.internal.SchemaCreatorImpl;
@@ -84,9 +83,7 @@ public class PatchGlue {
     public static Object newDDLEnhancer(Object profile, Object metadataObj) {
         try {
             Metadata metadata = (Metadata) metadataObj;
-            for (PersistentClass persistentClass : metadata.getEntityBindings()) {
-                addClass(profile, persistentClass);
-            }
+            ReflectExecutor.m_registerMetadata.get().invoke(profile, metadata);
             return ReflectExecutor.i_createDdl.get().newInstance(profile, metadata.getDatabase().getDialect());
         } catch (Exception e) {
             throw new IllegalStateException(e);
@@ -139,16 +136,6 @@ public class PatchGlue {
         }
         else {
             LOG.warn("{} was not patched, generator enhancements not working", dialect != null ? dialect.getClass().getName() : "Dialect");
-        }
-    }
-
-    public static void addClass (Object profile, PersistentClass clazz) {
-        if (profile != null) {
-            try {
-                ReflectExecutor.m_addPersistenceClass.get().invoke(profile, clazz.getMappedClass());
-            } catch (Exception e) {
-                LOG.error("error adding persistence class", e);
-            }
         }
     }
 

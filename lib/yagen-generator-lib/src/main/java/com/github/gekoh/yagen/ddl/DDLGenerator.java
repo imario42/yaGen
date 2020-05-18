@@ -107,21 +107,23 @@ public class DDLGenerator {
         }
 
         public Collection<Class> getEntityAndMappedSuperClasses() {
-            Metadata metadata = createSchemaExportMetadata();
+            return DDLGenerator.getEntityAndMappedSuperClassesFrom(createSchemaExportMetadata());
+        }
+    }
 
-            List<Class> entityClasses = metadata.getEntityBindings().stream().map(PersistentClass::getMappedClass).collect(Collectors.toList());
-            Set<Class> allClasses = new HashSet<>(entityClasses);
-            for (Class entityClass : entityClasses) {
-                Class superClass = entityClass;
-                while ((superClass = superClass.getSuperclass()) != null) {
-                    if (superClass.isAnnotationPresent(MappedSuperclass.class)) {
-                        allClasses.add(superClass);
-                    }
+    public static Collection<Class> getEntityAndMappedSuperClassesFrom(Metadata metadata) {
+        List<Class> entityClasses = metadata.getEntityBindings().stream().map(PersistentClass::getMappedClass).collect(Collectors.toList());
+        Set<Class> allClasses = new HashSet<>(entityClasses);
+        for (Class entityClass : entityClasses) {
+            Class superClass = entityClass;
+            while ((superClass = superClass.getSuperclass()) != null) {
+                if (superClass.isAnnotationPresent(MappedSuperclass.class)) {
+                    allClasses.add(superClass);
                 }
             }
-
-            return allClasses;
         }
+
+        return allClasses;
     }
 
     @SuppressWarnings("UnusedDeclaration")
@@ -160,6 +162,21 @@ public class DDLGenerator {
 
         public String getName() {
             return name;
+        }
+
+        public void registerMetadata(Metadata metadata) {
+            Collection<Class> entitiesFromMetadata = getEntityAndMappedSuperClassesFrom(metadata);
+            entityClasses.addAll(entitiesFromMetadata);
+
+            if (!historyInitSet && !isNoHistory()) {
+                for (Class clazz : entitiesFromMetadata) {
+                    if (clazz.isAnnotationPresent(TemporalEntity.class)) {
+                        addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(DDLGenerator.class.getResource("/com/github/gekoh/yagen/ddl/InitHistory.ddl.sql")));
+                        historyInitSet = true;
+                        break;
+                    }
+                }
+            }
         }
 
         public void setOutputFile(String outputFile) {
@@ -254,14 +271,6 @@ public class DDLGenerator {
                 LOG.error("error finding ddl resource/file named '{}', skipping", resourceOrFileName);
             }
             return url;
-        }
-
-        public void addPersistenceClass(Class clazz) {
-            entityClasses.add(clazz);
-            if (!historyInitSet && !isNoHistory() && clazz.isAnnotationPresent(TemporalEntity.class)) {
-                addHeaderDdl(new DDLGenerator.AddTemplateDDLEntry(DDLGenerator.class.getResource("/com/github/gekoh/yagen/ddl/InitHistory.ddl.sql")));
-                historyInitSet = true;
-            }
         }
 
         public List<AddDDLEntry> getHeaderDdls() {
