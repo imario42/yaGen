@@ -6,9 +6,12 @@ begin atomic
 #if( $last_modified_by )
   declare user_name varchar(35);
 #end
+#if( $bypassFunctionality )
+  if is_statically_bypassed('${triggerName}') or is_bypassed(upper('${triggerName}')) = 1 then
+    return;
+  end if;
 
-if not(is_statically_bypassed('${triggerName}')) and is_bypassed(upper('${triggerName}')) = 0 then
-
+#end
 #if( $last_modified_by )
 #*
 -- re-/set the modifier / modifierdate values ONLY if no different modifier since last update
@@ -22,5 +25,4 @@ if not(is_statically_bypassed('${triggerName}')) and is_bypassed(upper('${trigge
   set new.${last_modified_by} = substr(get_audit_user(user_name), 1, ${MODIFIER_COLUMN_NAME_LENGTH});
 #end
   set new.${last_modified_at} = systimestamp_9();
-end if;
 end;

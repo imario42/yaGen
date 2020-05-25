@@ -56,7 +56,7 @@ public class YagenInit {
             return;
         }
         try {
-            String providerClass = System.getProperty(CoreDDLGenerator.PARAM_PROFILE_PROVIDER_CLASS);
+            String providerClass = System.getProperty(CoreDDLGenerator.PERSISTENCE_UNIT_PROPERTY_PROFILE_PROVIDER_CLASS);
             Object profile;
             if (providerClass != null) {
                 profile = ((ProfileProvider)Class.forName(providerClass).newInstance()).getProfile("runtime");

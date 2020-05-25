@@ -7,8 +7,12 @@ declare
   user_name ${liveTableName}.${last_modified_by}%type;
 #end
 begin
-  if is_bypassed(upper('${triggerName}')) = 0 then
+#if( $bypassFunctionality )
+  if is_bypassed(upper('${triggerName}')) = 1 then
+    return#if( $is_postgres ) new#{end};
+  end if;
 
+#end
 #if( $last_modified_by )
 #*
 -- re-/set the modifier / modifierdate values ONLY if no different modifier since last update
@@ -22,5 +26,4 @@ begin
   :new.${last_modified_by} := substr(get_audit_user(user_name), 1, ${MODIFIER_COLUMN_NAME_LENGTH});
 #end
   :new.${last_modified_at} := systimestamp;
-  end if;
 end;

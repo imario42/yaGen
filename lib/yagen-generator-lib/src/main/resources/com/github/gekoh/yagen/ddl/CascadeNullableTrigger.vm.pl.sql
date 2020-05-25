@@ -9,7 +9,11 @@ for each row
 declare
   null_permitted_setting integer:=0;
 begin
-  if is_bypassed(upper('${triggerName}')) = 0 then
+#if( $bypassFunctionality )
+  if is_bypassed(upper('${triggerName}')) = 1 then
+    return#if( $is_postgres ) new#{end};
+  end if;
+#end
 
   begin
     select BOOLEAN_VALUE into #if($is_postgres)strict #{end}null_permitted_setting
@@ -20,7 +24,6 @@ begin
     #if( $is_postgres )perform #{end}raise_application_error(-20001, 'the relation ${tableName}.${fkColumnName} is only nullable during cleanup job if target entity is deleted');
   end if;
 
-  end if;
 #if( $is_postgres )  return new;
 #end
 end;#if( $is_postgres )

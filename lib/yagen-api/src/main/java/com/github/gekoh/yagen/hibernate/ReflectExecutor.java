@@ -32,7 +32,7 @@ public class ReflectExecutor {
     public static final String PATCH_HIBERNATE_CLASS_NAME = "com.github.gekoh.yagen.hibernate.PatchHibernateMappingClasses";
     public static final String DDLENHANCER_CLASS_NAME = "com.github.gekoh.yagen.hibernate.DDLEnhancer";
     public static final String CREATEDDL_CLASS_NAME = "com.github.gekoh.yagen.ddl.CreateDDL";
-    public static final String DDLGEN_CLASS_NAME = "com.github.gekoh.yagen.ddl.DDLGenerator$AddDDLEntry";
+    public static final String DDLGEN_CLASS_NAME = "com.github.gekoh.yagen.ddl.DDLGenerator";
     public static final String YAGENINIT_CLASS_NAME = "com.github.gekoh.yagen.hibernate.YagenInit";
     public static final String SESSIONFACTORY_CLASS_NAME = "org.hibernate.internal.SessionFactoryImpl";
 
@@ -60,7 +60,7 @@ public class ReflectExecutor {
     static final Initializer<Method> m_updateCreateSequence = getMethod(CREATEDDL_CLASS_NAME + ".updateCreateSequence");
     static final Initializer<Method> m_getProfile           = getMethod(CREATEDDL_CLASS_NAME + ".getProfile");
 
-    static final Initializer<Method> m_getDdlText           = getMethod(DDLGEN_CLASS_NAME + ".getDdlText");
+    public static final Initializer<Method> m_getConfigurationValues = getMethod(DDLGEN_CLASS_NAME + ".getConfigurationValues");
 
     static final Initializer<Method> m_newProfileIfNull     = getMethod(YAGENINIT_CLASS_NAME + ".newProfileIfNull");
 

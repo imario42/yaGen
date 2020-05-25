@@ -294,12 +294,7 @@ public class PatchGlue {
         }
         final String[] wrapArr = new String[1];
 
-        // for whatever reason create statements other than create table do not receive initial newline which would make generated DDL more readable
-        final Formatter delegateFormatter = formatter;
-        formatter = source -> {
-            String format = delegateFormatter.format(source);
-            return format.startsWith("create") ? System.lineSeparator() + format : format;
-        };
+        formatter = new FormatFixFormatter(formatter);
 
         for (String singleSql : splitSQL(sqlCommand)) {
             SqlStatement ddlStmt = prepareDDL(singleSql);
@@ -506,6 +501,31 @@ public class PatchGlue {
 
         public String getDelimiter() {
             return delimiter;
+        }
+    }
+
+    public static final class FormatFixFormatter implements Formatter {
+
+        // out of org.hibernate.engine.jdbc.internal.DDLFormatterImpl.INITIAL_LINE
+        private static final String INITIAL_LINE = System.lineSeparator() + "    ";
+        private static final Pattern CREATE_TABLE = Pattern.compile("(.*create table [^\\s(]+\\s?\\(\\s*)", Pattern.MULTILINE);
+
+        protected Formatter delegateFormatter;
+
+        public FormatFixFormatter(Formatter delegateFormatter) {
+            this.delegateFormatter = delegateFormatter;
+        }
+
+        @Override
+        public String format(String sql) {
+            String format = delegateFormatter.format(sql);
+            // first column is indented one char less due to added space char contained in source string before each subsequent column
+            Matcher matcher = CREATE_TABLE.matcher(format);
+            if (matcher.find()) {
+                format = format.substring(0, matcher.end()) + " " + format.substring(matcher.end());
+            }
+            // for whatever reason create statements other than create table do not receive initial newline which would make generated DDL more readable
+            return format.startsWith("create") ? INITIAL_LINE + format : format;
         }
     }
 }

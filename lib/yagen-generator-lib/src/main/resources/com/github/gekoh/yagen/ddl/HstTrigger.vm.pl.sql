@@ -24,10 +24,14 @@ declare
 #if( $MODIFIER_COLUMN_NAME )  hst_modified_by ${MODIFIER_COLUMN_TYPE}:=substr(get_audit_user(null), 1, ${MODIFIER_COLUMN_NAME_LENGTH});
 #end  hst_table_name ${varcharType}:=upper('${liveTableName}');
 begin
+#if( $bypassFunctionality )
+  if is_bypassed(upper('${objectName}')) = 1 then
+    return#if( $is_postgres ) new#{end};
+  end if;
+#end
 
-  if is_bypassed(upper('${objectName}')) = 0
 #if( !$is_postgres )
-     and (inserting or deleting
+  if inserting or deleting
 #foreach( $column in $histRelevantCols )
   or ((${new}.$column is null and ${old}.$column is not null) or
       (${new}.$column is not null and ${old}.$column is null) or
@@ -37,9 +41,9 @@ begin
       ${new}.$column!=${old}.$column)
 #end
 #end
-    )
-#end
   then
+
+#end
     begin
       select transaction_timestamp into #if($is_postgres)strict #{end}transaction_timestamp_found
       from HST_CURRENT_TRANSACTION
@@ -89,7 +93,8 @@ begin
 #else
         if sql%rowcount<>1 then
 #end
-          #if( $is_postgres )perform #{end}raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
+#if( $is_postgres )          perform#{end}
+          raise_application_error(-20100, 'unable to invalidate history record for '||hst_table_name
 #foreach( $pkColumn in $pkColumns )
               ||' ${pkColumn}='''|| ${old}.${pkColumn} ||''''
 #end
@@ -125,10 +130,11 @@ begin
         values (#foreach( $pkColumn in $pkColumns ) ${old}.${pkColumn},#end #foreach( $column in $nonPkColumns ) #if( $column == $MODIFIER_COLUMN_NAME ) hst_modified_by,#else #if( $column != $histColName )#if( $noNullColumns.contains($column) ) ${old}.$column#else null#end,#end #end #end hst_uuid_used, hst_operation, transaction_timestamp_found);
       end if;
     end if;
-  end if;
 
 #if( $is_postgres )
   return new;
+#else
+  end if;
 #end
 end;#if( $is_postgres )
 

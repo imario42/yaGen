@@ -34,6 +34,7 @@ import com.github.gekoh.yagen.api.TemporalEntity;
 import com.github.gekoh.yagen.api.UniqueConstraint;
 import com.github.gekoh.yagen.hibernate.PatchGlue;
 import com.github.gekoh.yagen.hst.CreateEntities;
+import com.github.gekoh.yagen.util.DBHelper;
 import com.github.gekoh.yagen.util.FieldInfo;
 import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
@@ -1136,6 +1137,7 @@ public class CreateDDL {
         context.put("tableName", tableName);
         context.put("fkColumnName", colName);
         context.put("SYSTEM_SETTING", getProfile().getNamingStrategy().tableName("SYSTEM_SETTING"));
+        context.put("bypassFunctionality", DBHelper.implementBypassFunctionality(DBHelper.getMetadata(dialect)));
 
         StringWriter wr = new StringWriter();
         mergeTemplateFromResource(template, wr, context);
@@ -1345,6 +1347,7 @@ public class CreateDDL {
         putIfExisting(context, "last_modified_at", AuditInfo.LAST_MODIFIED_AT, columns);
         putIfExisting(context, "last_modified_by", AuditInfo.LAST_MODIFIED_BY, columns);
         context.put("MODIFIER_COLUMN_NAME_LENGTH", Constants.USER_NAME_LEN);
+        context.put("bypassFunctionality", DBHelper.implementBypassFunctionality(DBHelper.getMetadata(dialect)));
 
         if (isOracle(dialect)) {
             writeOracleAuditTrigger(dialect, buf, context, nameLC, templateName + ".vm.pl.sql");
@@ -1914,6 +1917,7 @@ public class CreateDDL {
         context.put("i18nTblName", i18nTblName);
         context.put("i18nFKColName", i18nFKColName);
         context.put("columns", new ArrayList(columns));
+        context.put("bypassFunctionality", DBHelper.implementBypassFunctionality(DBHelper.getMetadata(dialect)));
 
         StringWriter wr = new StringWriter();
         if (isOracle(dialect)) {
@@ -2026,6 +2030,7 @@ public class CreateDDL {
         context.put("blobCols", blobCols);
         context.put("columnMap", columnMap);
         context.put("varcharType", dialect.getTypeName(Types.VARCHAR, 64, 0, 0));
+        context.put("bypassFunctionality", DBHelper.implementBypassFunctionality(DBHelper.getMetadata(dialect)));
 
         StringWriter wr = new StringWriter();
         mergeTemplateFromResource("HstTrigger.vm.pl.sql", wr, context);
@@ -2060,6 +2065,7 @@ public class CreateDDL {
         context.put("histRelevantCols", histRelevantCols);
         context.put("columnMap", columnMap);
         context.put("timestampType", dialect.getTypeName(Types.TIMESTAMP, 0, 0, 0));
+        context.put("bypassFunctionality", DBHelper.implementBypassFunctionality(DBHelper.getMetadata(dialect)));
 
         StringWriter wr = new StringWriter();
 

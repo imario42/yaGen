@@ -53,6 +53,7 @@ public class DBHelper {
 
     private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(DBHelper.class);
 
+    public static final String PROPERTY_GENERATE_BYPASS = "yagen.generator.bypass.implement";
     public static final String PROPERTY_BYPASS = "yagen.bypass";
     public static final String PROPERTY_BYPASS_REGEX = "yagen.bypass.regex";
     public static final String PROPERTY_SKIP_MODIFICATION = "yagen.skip-modification.regex";
@@ -84,6 +85,13 @@ public class DBHelper {
         }
 
         return objectName.matches((String) configurationValues.get(PROPERTY_SKIP_MODIFICATION));
+    }
+
+    public static boolean implementBypassFunctionality(Metadata metadata) {
+        Map configurationValues = metadata != null ? DBHelper.getConfigurationValues(metadata) : null;
+
+        return configurationValues != null && configurationValues.containsKey(PROPERTY_GENERATE_BYPASS) &&
+                Boolean.TRUE.equals(Boolean.valueOf((String) configurationValues.get(PROPERTY_GENERATE_BYPASS)));
     }
 
     public static void setBypass(String objectRegex, EntityManager em) {

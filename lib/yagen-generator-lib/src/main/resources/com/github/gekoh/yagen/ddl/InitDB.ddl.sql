@@ -21,6 +21,7 @@ create global temporary table SESSION_VARIABLES (
     constraint SESS_VAR_PK primary key (NAME)
 ) ON COMMIT PRESERVE ROWS;
 
+#if( $bypassFunctionality )
 ------- CreateDDL statement separator -------
 create or replace function is_bypassed(object_name in varchar2) return number is
   bypass_regex varchar2(255);
@@ -38,7 +39,7 @@ exception when no_data_found then
   return 0;
 end;
 /
-
+#end
 #end
 
 #if( $is_hsql )
@@ -94,6 +95,7 @@ CREATE FUNCTION regexp_like(s VARCHAR(4000), regexp VARCHAR(500), flags VARCHAR(
   EXTERNAL NAME 'CLASSPATH:com.github.gekoh.yagen.util.DBHelper.regexpLikeFlags'
 ;
 
+#if( $bypassFunctionality )
 ------- CreateDDL statement separator -------
 CREATE FUNCTION is_statically_bypassed(object_name VARCHAR(100))
   RETURNS BOOLEAN
@@ -119,6 +121,7 @@ begin atomic
 
   return 0;
 end;
+#end
 
 ------- CreateDDL statement separator -------
 CREATE FUNCTION get_audit_user(client_user_in VARCHAR(50)) RETURNS varchar(50)
@@ -206,6 +209,7 @@ begin
 end;
 $$ LANGUAGE PLPGSQL;
 
+#if( $bypassFunctionality )
 ------- CreateDDL statement separator -------
 CREATE FUNCTION is_bypassed(object_name varchar) RETURNS NUMERIC AS $$
 declare bypass_regex varchar(255);
@@ -222,6 +226,7 @@ exception when others then
   return 0;
 end;
 $$ LANGUAGE PLPGSQL;
+#end
 
 ------- CreateDDL statement separator -------
 CREATE VIEW dual AS

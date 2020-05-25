@@ -111,6 +111,10 @@ public class DDLGenerator {
         }
     }
 
+    public static Map getConfigurationValues(String persistenceUnit) {
+        return DBHelper.getConfigurationValues(new SchemaExportHelper(persistenceUnit).createSchemaExportMetadata());
+    }
+
     public static Collection<Class> getEntityAndMappedSuperClassesFrom(Metadata metadata) {
         List<Class> entityClasses = metadata.getEntityBindings().stream().map(PersistentClass::getMappedClass).collect(Collectors.toList());
         Set<Class> allClasses = new HashSet<>(entityClasses);
@@ -494,6 +498,7 @@ public class DDLGenerator {
 
                 String driverClassName = DBHelper.getDriverClassName(dialect);
                 if (driverClassName != null && !"java.sql.Driver".equalsIgnoreCase(driverClassName)) {
+                    ctx.put("bypassFunctionality", DBHelper.implementBypassFunctionality(DBHelper.getMetadata(dialect)));
                     ctx.put("driverClassName", driverClassName);
                     // re-apply is_* flags possibly based on driver classname
                     validateSetDbFlagFromDialectAndDriver(ctx, "is_postgres", DBHelper.isPostgres(dialect), driverClassName, dialect);

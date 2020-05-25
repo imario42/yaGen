@@ -245,8 +245,6 @@
                                         <argument>addImportTimestampProfile</argument>
                                         <argument>--persistence-unit-name</argument>
                                         <argument>generation-unit</argument>
-                                        <argument>--profile-provider-class</argument>
-                                        <argument>com.github.gekoh.yagen.example.ddl.ExampleProfileProvider</argument>
                                         <argument>--output-file</argument>
                                         <argument>"${project.build.outputDirectory}/META-INF/schema-objects-generated.ddl.sql"</argument>
                                     </arguments>
@@ -282,6 +280,11 @@
                                 </goals>
                                 <configuration>
                                     <doclet>com.github.gekoh.yagen.ddl.comment.CommentsDDLGenerator</doclet>
+<!--
+                                    <additionalJOption>
+                                        -J-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005
+                                    </additionalJOption>
+-->
                                     <docletArtifacts>
                                         <docletArtifact>
                                             <groupId>org.slf4j</groupId>
@@ -310,7 +313,7 @@
                                     <reportOutputDirectory>${project.build.directory}</reportOutputDirectory>
 
                                     <additionalparam>
-                                        --profile-name anyName
+                                        --profile-name addImportTimestampProfile
                                         --persistence-unit-name generation-unit
                                         --output-file "${project.build.outputDirectory}/META-INF/schema-objects-generated.ddl.sql"
                                     </additionalparam>
