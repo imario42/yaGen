@@ -1334,6 +1334,7 @@ public class CreateDDL {
         }
 
         if (isPostgres(dialect)) {
+            // TODO: single audit timestamp for postgres
             writePostgreSqlAuditTrigger(dialect, buf, nameLC);
             return;
         }

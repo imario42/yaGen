@@ -237,21 +237,24 @@ CREATE VIEW dual AS
 CREATE FUNCTION audit_trigger_function()
   RETURNS trigger AS $$
 BEGIN
-    if is_bypassed(upper(tg_table_name)) = 0
-    then
-        if TG_OP = 'INSERT' then
-            new.created_at := localtimestamp;
-            new.created_by := coalesce(new.created_by, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
-            new.last_modified_at := null;
-            new.last_modified_by := null;
-        elsif TG_OP = 'UPDATE' then
-            new.created_at := old.created_at;
-            new.created_by := old.created_by;
-            if not(new.last_modified_at is not null and (old.last_modified_at is null or new.last_modified_at <> old.last_modified_at )) then
-              new.last_modified_by := coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
-            end if;
-            new.last_modified_at := localtimestamp;
+#if( $bypassFunctionality )
+    if is_bypassed(upper(tg_table_name)) = 1 then
+        return new;
+    end if;
+
+#end
+    if TG_OP = 'INSERT' then
+        new.created_at := localtimestamp;
+        new.created_by := coalesce(new.created_by, sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
+        new.last_modified_at := null;
+        new.last_modified_by := null;
+    elsif TG_OP = 'UPDATE' then
+        new.created_at := old.created_at;
+        new.created_by := old.created_by;
+        if not(new.last_modified_at is not null and (old.last_modified_at is null or new.last_modified_at <> old.last_modified_at )) then
+          new.last_modified_by := coalesce(sys_context('USERENV','CLIENT_IDENTIFIER'), sys_context('USERENV','OS_USER'), user);
         end if;
+        new.last_modified_at := localtimestamp;
     end if;
     return new;
 END;
