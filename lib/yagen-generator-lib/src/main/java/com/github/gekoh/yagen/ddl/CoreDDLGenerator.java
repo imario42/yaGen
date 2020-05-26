@@ -15,7 +15,6 @@
 */
 package com.github.gekoh.yagen.ddl;
 
-import com.github.gekoh.yagen.hibernate.PatchGlue;
 import com.github.gekoh.yagen.hibernate.ReflectExecutor;
 import com.github.gekoh.yagen.hibernate.YagenInit;
 import org.apache.commons.cli.CommandLine;
@@ -23,8 +22,6 @@ import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-
-import java.util.Map;
 
 /**
  * @author Georg Kohlweiss
@@ -72,7 +69,6 @@ public class CoreDDLGenerator {
     }
 
     public static void generateFrom(DDLGenerator.Profile profile) {
-        PatchGlue.setProfile(profile);
 
         profile.addHeaderDdlOnTop(new DDLGenerator.AddTemplateDDLEntry(
                 "#if( ${dialect.getClass().getSimpleName().toLowerCase().contains('oracle')} )\n" +
@@ -99,21 +95,13 @@ public class CoreDDLGenerator {
         DDLGenerator.Profile profile = null;
         CommandLineParser clp = new GnuParser();
         CommandLine cl = clp.parse(OPTIONS, args);
-        String providerClass = null;
 
         try {
 
             if (cl.hasOption(PARAM_PERSISTENCE_UNIT_NAME)) {
                 String persistenceUnit = cl.getOptionValue(PARAM_PERSISTENCE_UNIT_NAME);
-                Map configurationValues = (Map) ReflectExecutor.m_getConfigurationValues.get().invoke(null, persistenceUnit);
-                providerClass = configurationValues != null ? (String) configurationValues.get(PERSISTENCE_UNIT_PROPERTY_PROFILE_PROVIDER_CLASS) : null;
-                if (providerClass != null) {
-                    profile = ((ProfileProvider) Class.forName(providerClass).newInstance())
-                            .getProfile(cl.getOptionValue(PARAM_PROFILE_NAME));
-                }
-                else {
-                    profile = new DDLGenerator.Profile(cl.getOptionValue(PARAM_PROFILE_NAME));
-                }
+                profile = (DDLGenerator.Profile) ReflectExecutor.m_createProfile.get().invoke(null, "ddl-gen_" + persistenceUnit, persistenceUnit);
+
                 profile.setPersistenceUnitName(persistenceUnit);
             }
             else {
@@ -143,8 +131,6 @@ public class CoreDDLGenerator {
             if (cl.hasOption(PARAM_REGEX_RENDER_ONLY_ENTITIES)) {
                 profile.setOnlyRenderEntitiesRegex(cl.getOptionValue(PARAM_REGEX_RENDER_ONLY_ENTITIES));
             }
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("cannot instantiate profile provider class " + providerClass);
         } catch (Exception e) {
             throw new IllegalStateException("error setting up generator profile: " + e.getMessage(), e);
         }

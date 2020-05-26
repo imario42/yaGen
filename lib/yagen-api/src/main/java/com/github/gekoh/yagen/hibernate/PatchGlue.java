@@ -66,16 +66,6 @@ public class PatchGlue {
                     "(/\\*+(.*?)\\*+/)", // block comment
             Pattern.DOTALL);
 
-    private static Object profile;
-
-    public static void setProfile(Object profile) {
-        PatchGlue.profile = profile;
-    }
-
-    public static Object getProfile() {
-        return profile;
-    }
-
     private static Method schemaExportPerform;
     private static Field generatorScriptDelimiter;
     private static Field generatorStdoutDelimiter;
@@ -90,16 +80,16 @@ public class PatchGlue {
         }
     }
 
-    private static Object getOrInitProfile() {
+    private static Object createProfile(Metadata metadata) {
         try {
-            return profile != null ? profile : ReflectExecutor.i_profile.get().newInstance("runtime");
+            return ReflectExecutor.m_createProfileFromMetadata.get().invoke(null, "runtime", metadata);
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
     public static void initDialect(Metadata metadata) {
-        initDialect(getOrInitProfile(), metadata);
+        initDialect(createProfile(metadata), metadata);
     }
 
     public static void initDialect(SessionFactory sessionFactory) {
@@ -110,7 +100,7 @@ public class PatchGlue {
 
         try {
             Metadata metadata = (Metadata) ReflectExecutor.m_getMetadata.get().invoke(impl);
-            initDialect(getOrInitProfile(), metadata);
+            initDialect(createProfile(metadata), metadata);
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
@@ -121,14 +111,13 @@ public class PatchGlue {
 
         if (dialect != null && ReflectExecutor.c_enhancer.get().isAssignableFrom(dialect.getClass())) {
             try {
-                Object clonedProfile = ReflectExecutor.m_clone.get().invoke(profile);
                 PhysicalNamingStrategy namingStrategy = metadata.getDatabase().getPhysicalNamingStrategy();
 
                 if (namingStrategy instanceof DefaultNamingStrategy) {
-                    ReflectExecutor.m_setNamingStrategy.get().invoke(clonedProfile, namingStrategy);
+                    ReflectExecutor.m_setNamingStrategy.get().invoke(profile, namingStrategy);
                 }
                 if (ReflectExecutor.m_getDDLEnhancer.get().invoke(dialect) == null) {
-                    ReflectExecutor.m_initDDLEnhancer.get().invoke(dialect, clonedProfile, metadata);
+                    ReflectExecutor.m_initDDLEnhancer.get().invoke(dialect, profile, metadata);
                 }
             } catch (Exception e) {
                 throw new IllegalStateException(e);

@@ -7,7 +7,9 @@ import com.github.gekoh.yagen.ddl.ProfileProvider;
 import org.hibernate.dialect.Dialect;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static com.github.gekoh.yagen.hibernate.PatchGlue.STATEMENT_SEPARATOR;
 
@@ -15,7 +17,7 @@ public class ExampleProfileProvider implements ProfileProvider {
 
     @Override
     public DDLGenerator.Profile getProfile(String profileName) {
-        DDLGenerator.Profile profile = new DDLGenerator.Profile(profileName);
+        Profile profile = new Profile(profileName);
         final List<String> historyTables = new ArrayList<>();
 
         if ("addImportTimestampProfile".equals(profileName)) {
@@ -52,5 +54,31 @@ public class ExampleProfileProvider implements ProfileProvider {
         }
 
         return sb.toString();
+    }
+
+    public static class AddImportTimestampProvider extends ExampleProfileProvider {
+        @Override
+        public DDLGenerator.Profile getProfile(String profileName) {
+            return super.getProfile("addImportTimestampProfile");
+        }
+    }
+
+    public static class Profile extends DDLGenerator.Profile {
+
+        private final Map<ObjectType, Map<String, String>> ddlMap = new HashMap<ObjectType, Map<String, String>>();
+
+        public Profile(String name) {
+            super(name);
+            addDuplexer(new Duplexer() {
+                public void handleDdl(ObjectType objectType, String objectName, String ddl) {
+                    Map<String, String> ddlSubMap = ddlMap.computeIfAbsent(objectType, k -> new HashMap<>());
+                    ddlSubMap.put(objectName, ddl);
+                }
+            });
+        }
+
+        public Map<ObjectType, Map<String, String>> getRecordedDdl() {
+            return ddlMap;
+        }
     }
 }

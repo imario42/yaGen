@@ -62,6 +62,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.github.gekoh.yagen.ddl.CoreDDLGenerator.PERSISTENCE_UNIT_PROPERTY_PROFILE_PROVIDER_CLASS;
+
 /**
  * @author Georg Kohlweiss
  */
@@ -128,6 +130,26 @@ public class DDLGenerator {
         }
 
         return allClasses;
+    }
+
+    public static Profile createProfile(String profileName, String persistenceUnit) {
+        return createProfileFromMetadata(profileName, new SchemaExportHelper(persistenceUnit).createSchemaExportMetadata());
+    }
+
+    public static Profile createProfileFromMetadata(String profileName, Metadata metadata) {
+        Map configurationValues = DBHelper.getConfigurationValues(metadata);
+        String providerClass = configurationValues != null ? (String) configurationValues.get(PERSISTENCE_UNIT_PROPERTY_PROFILE_PROVIDER_CLASS) : null;
+        try {
+            if (providerClass != null) {
+                return ((ProfileProvider) Class.forName(providerClass).newInstance())
+                        .getProfile(profileName);
+            }
+            else {
+                return new Profile(profileName);
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @SuppressWarnings("UnusedDeclaration")

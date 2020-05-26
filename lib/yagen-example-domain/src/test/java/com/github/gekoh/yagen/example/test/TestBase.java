@@ -6,18 +6,18 @@
  */
 package com.github.gekoh.yagen.example.test;
 
-import com.github.gekoh.yagen.ddl.DDLGenerator;
-import com.github.gekoh.yagen.ddl.Duplexer;
+import com.github.gekoh.yagen.ddl.CreateDDL;
 import com.github.gekoh.yagen.ddl.ObjectType;
 import com.github.gekoh.yagen.example.ddl.ExampleProfileProvider;
+import com.github.gekoh.yagen.hibernate.DDLEnhancer;
 import com.github.gekoh.yagen.hibernate.YagenInit;
+import com.github.gekoh.yagen.util.DBHelper;
 import org.junit.After;
 import org.junit.Before;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -25,24 +25,13 @@ import java.util.Map;
  */
 public abstract class TestBase {
     //private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(TestBase.class);
-    protected  static final Map<ObjectType, Map<String, String>> ddlMap = new HashMap<ObjectType, Map<String, String>>();
+    protected  Map<ObjectType, Map<String, String>> ddlMap;
 
     protected static EntityManagerFactory emf;
 
     static {
-        DDLGenerator.Profile profile = new ExampleProfileProvider().getProfile("addImportTimestampProfile");
-        profile.addDuplexer(new Duplexer() {
-            public void handleDdl(ObjectType objectType, String objectName, String ddl) {
-                Map<String, String> ddlSubMap = ddlMap.get(objectType);
-                if (ddlSubMap == null) {
-                    ddlSubMap = new HashMap<String, String>();
-                    ddlMap.put(objectType, ddlSubMap);
-                }
-                ddlSubMap.put(objectName, ddl);
-            }
-        });
         try {
-            YagenInit.init(profile);
+            YagenInit.init();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -63,6 +52,7 @@ public abstract class TestBase {
     @Before
     public void setup() {
         em = getEntityManagerFactory().createEntityManager();
+        ddlMap = ((ExampleProfileProvider.Profile) ((CreateDDL) ((DDLEnhancer) DBHelper.getDialect(em)).getDDLEnhancer()).getProfile()).getRecordedDdl();
     }
 
     @After

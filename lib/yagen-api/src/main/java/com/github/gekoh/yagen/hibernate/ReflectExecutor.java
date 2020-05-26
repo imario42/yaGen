@@ -61,6 +61,8 @@ public class ReflectExecutor {
     static final Initializer<Method> m_getProfile           = getMethod(CREATEDDL_CLASS_NAME + ".getProfile");
 
     public static final Initializer<Method> m_getConfigurationValues = getMethod(DDLGEN_CLASS_NAME + ".getConfigurationValues");
+    public static final Initializer<Method> m_createProfile = getMethod(DDLGEN_CLASS_NAME + ".createProfile");
+    public static final Initializer<Method> m_createProfileFromMetadata = getMethod(DDLGEN_CLASS_NAME + ".createProfileFromMetadata");
 
     static final Initializer<Method> m_newProfileIfNull     = getMethod(YAGENINIT_CLASS_NAME + ".newProfileIfNull");
 
