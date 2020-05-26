@@ -26,6 +26,10 @@ import com.github.gekoh.yagen.util.MappingUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
+import org.dom4j.Document;
+import org.dom4j.Element;
+import org.dom4j.Node;
+import org.dom4j.io.SAXReader;
 
 import javax.persistence.Column;
 import javax.persistence.DiscriminatorColumn;
@@ -75,10 +79,20 @@ public class CreateEntities {
 
     public static void main (String[] args) {
         if (args == null || args.length<1) {
-            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <persistence-unit-name> <orm2.0-file-out-path> [<orm1.0-file-out-path>] [override-DateTimeType.class.name] [customFile-BaseEntity.java.vm] [customFile-HstTemplate.java.vm]");
+            LOG.error("parameters: <java-src-output-dir> <base-classes-package-name> <[persistence-unit-name]|[persistence-xml-list]> <orm2.0-file-out-path> [<orm1.0-file-out-path>] [override-DateTimeType.class.name] [customFile-BaseEntity.java.vm] [customFile-HstTemplate.java.vm]");
             return;
         }
-        CreateEntities createEntities = new CreateEntities(new File(args[0]));
+        Collection<Class> entityClasses;
+        String filesOrPuName = args[2];
+        
+        if (filesOrPuName.contains(";") || new File(filesOrPuName).exists() || CreateEntities.class.getClassLoader().getResource(filesOrPuName) != null) {
+            entityClasses = extractFromPersistenceXml(filesOrPuName.split(";[\\s]*"));
+        }
+        else {
+            LOG.info("{} seems not to be a file since it is not found in classpath, trying as persistence unit name", filesOrPuName);
+            entityClasses = scanEntityClasses(filesOrPuName);
+        }
+        CreateEntities createEntities = new CreateEntities(new File(args[0]), entityClasses);
 
         if (args.length > 5) {
             createEntities.additionalProperties.put("dateTimeType", StringUtils.isNotEmpty(args[5]) ? args[5] : "");
@@ -103,9 +117,7 @@ public class CreateEntities {
 
         createEntities.writeBaseClasses(args[1], customBaseTemplate);
 
-        createEntities.processBaseEntityClasses(
-                args[1],
-                scanEntityClasses(args[2]));
+        createEntities.processBaseEntityClasses(args[1]);
 
         File orm20OutFile = new File(args[3]);
         createEntities.writeOrmFile(orm20OutFile, args[1], "2.0");
@@ -120,23 +132,25 @@ public class CreateEntities {
 
     private String template = readClasspathResource("HstTemplate.java.vm");
 
+    private Collection<Class> entityClasses;
     private List<String> createdMappedSuperClasses = new ArrayList<String>();
     private List<String> createdEntityClasses = new ArrayList<String>();
 
     private NamingStrategy namingStrategy = new DefaultNamingStrategy();
 
-    public CreateEntities(File outputDirectory) {
+    public CreateEntities(File outputDirectory, Collection<Class> entityClasses) {
         this.outputDirectory = outputDirectory;
+        this.entityClasses = entityClasses;
         if (!outputDirectory.exists() && !outputDirectory.mkdirs()) {
             throw new IllegalArgumentException("cannot create directory '" + outputDirectory.getAbsolutePath() + "'");
         }
         Velocity.init();
     }
 
-    public void processBaseEntityClasses (String baseClassPackageName, Collection<Class> baseEntities) {
-        Map<Class, List<AccessibleObject>> inverseFKs = getInverseFKs (baseEntities);
+    public void processBaseEntityClasses (String baseClassPackageName) {
+        Map<Class, List<AccessibleObject>> inverseFKs = getInverseFKs (entityClasses);
 
-        for (Class baseEntity : baseEntities) {
+        for (Class baseEntity : entityClasses) {
             Class tableEntity = getTableEntityClass(baseEntity);
             if (baseEntity.isAnnotationPresent(MappedSuperclass.class) ||
                     (tableEntity != null && tableEntity.isAnnotationPresent(TemporalEntity.class))) {
@@ -427,6 +441,61 @@ public class CreateEntities {
     private static Collection<Class> scanEntityClasses(String persistenceUnitName) {
 
         return new DDLGenerator.SchemaExportHelper(persistenceUnitName).getEntityAndMappedSuperClasses();
+    }
+
+    /**
+     * <p>Extracts all entity classes in the given set of persistence.xml files an returns a collection thereof.</p>
+     * @param persistenceXmlFiles set of persistence.xml files that you want to scan
+     * @return extracted entity classes
+     */
+    private static Collection<Class> extractFromPersistenceXml(String... persistenceXmlFiles) {
+        List<Class> entityClasses = new ArrayList<>();
+        for (String file : persistenceXmlFiles) {
+            addPersistenceFile(entityClasses, getPersistenceDocument(file));
+        }
+        return entityClasses;
+    }
+
+    private static void addPersistenceFile (Collection<Class> entityClasses, Document persistenceXml) {
+        if (persistenceXml==null) {
+            return;
+        }
+        try {
+            Element pu = persistenceXml.getRootElement().element("persistence-unit");
+            if(pu != null) {
+                for (Object classNode: pu.elements("class")) {
+                    entityClasses.add(Class.forName(((Node) classNode).getText()));
+                }
+                for (Object fileNode: pu.elements("mapping-file")) {
+                    addPersistenceFile(entityClasses, getPersistenceDocument(((Node) fileNode).getText()));
+                }
+            } else {
+                for(Object entityNode : persistenceXml.getRootElement().elements("mapped-superclass")) {
+                    entityClasses.add(Class.forName((String) ((Element)entityNode).attribute("class").getData()));
+                }
+                for(Object entityNode : persistenceXml.getRootElement().elements("entity")) {
+                    entityClasses.add(Class.forName((String) ((Element)entityNode).attribute("class").getData()));
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
+
+    private static Document getPersistenceDocument (String persistenceXml) {
+        if (StringUtils.isEmpty(persistenceXml)) {
+            LOG.warn("empty persistence.xml or orm file specified");
+            return null;
+        }
+        try {
+            InputStream resource = CreateEntities.class.getResourceAsStream("/" + persistenceXml);
+            if (resource == null) {
+                resource = new FileInputStream(persistenceXml);
+            }
+            return new SAXReader().read(resource);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("unable to find resource "+persistenceXml+" in classpath or filesystem", e);
+        }
     }
 
     /**

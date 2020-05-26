@@ -7,10 +7,7 @@ begin atomic
   declare user_name varchar(35);
 #end
 #if( $bypassFunctionality )
-  if is_statically_bypassed('${triggerName}') or is_bypassed(upper('${triggerName}')) = 1 then
-    return;
-  end if;
-
+  if not(is_statically_bypassed('${triggerName}')) and is_bypassed(upper('${triggerName}')) = 0 then
 #end
 #if( $last_modified_by )
 #*
@@ -25,4 +22,7 @@ begin atomic
   set new.${last_modified_by} = substr(get_audit_user(user_name), 1, ${MODIFIER_COLUMN_NAME_LENGTH});
 #end
   set new.${last_modified_at} = systimestamp_9();
+#if( $bypassFunctionality )
+  end if;
+#end
 end;

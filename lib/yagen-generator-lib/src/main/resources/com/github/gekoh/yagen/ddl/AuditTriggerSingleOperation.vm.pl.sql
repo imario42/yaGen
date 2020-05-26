@@ -5,10 +5,7 @@ for each row
 begin atomic
   declare user_name varchar(${MODIFIER_COLUMN_NAME_LENGTH});
 #if( $bypassFunctionality )
-  if is_statically_bypassed('${triggerName}') or is_bypassed(upper('${triggerName}')) = 1 then
-    return;
-  end if;
-
+  if not(is_statically_bypassed('${triggerName}')) and is_bypassed(upper('${triggerName}')) = 0 then
 #end
 #if( ${operation} == 'I' )
     set user_name = case when new.${created_at} is not null then new.${created_by} end;
@@ -36,5 +33,8 @@ begin atomic
     set new.${created_by} = old.${created_by};
     set new.${last_modified_at} = systimestamp_9();
     set new.${last_modified_by} = user_name;
+#end
+#if( $bypassFunctionality )
+  end if;
 #end
 end;
