@@ -520,7 +520,6 @@ public class DDLGenerator {
 
                 String driverClassName = DBHelper.getDriverClassName(dialect);
                 if (driverClassName != null && !"java.sql.Driver".equalsIgnoreCase(driverClassName)) {
-                    ctx.put("bypassFunctionality", DBHelper.implementBypassFunctionality(DBHelper.getMetadata(dialect)));
                     ctx.put("driverClassName", driverClassName);
                     // re-apply is_* flags possibly based on driver classname
                     validateSetDbFlagFromDialectAndDriver(ctx, "is_postgres", DBHelper.isPostgres(dialect), driverClassName, dialect);
