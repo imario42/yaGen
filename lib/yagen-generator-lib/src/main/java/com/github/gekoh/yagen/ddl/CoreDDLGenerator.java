@@ -132,7 +132,11 @@ public class CoreDDLGenerator {
                 profile.setOnlyRenderEntitiesRegex(cl.getOptionValue(PARAM_REGEX_RENDER_ONLY_ENTITIES));
             }
         } catch (Exception e) {
-            throw new IllegalStateException("error setting up generator profile: " + e.getMessage(), e);
+            Throwable msgE = e;
+            while (msgE != null && msgE.getMessage() == null) {
+                msgE = msgE.getCause();
+            }
+            throw new IllegalStateException("error setting up generator profile: " + (msgE != null && msgE.getMessage() != null ? msgE.getMessage() : e.toString()), e);
         }
 
         return profile;
