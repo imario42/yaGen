@@ -49,7 +49,8 @@ public class PatchTransformer implements ClassFileTransformer {
             "org.hibernate.tool.schema.internal.StandardForeignKeyExporter",
             "org.hibernate.tool.schema.internal.StandardSequenceExporter",
             "org.hibernate.tool.schema.internal.SchemaCreatorImpl",
-            "org.hibernate.dialect.Dialect"
+            "org.hibernate.dialect.Dialect",
+            "org.hibernate.boot.model.source.internal.annotations.AnnotationMetadataSourceProcessorImpl"
     );
 
     private ClassPool classPool;
@@ -131,6 +132,10 @@ public class PatchTransformer implements ClassFileTransformer {
         }
         if("org.hibernate.dialect.Dialect".equals(className)) {
             patchDialect(clazz);
+            return true;
+        }
+        if("org.hibernate.boot.model.source.internal.annotations.AnnotationMetadataSourceProcessorImpl".equals(className)) {
+            clazz.getDeclaredMethod("processEntityHierarchies").insertBefore("com.github.gekoh.yagen.hibernate.PatchGlue.sortEntityClasses(this.xClasses);");
             return true;
         }
         return false;

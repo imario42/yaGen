@@ -19,6 +19,7 @@ import com.github.gekoh.yagen.api.DefaultNamingStrategy;
 import com.github.gekoh.yagen.util.DBHelper;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.SessionFactory;
+import org.hibernate.annotations.common.reflection.XClass;
 import org.hibernate.boot.Metadata;
 import org.hibernate.boot.model.naming.PhysicalNamingStrategy;
 import org.hibernate.boot.model.relational.Sequence;
@@ -45,6 +46,7 @@ import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -126,6 +128,10 @@ public class PatchGlue {
         else {
             LOG.warn("{} was not patched, generator enhancements not working", dialect != null ? dialect.getClass().getName() : "Dialect");
         }
+    }
+
+    public static void sortEntityClasses(List<XClass> classes) {
+        classes.sort(Comparator.comparing(XClass::getName));
     }
 
     public static String[] afterTableSqlString(boolean createNotDrop, Table table, Metadata metadata, String[] returnValue) {
